@@ -1,0 +1,47 @@
+# Waste Intelligence Platform API Server
+# FastAPI-based API for waste management telemetry and ML inference
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash appuser
+
+# Copy requirements files
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Copy application code
+COPY src/waste_intelligence_api/ ./src/waste_intelligence_api/
+COPY src/nyc_opendata_mcp/config.py ./src/config.py
+
+# Set ownership
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8001
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "from waste_intelligence_api.app import app; print('OK')" || exit 1
+
+# Run the API server
+CMD ["uvicorn", "waste_intelligence_api.app:app", "--host", "0.0.0.0", "--port", "8001"]

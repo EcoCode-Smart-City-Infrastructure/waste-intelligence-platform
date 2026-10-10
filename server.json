@@ -1,0 +1,28 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.EcoCode-Smart-City-Infrastructure/nyc-opendata-mcp",
+  "description": "New York City Open Data MCP Server with Waste Intelligence Platform integration. Provides access to NYC datasets, environmental feeds, mobility data, geodata, government data, and waste management intelligence.",
+  "version": "1.0.0",
+  "repository": {
+    "url": "https://github.com/EcoCode-Smart-City-Infrastructure/waste-intelligence-platform",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/EcoCode-Smart-City-Infrastructure/waste-intelligence-platform",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "nyc-opendata-mcp",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeHint": "uvx"
+    }
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "category": "Statistics & Geodata & Waste Management",
+      "scope": "core"
+    }
+  }
+}

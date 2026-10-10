@@ -1,14 +1,25 @@
-# Root requirements for Python services
-Flask==3.0.3
-streamlit==1.36.0
-pytest==8.3.3
-pandas==2.2.3
-numpy==2.1.2
-plotly==5.24.1
+# NYC Open Data MCP Server with Waste Intelligence Platform
+# Core dependencies
 
-# Machine Learning dependencies
-torch>=2.0.0
-scikit-learn>=1.3.0
-joblib>=1.3.0
-Pillow>=10.0.0
-geopandas>=0.14.0
+# MCP Server dependencies
+mcp>=1.0.0
+fastapi>=0.100.0
+uvicorn[standard]>=0.20.0
+pydantic>=2.0.0
+
+# HTTP client dependencies
+aiohttp>=3.8.0
+requests>=2.31.0
+backoff>=2.2.1
+
+# Database dependencies
+psycopg2-binary>=2.9.0
+
+# Development dependencies (optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+# pytest-cov>=4.0.0
+# ruff>=0.1.0
+# mypy>=1.0.0
+# types-requests>=2.31.0
+# types-PyYAML>=6.0.0
