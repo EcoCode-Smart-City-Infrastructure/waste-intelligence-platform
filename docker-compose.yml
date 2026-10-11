@@ -147,6 +147,45 @@ services:
     networks:
       - waste-intel-network
 
+  # AI Copilot Service
+  copilot-service:
+    build:
+      context: .
+      dockerfile: copilot_service/Dockerfile
+    container_name: copilot-service
+    restart: unless-stopped
+    ports:
+      - "8004:8004"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}"
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openai/gpt-4o-mini}
+      - WASTE_INTEL_API_URL=http://waste-intel-api:8001
+      - MCP_SERVER_URL=http://nyc-opendata-mcp:8000
+      - KG_API_URL=http://kg-service:8003
+      - ML_API_URL=http://ml-service:8002
+      - COPILOT_PORT=8004
+      - COPILOT_HOST=0.0.0.0
+      - COPILOT_API_KEY=${COPILOT_API_KEY:-}
+      - REQUIRE_API_KEY=false
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./copilot_service/logs:/app/logs
+    networks:
+      - waste-intel-network
+    depends_on:
+      - waste-intel-api
+      - nyc-opendata-mcp
+      - kg-service
+      - ml-service
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8004/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
 networks:
   waste-intel-network:
     driver: bridge

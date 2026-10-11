@@ -20,10 +20,12 @@ def create_app() -> Flask:
     from hub_layer.api.routes.bins import bins_bp
     from hub_layer.api.routes.facilities import facilities_bp
     from hub_layer.api.routes.analytics import analytics_bp
+    from hub_layer.api.routes.copilot import copilot_bp
 
     app.register_blueprint(bins_bp)
     app.register_blueprint(facilities_bp)
     app.register_blueprint(analytics_bp)
+    app.register_blueprint(copilot_bp)
 
     return app
 
