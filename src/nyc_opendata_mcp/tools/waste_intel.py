@@ -74,7 +74,7 @@ async def nyc_wastebin_live(params: BinLiveInput) -> Annotated[CallToolResult, s
     """
     try:
         # Get bin data from Waste Intelligence API
-        result = await waste_intel_request(f"mcp/waste/bin/{params.bin_id}")
+        result = await waste_intel_request("mcp/waste/bin", bin_id=params.bin_id)
         
         if not result:
             # Return sample data if no real data available
@@ -171,7 +171,7 @@ async def nyc_wastecluster_live(params: ClusterLiveInput) -> Annotated[CallToolR
     """
     try:
         # Get cluster data from Waste Intelligence API
-        result = await waste_intel_request(f"mcp/waste/cluster/{params.cluster_id}")
+        result = await waste_intel_request("mcp/waste/cluster", cluster_id=params.cluster_id)
         
         if not result:
             # Return sample data if no real data available
@@ -260,7 +260,7 @@ async def nyc_wastefacility_load(params: FacilityLoadInput) -> Annotated[CallToo
     """
     try:
         # Get facility data from Waste Intelligence API
-        result = await waste_intel_request(f"mcp/waste/facility/{params.facility_id}")
+        result = await waste_intel_request("mcp/waste/facility", facility_id=params.facility_id)
         
         if not result:
             # Return sample data if no real data available
