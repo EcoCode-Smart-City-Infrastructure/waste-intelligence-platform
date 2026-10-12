@@ -34,7 +34,7 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - DB_URL=postgresql://timescale:password@postgres:5432/wasteintel
+      - DB_URL=postgresql://timescale:${POSTGRES_PASSWORD:-password}@postgres:5432/wasteintel
       - ML_URL=http://ml-service:8002
       - KG_URL=http://kg-service:8003
       - API_KEY=${WASTE_INTEL_API_KEY:-}
@@ -54,7 +54,7 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_USER=timescale
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
       - POSTGRES_DB=wasteintel
     volumes:
       - postgres_data:/var/lib/postgresql/data
