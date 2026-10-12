@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 
 #include "sensors/ultrasonic_sensor.h"
+#include "sensors/loadcell.h"
 #include "connectivity/mqtt_client.h"
 
 namespace {
@@ -27,6 +28,7 @@ void setup() {
 
   // Sensor initialization and MQTT setup
   initUltrasonicSensor();
+  initLoadCell();
   mqttClientBegin();
 }
 
