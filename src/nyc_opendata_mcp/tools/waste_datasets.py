@@ -243,6 +243,7 @@ async def nyc_waste_tonnage(params: TonnageInput) -> Annotated[CallToolResult, s
 
     Returns:
         Monthly tonnage data for waste, recycling, and organics
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Get data from Socrata
@@ -269,13 +270,15 @@ async def nyc_waste_tonnage(params: TonnageInput) -> Annotated[CallToolResult, s
         
         result = await socrata_request(dataset_id, "json", **api_params)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_tonnage_data(params)
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": result,
                 "markdown": json_out(result),
             })
@@ -296,11 +299,13 @@ async def nyc_waste_tonnage(params: TonnageInput) -> Annotated[CallToolResult, s
                 
                 return tool_result({
                     "status": "success",
+                    "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                     "markdown": "\n".join(lines),
                 })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": f"Ergebnis: {json_out(result)}",
         })
         
@@ -390,6 +395,7 @@ async def nyc_waste_facilities(params: FacilitiesInput) -> Annotated[CallToolRes
 
     Returns:
         List of waste management facilities with details
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Get data from Socrata
@@ -411,13 +417,15 @@ async def nyc_waste_facilities(params: FacilitiesInput) -> Annotated[CallToolRes
         
         result = await socrata_request(dataset_id, "json", **api_params)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_facility_data(params)
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": result,
                 "markdown": json_out(result),
             })
@@ -445,11 +453,13 @@ async def nyc_waste_facilities(params: FacilitiesInput) -> Annotated[CallToolRes
             
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "markdown": "\n".join(lines),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": f"Ergebnis: {json_out(result)}",
         })
         
@@ -610,6 +620,7 @@ async def nyc_organics_collection(params: OrganicsInput) -> Annotated[CallToolRe
 
     Returns:
         Organics collection data including participation rates and tonnage
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Get data from Socrata
@@ -634,13 +645,15 @@ async def nyc_organics_collection(params: OrganicsInput) -> Annotated[CallToolRe
         
         result = await socrata_request(dataset_id, "json", **api_params)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_organics_data(params)
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": result,
                 "markdown": json_out(result),
             })
@@ -667,11 +680,13 @@ async def nyc_organics_collection(params: OrganicsInput) -> Annotated[CallToolRe
             
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "markdown": "\n".join(lines),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": f"Ergebnis: {json_out(result)}",
         })
         
@@ -760,6 +775,7 @@ async def nyc_recycling_contamination(params: ContaminationInput) -> Annotated[C
 
     Returns:
         Recycling contamination data including rates and common contaminants
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Get data from Socrata
@@ -784,13 +800,15 @@ async def nyc_recycling_contamination(params: ContaminationInput) -> Annotated[C
         
         result = await socrata_request(dataset_id, "json", **api_params)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_contamination_data(params)
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": result,
                 "markdown": json_out(result),
             })
@@ -819,11 +837,13 @@ async def nyc_recycling_contamination(params: ContaminationInput) -> Annotated[C
             
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "markdown": "\n".join(lines),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": f"Ergebnis: {json_out(result)}",
         })
         
