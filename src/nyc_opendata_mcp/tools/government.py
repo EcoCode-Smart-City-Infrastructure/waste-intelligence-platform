@@ -15,7 +15,7 @@ from ..formatters import (
     json_out,
     md_table,
 )
-from ..http_client import http_get_json, socrata_request
+from ..http_client import http_get_json, socrata_request, soql_str
 from ..models import CouncilMember, Legislation, tool_result
 
 
@@ -59,8 +59,7 @@ async def _fetch_council_members(
     if district:
         where.append(f"district = '{district}'")
     if search:
-        safe = search.upper().replace("'", "''")
-        clauses = [f"upper(name) like '%{safe}%'"]
+        clauses = ["upper(name) like " + soql_str(f"%{search.upper()}%")]
         if search.isdigit():  # district is numeric in Socrata
             clauses.append(f"district = {search}")
         where.append("(" + " OR ".join(clauses) + ")")
@@ -97,13 +96,11 @@ async def _fetch_legislation(
     params: dict = {"$limit": min(limit, 100), "$order": "intro_date DESC"}
     where = []
     if matter_id:
-        where.append(f"matter_id = '{matter_id}'")
+        where.append(f"matter_id = {soql_str(matter_id)}")
     if file_num:
-        safe = file_num.upper().replace("'", "''")
-        where.append(f"upper(file_num) = '{safe}'")
+        where.append("upper(file_num) = " + soql_str(file_num.upper()))
     if status:
-        safe = status.upper().replace("'", "''")
-        where.append(f"upper(status) like '%{safe}%'")
+        where.append("upper(status) like " + soql_str(f"%{status.upper()}%"))
     if search:
         safe = search.upper().replace("'", "''")
         where.append(
@@ -111,8 +108,7 @@ async def _fetch_legislation(
             f"OR upper(summary) like '%{safe}%')"
         )
     if sponsor:
-        safe = sponsor.upper().replace("'", "''")
-        where.append(f"upper(primary_sponsor) like '%{safe}%'")
+        where.append("upper(primary_sponsor) like " + soql_str(f"%{sponsor.upper()}%"))
     if where:
         params["$where"] = " AND ".join(where)
     try:
@@ -177,7 +173,7 @@ async def nyc_council_members(params: CouncilMembersInput) -> Annotated[CallTool
             return tool_result({
                 "status": "error",
                 "error": "No council members found",
-                "markdown": "Keine Ratsmitglieder gefunden.",
+                "markdown": "No council members found.",
             })
         
         if params.format == "json":
@@ -203,8 +199,8 @@ async def nyc_council_members(params: CouncilMembersInput) -> Annotated[CallTool
             headers += ["Party", "Email"]
         
         lines = [
-            "## NYC Stadtrat Mitglieder",
-            f"*Mitglieder: {len(members)}*",
+            "## NYC Council Members",
+            f"*Members: {len(members)}*",
             "",
             md_table(headers, rows),
         ]
@@ -369,7 +365,7 @@ async def nyc_council_search(params: CouncilSearchInput) -> Annotated[CallToolRe
             return tool_result({
                 "status": "error",
                 "error": "No council members found",
-                "markdown": f"Keine Ratsmitglieder gefunden f\u00fcr '{params.query}'.",
+                "markdown": f"No council members found for '{params.query}'.",
             })
         
         if params.format == "json":
@@ -382,8 +378,8 @@ async def nyc_council_search(params: CouncilSearchInput) -> Annotated[CallToolRe
         
         # Format as Markdown
         lines = [
-            f"## Suchergebnisse f\u00fcr '{params.query}'",
-            f"*Gefunden: {len(results)} Mitglieder*",
+            f"## Search results for '{params.query}'",
+            f"*Found: {len(results)} members*",
             "",
         ]
         
@@ -482,7 +478,7 @@ async def nyc_legislation(params: LegislationInput) -> Annotated[CallToolResult,
             return tool_result({
                 "status": "error",
                 "error": "No legislation found",
-                "markdown": "Keine Gesetzgebung gefunden.",
+                "markdown": "No legislation found.",
             })
         
         if params.format == "json":
@@ -507,7 +503,7 @@ async def nyc_legislation(params: LegislationInput) -> Annotated[CallToolResult,
             rows.append(row)
         
         lines = [
-            "## NYC Gesetzgebung",
+            "## NYC Legislation",
             f"*Gesetze: {len(legislation)}*",
             "",
             md_table(headers, rows),
@@ -646,7 +642,7 @@ async def nyc_legislation_detail(params: LegislationDetailInput) -> Annotated[Ca
             return tool_result({
                 "status": "error",
                 "error": "Legislation not found",
-                "markdown": f"Gesetzgebung '{params.legislation_id}' nicht gefunden.",
+                "markdown": f"Legislation '{params.legislation_id}' not found.",
             })
         
         if params.format == "json":
@@ -662,11 +658,11 @@ async def nyc_legislation_detail(params: LegislationDetailInput) -> Annotated[Ca
             f"## {leg.title}",
             f"*ID: {leg.id}*",
             "",
-            f"**Typ:** {leg.type}",
+            f"**Type:** {leg.type}",
             f"**Status:** {leg.status}",
-            f"**Eingef\u00fchrt:** {leg.introduced_date}",
+            f"**Introduced:** {leg.introduced_date}",
             "",
-            "### Sponsoren",
+            "### Sponsors",
             "",
         ]
         
@@ -738,7 +734,7 @@ async def nyc_mayoral_orders(params: MayoralOrdersInput) -> Annotated[CallToolRe
             return tool_result({
                 "status": "error",
                 "error": "No mayoral orders found",
-                "markdown": "Keine B\u00fcrgermeisteranordnungen gefunden.",
+                "markdown": "No mayoral orders found.",
             })
         
         if params.format == "json":
@@ -762,7 +758,7 @@ async def nyc_mayoral_orders(params: MayoralOrdersInput) -> Annotated[CallToolRe
             rows.append(row)
         
         lines = [
-            "## B\u00fcrgermeisteranordnungen NYC",
+            "## NYC Mayoral Orders",
             f"*Anordnungen: {len(orders)}*",
             "",
             md_table(headers, rows),
