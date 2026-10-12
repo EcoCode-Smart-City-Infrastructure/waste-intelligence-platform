@@ -60,6 +60,9 @@ class ContaminationResponse(BaseModel):
     contamination_type: str
     confidence: float
     bounding_box: dict | None = None
+    is_contaminated: bool | None = None
+    detections: list | None = None
+    model: str | None = None
 
 
 @router.post("/forecast", response_model=ForecastResponse)
@@ -153,7 +156,11 @@ async def contamination(
     
     try:
         # Run contamination detection
-        result = await run_contamination(request.image_tensor or [])
+        result = await run_contamination(
+            image_tensor=request.image_tensor,
+            image_url=request.image_url,
+            threshold=request.threshold,
+        )
         
         return result
         
