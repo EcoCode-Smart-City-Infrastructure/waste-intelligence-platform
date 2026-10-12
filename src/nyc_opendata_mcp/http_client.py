@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -35,6 +36,8 @@ async def get_client() -> aiohttp.ClientSession:
         _client = aiohttp.ClientSession(
             headers={"User-Agent": USER_AGENT},
             timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
+            # Honor proxy env vars when present (no-op otherwise)
+            trust_env=True,
         )
         _rate_limit_semaphore = asyncio.Semaphore(RATE_LIMIT_REQUESTS)
     return _client
@@ -99,6 +102,32 @@ async def http_post_json(url: str, data: dict | None = None) -> Any:
     return await _rate_limited_request(client, "POST", url, json=data)
 
 
+_SOQL_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def soql_str(value: object) -> str:
+    """Quote a value as a SoQL string literal.
+
+    Single quotes are escaped by doubling, which is SoQL's escaping
+    rule. Use for every user-supplied string interpolated into $where.
+    """
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def soql_id(identifier: str, allowed: set[str] | frozenset[str] | None = None) -> str:
+    """Validate an identifier interpolated into a SoQL query.
+
+    SoQL has no identifier-quoting for $where/$order/$select, so dynamic
+    column names must be validated against an allowlist pattern (and,
+    when given, an explicit set of permitted names).
+    """
+    if not _SOQL_IDENTIFIER_RE.match(identifier):
+        raise ValueError(f"invalid SoQL identifier: {identifier!r}")
+    if allowed is not None and identifier not in allowed:
+        raise ValueError(f"unexpected SoQL identifier: {identifier!r}")
+    return identifier
+
+
 async def socrata_request(dataset_id: str, endpoint: str = "json", **params: Any) -> Any:
     """Make a request to Socrata API.
     
@@ -112,7 +141,7 @@ async def socrata_request(dataset_id: str, endpoint: str = "json", **params: Any
     """
     from .config import SOCRATA_API_URL
     
-    url = f"{SOCRATA_API_URL}/{dataset_id}/{endpoint}"
+    url = f"{SOCRATA_API_URL}/{dataset_id}.{endpoint}"
     
     # Add app_token if available (optional for public datasets)
     app_token = os.environ.get("SOCRATA_APP_TOKEN")
