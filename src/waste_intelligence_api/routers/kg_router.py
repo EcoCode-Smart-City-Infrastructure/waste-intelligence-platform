@@ -7,7 +7,7 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 
 from ..config import Config
-from ..services.kg_client import query_kg
+from ..services.kg_client import query_kg, query_pathways
 
 router = APIRouter(tags=["Knowledge Graph"])
 
@@ -135,33 +135,18 @@ async def circular_economy(
             )
     
     try:
-        # Build query for knowledge graph
-        query = f"waste-to-resource pathways for {request.quantity_kg} kg of {request.waste_type}"
-        if request.location:
-            query += f" in {request.location}"
-        
-        # Query knowledge graph
-        kg_result = await query_kg(query)
-        
-        # Process results into suggestions
-        suggestions = []
-        for result in kg_result.get("results", []):
-            suggestion = {
-                "pathway": result.get("label", "Unknown"),
-                "type": result.get("type", "Unknown"),
-                "description": result.get("description", ""),
-                "efficiency": result.get("efficiency", 0),
-                "carbon_footprint": result.get("carbon_footprint", 0),
-                "facilities": result.get("facilities", []),
-            }
-            suggestions.append(suggestion)
-        
+        # Real pathway suggestions from the W2RKG engine (empty, not
+        # fabricated, when the waste type is unknown to the graph)
+        suggestions = await query_pathways(
+            request.waste_type, request.quantity_kg, limit=5
+        )
+
         return CircularEconomyResponse(
             waste_type=request.waste_type,
             quantity_kg=request.quantity_kg,
             suggestions=suggestions,
         )
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
