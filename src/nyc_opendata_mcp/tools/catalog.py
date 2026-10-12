@@ -18,7 +18,7 @@ from ..formatters import (
     to_dataset_summary,
     to_resource_info,
 )
-from ..http_client import socrata_request
+from ..http_client import socrata_request, soql_str
 from ..models import (
     AnalysisResult,
     DatasetAnalysis,
@@ -90,7 +90,7 @@ async def nyc_search_datasets(
         
         # Filter by category if specified
         if params.filter_category:
-            api_params["$where"] = f"category='{params.filter_category}'"
+            api_params["$where"] = f"category={soql_str(params.filter_category)}"
 
         # Use the dataset search endpoint
         result = await socrata_request("", "json", **api_params)
@@ -112,8 +112,8 @@ async def nyc_search_datasets(
 
         # Build Markdown output
         lines = [
-            f"## Suchergebnisse f\u00fcr '{params.query}'",
-            f"*Gesamt: {total} Datens\u00e4tze, angezeigt: {len(summaries)}*",
+            f"## Search results for '{params.query}'",
+            f"*Total: {total} datasets, showing: {len(summaries)}*",
             "",
         ]
 
@@ -122,7 +122,7 @@ async def nyc_search_datasets(
             lines.append("")
 
         if next_offset is not None:
-            lines.append(f"*[Weitere Ergebnisse ab Offset {next_offset} verf\u00fcgbar]*")
+            lines.append(f"*[More results available from offset {next_offset}]*")
 
         return tool_result({
             "model": model.model_dump(),
@@ -249,7 +249,7 @@ async def nyc_list_categories(params: ListCategoriesInput) -> str:
         return json_out({"categories": NYC_CATEGORIES})
     
     lines = [
-        "## Verf\u00fcgbare Kategorien",
+        "## Available Categories",
         "",
     ]
     
@@ -375,8 +375,8 @@ async def nyc_find_datasets_by_tag(params: TagSearchInput) -> str:
             summaries = [to_dataset_summary(ds) for ds in result[:params.rows]]
             
             lines = [
-                f"## Datens\u00e4tze mit Tag '{params.tag}'",
-                f"*Gefunden: {len(summaries)} Datens\u00e4tze*",
+                f"## Datasets tagged '{params.tag}'",
+                f"*Found: {len(summaries)} datasets*",
                 "",
             ]
             
@@ -461,7 +461,7 @@ async def nyc_analyze_dataset(params: AnalyzeDatasetInput) -> str:
             f"## Analyse: {result.get('name', params.dataset_id)}",
             "",
             f"**Felder:** {field_count}",
-            f"**Zeilen (gesch\u00e4tzt):** {row_count}",
+            f"**Rows (estimated):** {row_count}",
             "",
             "### Felder",
             "",
@@ -498,10 +498,10 @@ async def nyc_catalog_stats() -> str:
     lines = [
         "## NYC Open Data Katalog Statistik",
         "",
-        f"**Kategorien:** {len(NYC_CATEGORIES)}",
-        f"**Verf\u00fcgbar:** {', '.join(NYC_CATEGORIES)}",
+        f"**Categories:** {len(NYC_CATEGORIES)}",
+        f"**Available:** {', '.join(NYC_CATEGORIES)}",
         "",
-        "### Beliebte Datens\u00e4tze",
+        "### Popular Datasets",
         "",
         "- DSNY Monthly Tonnage Reports",
         "- NYC Organics Collection Pilot",
