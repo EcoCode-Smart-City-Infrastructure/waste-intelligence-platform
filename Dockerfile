@@ -47,7 +47,9 @@ USER appuser
 EXPOSE 8000
 
 # Environment variables
-ENV PYTHONUNBUFFERED=1 \
+# /app is on sys.path via WORKDIR, but the package lives at /app/src/
+ENV PYTHONPATH=/app/src \
+    PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
