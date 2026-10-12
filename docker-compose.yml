@@ -32,8 +32,9 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - DB_URL=postgresql://timescale:password@postgres:5432/wasteintel
+      - DB_URL=postgresql://timescale:${POSTGRES_PASSWORD:-password}@postgres:5432/wasteintel
       - ML_URL=http://ml-service:8002
+      - CONTAMINATION_SERVICE_URL=http://contamination-service:8005
       - KG_URL=http://kg-service:8003
       - API_KEY=${WASTE_INTEL_API_KEY:-}
       - REQUIRE_API_KEY=false
@@ -52,7 +53,7 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_USER=timescale
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
       - POSTGRES_DB=wasteintel
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -120,7 +121,39 @@ services:
     networks:
       - waste-intel-network
 
+  # MQTT Bridge: firmware telemetry -> Postgres
+  mqtt-bridge:
+    build:
+      context: .
+      dockerfile: devops/docker/mqtt-bridge.Dockerfile
+    container_name: mqtt-bridge
+    restart: unless-stopped
+    environment:
+      - MQTT_BROKER=mqtt
+      - MQTT_PORT=1883
+      - DATABASE_URL=postgresql://timescale:password@postgres:5432/wasteintel
+    networks:
+      - waste-intel-network
+    depends_on:
+      - mqtt
+      - postgres
+
   # AI Copilot Service
+  # Contamination Inference Service (YOLOv11 litter-material model)
+  contamination-service:
+    build:
+      context: .
+      dockerfile: services/contamination/Dockerfile
+    container_name: contamination-service
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    environment:
+      - MODEL_REPO=${CONTAMINATION_MODEL_REPO:-CatSat/yolov11-litter-materials}
+      - CONF_THRESHOLD=${CONTAMINATION_CONF_THRESHOLD:-0.25}
+    networks:
+      - waste-intel-network
+
   copilot-service:
     build:
       context: .
