@@ -59,6 +59,7 @@ async def nyc_council_members(params: CouncilMembersInput) -> Annotated[CallTool
 
     Returns:
         List of council members with contact information
+    Note: this tool currently returns simulated sample data, not live data.
     """
     try:
         # Generate sample council members
@@ -81,6 +82,7 @@ async def nyc_council_members(params: CouncilMembersInput) -> Annotated[CallTool
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated",
                 "data": [m.model_dump() for m in members],
                 "markdown": json_out([m.model_dump() for m in members]),
             })
@@ -107,6 +109,7 @@ async def nyc_council_members(params: CouncilMembersInput) -> Annotated[CallTool
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
@@ -238,6 +241,7 @@ async def nyc_council_search(params: CouncilSearchInput) -> Annotated[CallToolRe
 
     Returns:
         List of matching council members
+    Note: this tool currently returns simulated sample data, not live data.
     """
     try:
         members = _generate_sample_council_members()
@@ -264,6 +268,7 @@ async def nyc_council_search(params: CouncilSearchInput) -> Annotated[CallToolRe
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated",
                 "data": [m.model_dump() for m in results],
                 "markdown": json_out([m.model_dump() for m in results]),
             })
@@ -285,6 +290,7 @@ async def nyc_council_search(params: CouncilSearchInput) -> Annotated[CallToolRe
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
@@ -341,6 +347,7 @@ async def nyc_legislation(params: LegislationInput) -> Annotated[CallToolResult,
 
     Returns:
         List of legislation with details
+    Note: this tool currently returns simulated sample data, not live data.
     """
     try:
         # Generate sample legislation
@@ -368,6 +375,7 @@ async def nyc_legislation(params: LegislationInput) -> Annotated[CallToolResult,
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated",
                 "data": [l.model_dump() for l in legislation],
                 "markdown": json_out([l.model_dump() for l in legislation]),
             })
@@ -394,6 +402,7 @@ async def nyc_legislation(params: LegislationInput) -> Annotated[CallToolResult,
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
@@ -501,6 +510,7 @@ async def nyc_legislation_detail(params: LegislationDetailInput) -> Annotated[Ca
 
     Returns:
         Detailed information about the legislation
+    Note: this tool currently returns simulated sample data, not live data.
     """
     try:
         legislation = _generate_sample_legislation()
@@ -522,6 +532,7 @@ async def nyc_legislation_detail(params: LegislationDetailInput) -> Annotated[Ca
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated",
                 "data": leg.model_dump(),
                 "markdown": json_out(leg.model_dump()),
             })
@@ -544,6 +555,7 @@ async def nyc_legislation_detail(params: LegislationDetailInput) -> Annotated[Ca
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
@@ -590,6 +602,7 @@ async def nyc_mayoral_orders(params: MayoralOrdersInput) -> Annotated[CallToolRe
 
     Returns:
         List of mayoral orders
+    Note: this tool currently returns simulated sample data, not live data.
     """
     try:
         # Generate sample mayoral orders
@@ -611,6 +624,7 @@ async def nyc_mayoral_orders(params: MayoralOrdersInput) -> Annotated[CallToolRe
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated",
                 "data": orders,
                 "markdown": json_out(orders),
             })
@@ -636,6 +650,7 @@ async def nyc_mayoral_orders(params: MayoralOrdersInput) -> Annotated[CallToolRe
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
