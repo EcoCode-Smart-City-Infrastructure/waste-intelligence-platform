@@ -53,6 +53,7 @@ async def nyc_mta_status(params: MTAStatusInput) -> Annotated[CallToolResult, st
 
     Returns:
         Current service status for subway lines
+    Note: this tool currently returns simulated sample data, not live data.
     """
     try:
         # In production, this would query the actual MTA API
@@ -74,6 +75,7 @@ async def nyc_mta_status(params: MTAStatusInput) -> Annotated[CallToolResult, st
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated",
                 "data": status_data,
                 "markdown": json_out(status_data),
             })
@@ -100,6 +102,7 @@ async def nyc_mta_status(params: MTAStatusInput) -> Annotated[CallToolResult, st
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
@@ -213,6 +216,7 @@ async def nyc_mta_station_status(params: MTAStationStatusInput) -> Annotated[Cal
 
     Returns:
         Station status information
+    Note: this tool currently returns simulated sample data, not live data.
     """
     try:
         # Generate sample station status data
@@ -233,6 +237,7 @@ async def nyc_mta_station_status(params: MTAStationStatusInput) -> Annotated[Cal
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated",
                 "data": station_data,
                 "markdown": json_out(station_data),
             })
@@ -259,6 +264,7 @@ async def nyc_mta_station_status(params: MTAStationStatusInput) -> Annotated[Cal
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
@@ -349,6 +355,7 @@ async def nyc_traffic_incidents(params: TrafficIncidentsInput) -> Annotated[Call
 
     Returns:
         List of current traffic incidents
+    Note: this tool currently returns simulated sample data, not live data.
     """
     try:
         # Generate sample traffic incidents
@@ -372,6 +379,7 @@ async def nyc_traffic_incidents(params: TrafficIncidentsInput) -> Annotated[Call
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated",
                 "data": incidents,
                 "markdown": json_out(incidents),
             })
@@ -403,6 +411,7 @@ async def nyc_traffic_incidents(params: TrafficIncidentsInput) -> Annotated[Call
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
@@ -493,6 +502,7 @@ async def nyc_bike_share(params: BikeShareInput) -> Annotated[CallToolResult, st
 
     Returns:
         Bike share station data with availability
+    Note: this tool currently returns simulated sample data, not live data.
     """
     try:
         # Generate sample bike share data
@@ -513,6 +523,7 @@ async def nyc_bike_share(params: BikeShareInput) -> Annotated[CallToolResult, st
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated",
                 "data": stations,
                 "markdown": json_out(stations),
             })
@@ -539,6 +550,7 @@ async def nyc_bike_share(params: BikeShareInput) -> Annotated[CallToolResult, st
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
