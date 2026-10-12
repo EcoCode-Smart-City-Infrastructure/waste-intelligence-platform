@@ -15,7 +15,7 @@ from ..formatters import (
     json_out,
     md_table,
 )
-from ..http_client import http_get_json
+from ..http_client import http_get_json, socrata_request
 from ..models import GeoFeature, GeoLayer, tool_result
 
 
@@ -26,6 +26,64 @@ class GeoLayersInput(BaseModel):
 
     format: OutputFormat = Field(default="markdown", description=_FORMAT_FIELD_DESC)
 
+
+
+# Real NYC Open Data geospatial datasets backing the conceptual layers.
+# layer_id -> (socrata dataset id, geometry column, label column)
+# Layers not listed here fall back to labeled simulated data.
+GEO_DATASETS: dict[str, tuple[str, str, str]] = {
+    "boroughs": ("gthc-hcne", "the_geom", "boroname"),
+    "neighborhoods": ("9nt8-h7nd", "the_geom", "ntaname"),
+    "parks": ("enfh-gkve", "location", "name"),
+    "zip_codes": ("pri4-ifjk", "the_geom", "modzcta"),
+}
+
+
+def _row_to_feature(row: dict, geom_col: str) -> GeoFeature:
+    """Shape a Socrata geospatial row as a GeoFeature."""
+    geom = row.get(geom_col) or {}
+    if isinstance(geom, str):
+        try:
+            import json as _json
+            geom = _json.loads(geom)
+        except Exception:
+            geom = {}
+    properties = {
+        k: v for k, v in row.items()
+        if not k.startswith(":") and k != geom_col and v is not None
+    }
+    return GeoFeature(
+        id=str(row.get(":id", properties.get("gispropnum", "unknown"))),
+        type=geom.get("type", "Unknown") if isinstance(geom, dict) else "Unknown",
+        geometry=geom if isinstance(geom, dict) else {},
+        properties=properties,
+    )
+
+
+async def _query_geo_layer(
+    layer_id: str,
+    limit: int,
+    where: str | None = None,
+) -> list[GeoFeature] | None:
+    """Query the real geospatial dataset for a layer.
+
+    Returns None when the layer has no real backing (caller falls back
+    to labeled simulated data) or when the request fails.
+    """
+    mapping = GEO_DATASETS.get(layer_id)
+    if not mapping:
+        return None
+    dataset_id, geom_col, _label = mapping
+    params: dict = {"$limit": min(limit, 100)}
+    if where:
+        params["$where"] = where
+    try:
+        rows = await socrata_request(dataset_id, "json", **params)
+    except Exception:
+        return None
+    if not rows:
+        return None
+    return [_row_to_feature(r, geom_col) for r in rows if isinstance(r, dict)]
 
 @mcp.tool(
     name="nyc_geo_layers",
@@ -124,6 +182,8 @@ async def nyc_geo_features(params: GeoFeaturesInput) -> Annotated[CallToolResult
 
     Returns:
         Features from the specified layer
+    Layers with a real NYC Open Data backing return live data; others fall
+    back to simulated sample data, labeled as such in the response.
     """
     try:
         # Get layer info
@@ -135,16 +195,27 @@ async def nyc_geo_features(params: GeoFeaturesInput) -> Annotated[CallToolResult
             })
         
         service_name, typename, description = GEOHUB_LAYERS[params.layer_id]
-        
-        # In production, this would query the actual WFS/GeoJSON endpoint
-        # For now, return sample features based on the layer type
-        
-        # Generate sample features
-        features = _generate_sample_features(params.layer_id, params.limit)
+
+        # Real path: query the NYC Open Data geospatial dataset
+        where = None
+        if params.bbox:
+            mapping = GEO_DATASETS.get(params.layer_id)
+            if mapping:
+                _ds, geom_col, _lb = mapping
+                minx, miny, maxx, maxy = params.bbox
+                where = (
+                    f"within_box({geom_col}, {miny}, {minx}, {maxy}, {maxx})"
+                )
+        features = await _query_geo_layer(params.layer_id, params.limit, where)
+        simulated = not features
+        if simulated:
+            # Labeled simulated fallback for layers without a real dataset
+            features = _generate_sample_features(params.layer_id, params.limit)
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": {
                     "layer_id": params.layer_id,
                     "layer_name": service_name,
@@ -194,6 +265,7 @@ async def nyc_geo_features(params: GeoFeaturesInput) -> Annotated[CallToolResult
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": "\n".join(lines),
         })
         
@@ -409,13 +481,26 @@ async def nyc_geo_spatial_query(params: SpatialQueryInput) -> Annotated[CallTool
 
     Returns:
         Features within the specified radius
+    Layers with a real NYC Open Data backing return live data; others fall
+    back to simulated sample data, labeled as such in the response.
     """
     try:
-        # For now, return sample features near the point
-        # In production, this would use a spatial database or API
-        
-        features = _generate_sample_features(params.layer_id, 10)
-        
+        # Real path: server-side radius query on the layer's dataset.
+        # Falls back to labeled simulated data when the layer has no
+        # spatial backing (or the query fails).
+        mapping = GEO_DATASETS.get(params.layer_id)
+        where = None
+        if mapping:
+            _ds, geom_col, _lb = mapping
+            where = (
+                f"within_circle({geom_col}, {params.latitude}, "
+                f"{params.longitude}, {params.radius_meters})"
+            )
+        features = await _query_geo_layer(params.layer_id, 10, where)
+        simulated = not features
+        if simulated:
+            features = _generate_sample_features(params.layer_id, 10)
+
         # Filter features that are "near" the point (simplified)
         filtered_features = []
         for feature in features:
@@ -436,6 +521,7 @@ async def nyc_geo_spatial_query(params: SpatialQueryInput) -> Annotated[CallTool
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": [f.model_dump() for f in filtered_features],
                 "markdown": json_out([f.model_dump() for f in filtered_features]),
             })
@@ -470,6 +556,7 @@ async def nyc_geo_spatial_query(params: SpatialQueryInput) -> Annotated[CallTool
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": "\n".join(lines),
         })
         
