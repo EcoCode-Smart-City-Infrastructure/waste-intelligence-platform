@@ -105,87 +105,43 @@ async def nyc_waste_datasets(params: WasteDatasetsInput) -> Annotated[CallToolRe
 
 
 def _generate_waste_datasets() -> list[WasteDataset]:
-    """Generate waste management datasets."""
+    """List the real NYC Open Data waste datasets this server queries.
+
+    All IDs below are live Socrata datasets on data.cityofnewyork.us,
+    verified October 2026.
+    """
     datasets = [
         WasteDataset(
-            id="7c3d-6b2j",
-            name="DSNY Monthly Tonnage Reports",
-            description="Monthly tonnage reports from DSNY showing waste, recycling, and organics collected by borough and district",
+            id="ebb7-mvp5",
+            name="DSNY Monthly Tonnage Data",
+            description="Monthly refuse, paper, metal/glass/plastic and organics tonnage collected by DSNY, by borough and month",
             category="Collection Data",
             update_frequency="Monthly",
-            last_updated="2026-10-01",
+            last_updated="2026-09-01",
         ),
         WasteDataset(
-            id="q48t-q583",
-            name="NYC Organics Collection Pilot",
-            description="Data on NYC's curbside organics collection pilot program, including participation rates and tonnage",
-            category="Organics",
-            update_frequency="Weekly",
-            last_updated="2026-10-08",
-        ),
-        WasteDataset(
-            id="2v8k-7z7z",
-            name="Commercial Waste Zones",
-            description="Information about NYC's commercial waste zone system, including zone boundaries and assigned carters",
-            category="Commercial Waste",
-            update_frequency="Quarterly",
-            last_updated="2026-07-01",
-        ),
-        WasteDataset(
-            id="4v9k-7z7z",
-            name="Facility Locations",
-            description="Locations of DSNY waste management facilities including transfer stations, composting sites, and anaerobic digestion facilities",
+            id="6r9j-qrwz",
+            name="DSNY Disposal Facilities Used by Year",
+            description="Disposal facilities used by DSNY by year, with contracted and delivered tonnage",
             category="Infrastructure",
             update_frequency="Annual",
             last_updated="2026-01-01",
         ),
         WasteDataset(
-            id="3v9k-8z8z",
-            name="Recycling Contamination",
-            description="Data on recycling contamination rates by borough and material type",
+            id="6yag-pnij",
+            name="DSNY Other Organics Collection Tonnages",
+            description="Annual organics collection tonnages (DSNY and non-DSNY) by fiscal year",
+            category="Organics",
+            update_frequency="Annual",
+            last_updated="2026-01-01",
+        ),
+        WasteDataset(
+            id="gaq9-z3hz",
+            name="Recycling Diversion and Capture Rates",
+            description="Monthly recycling diversion and capture rates by district; capture rates are the complement of contamination",
             category="Recycling",
             update_frequency="Monthly",
-            last_updated="2026-10-01",
-        ),
-        WasteDataset(
-            id="1v9k-9z9z",
-            name="Zero Waste NYC",
-            description="Progress metrics for NYC's Zero Waste initiative, including diversion rates and program participation",
-            category="Sustainability",
-            update_frequency="Quarterly",
-            last_updated="2026-07-01",
-        ),
-        WasteDataset(
-            id="5v9k-0z0z",
-            name="Bulky Item Collection",
-            description="Data on DSNY's bulky item collection program, including appointment counts and items collected",
-            category="Special Waste",
-            update_frequency="Monthly",
-            last_updated="2026-10-01",
-        ),
-        WasteDataset(
-            id="6v9k-1z1z",
-            name="E-Waste Collection",
-            description="Information on electronic waste collection events and tonnage collected",
-            category="Special Waste",
-            update_frequency="Monthly",
-            last_updated="2026-10-01",
-        ),
-        WasteDataset(
-            id="7v9k-2z2z",
-            name="Street Cleaning",
-            description="DSNY street cleaning schedules and coverage data",
-            category="Street Maintenance",
-            update_frequency="Daily",
-            last_updated="2026-10-10",
-        ),
-        WasteDataset(
-            id="8v9k-3z3z",
-            name="Litter Basket Program",
-            description="Locations and maintenance data for NYC's public litter baskets",
-            category="Street Maintenance",
-            update_frequency="Weekly",
-            last_updated="2026-10-08",
+            last_updated="2026-01-01",
         ),
     ]
     return datasets
@@ -243,39 +199,54 @@ async def nyc_waste_tonnage(params: TonnageInput) -> Annotated[CallToolResult, s
 
     Returns:
         Monthly tonnage data for waste, recycling, and organics
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Get data from Socrata
-        dataset_id = "7c3d-6b2j"  # DSNY Monthly Tonnage Reports
-        
+        dataset_id = "ebb7-mvp5"  # DSNY Monthly Tonnage Data
+
         api_params = {
             "$limit": 100,
-            "$order": "date DESC",
+            "$order": "month DESC",
         }
-        
-        # Apply filters
+
+        # Apply filters (month column is "YYYY / MM")
         where_clauses = []
         if params.borough:
             where_clauses.append(f"borough = '{params.borough}'")
+        if params.year and params.month:
+            where_clauses.append(f"month = '{params.year} / {params.month:02d}'")
+        elif params.year:
+            where_clauses.append(f"starts_with(month, '{params.year}')")
+        elif params.month:
+            where_clauses.append(f"month like '% / {params.month:02d}'")
+
+        # Material selects the matching tonnage columns
+        material_columns = {
+            "refuse": ["refusetonscollected"],
+            "recycling": ["papertonscollected", "mgptonscollected"],
+            "organics": ["resorganicstons", "schoolorganictons"],
+        }
         if params.material:
-            where_clauses.append(f"material_type = '{params.material}'")
-        if params.year:
-            where_clauses.append(f"YEAR(date) = {params.year}")
-        if params.month:
-            where_clauses.append(f"MONTH(date) = {params.month}")
-        
+            cols = material_columns.get(params.material.lower(),
+                                        ["refusetonscollected", "papertonscollected",
+                                         "mgptonscollected", "resorganicstons"])
+            api_params["$select"] = ",".join(["month", "borough"] + cols)
+
         if where_clauses:
             api_params["$where"] = " AND ".join(where_clauses)
-        
+
         result = await socrata_request(dataset_id, "json", **api_params)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_tonnage_data(params)
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": result,
                 "markdown": json_out(result),
             })
@@ -296,11 +267,13 @@ async def nyc_waste_tonnage(params: TonnageInput) -> Annotated[CallToolResult, s
                 
                 return tool_result({
                     "status": "success",
+                    "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                     "markdown": "\n".join(lines),
                 })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": f"Ergebnis: {json_out(result)}",
         })
         
@@ -390,34 +363,36 @@ async def nyc_waste_facilities(params: FacilitiesInput) -> Annotated[CallToolRes
 
     Returns:
         List of waste management facilities with details
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Get data from Socrata
-        dataset_id = "4v9k-7z7z"  # Facility Locations
-        
+        dataset_id = "6r9j-qrwz"  # DSNY Disposal Facilities Used by Year
+
         api_params = {
             "$limit": 50,
+            "$order": "calendar_year DESC",
         }
-        
-        # Apply filters
+
+        # Apply filters (the dataset has no borough column)
         where_clauses = []
         if params.facility_type:
             where_clauses.append(f"facility_type = '{params.facility_type}'")
-        if params.borough:
-            where_clauses.append(f"borough = '{params.borough}'")
-        
+
         if where_clauses:
             api_params["$where"] = " AND ".join(where_clauses)
-        
+
         result = await socrata_request(dataset_id, "json", **api_params)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_facility_data(params)
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": result,
                 "markdown": json_out(result),
             })
@@ -434,10 +409,10 @@ async def nyc_waste_facilities(params: FacilitiesInput) -> Annotated[CallToolRes
                 if isinstance(facility, dict):
                     lines.append(f"### {facility.get('facility_name', 'Unknown')}")
                     lines.append(f"- **Typ:** {facility.get('facility_type', 'Unknown')}")
-                    lines.append(f"- **Borough:** {facility.get('borough', 'Unknown')}")
-                    lines.append(f"- **Adresse:** {facility.get('address', 'Unknown')}")
-                    if facility.get('capacity'):
-                        lines.append(f"- **Kapazit\u00e4t:** {facility.get('capacity')} tons/day")
+                    lines.append(f"- **Eigent\u00fcmer:** {facility.get('facility_owner_dsny_or_private', 'Unknown')}")
+                    lines.append(f"- **Jahr:** {facility.get('calendar_year', 'Unknown')}")
+                    if facility.get('facility_contracted_tons'):
+                        lines.append(f"- **Vertragstonnage:** {facility.get('facility_contracted_tons')} tons")
                     lines.append("")
             
             if len(result) > 20:
@@ -445,11 +420,13 @@ async def nyc_waste_facilities(params: FacilitiesInput) -> Annotated[CallToolRes
             
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "markdown": "\n".join(lines),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": f"Ergebnis: {json_out(result)}",
         })
         
@@ -598,9 +575,9 @@ class OrganicsInput(BaseModel):
     ),
 )
 async def nyc_organics_collection(params: OrganicsInput) -> Annotated[CallToolResult, str]:
-    """Retrieve data on NYC's curbside organics collection program.
+    """Retrieve data on NYC's organics collection tonnages.
 
-    Data source: NYC Organics Collection Pilot dataset.
+    Data source: DSNY Other Organics Collection Tonnages (NYC Open Data).
 
     Args:
         borough: Optional borough filter
@@ -610,37 +587,36 @@ async def nyc_organics_collection(params: OrganicsInput) -> Annotated[CallToolRe
 
     Returns:
         Organics collection data including participation rates and tonnage
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Get data from Socrata
-        dataset_id = "q48t-q583"  # NYC Organics Collection Pilot
-        
+        dataset_id = "6yag-pnij"  # DSNY Other Organics Collection Tonnages
+
         api_params = {
             "$limit": 100,
-            "$order": "date DESC",
+            "$order": "fiscal_year DESC",
         }
-        
-        # Apply filters
+
+        # Apply filters (annual dataset: fiscal_year only)
         where_clauses = []
-        if params.borough:
-            where_clauses.append(f"borough = '{params.borough}'")
-        if params.community_board:
-            where_clauses.append(f"community_board = '{params.community_board}'")
         if params.year:
-            where_clauses.append(f"YEAR(date) = {params.year}")
-        
+            where_clauses.append(f"fiscal_year = '{params.year}'")
+
         if where_clauses:
             api_params["$where"] = " AND ".join(where_clauses)
-        
+
         result = await socrata_request(dataset_id, "json", **api_params)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_organics_data(params)
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": result,
                 "markdown": json_out(result),
             })
@@ -655,11 +631,10 @@ async def nyc_organics_collection(params: OrganicsInput) -> Annotated[CallToolRe
             
             for data in result[:20]:  # Show first 20
                 if isinstance(data, dict):
-                    lines.append(f"### {data.get('community_board', 'Unknown')} - {data.get('borough', 'Unknown')}")
-                    lines.append(f"- **Datum:** {data.get('date', 'Unknown')}")
-                    lines.append(f"- **Teilnehmer:** {data.get('participating_households', 0)}")
-                    lines.append(f"- **Tonnage:** {data.get('tonnage_tons', 0)} tons")
-                    lines.append(f"- **Beteiligungsrate:** {data.get('participation_rate', 0)}%")
+                    lines.append(f"### Fiskaljahr {data.get('fiscal_year', 'Unknown')}")
+                    lines.append(f"- **DSNY gesammelt:** {data.get('tons_collected_dsny', 0)} tons")
+                    lines.append(f"- **Nicht-DSNY gesammelt:** {data.get('tons_collected_non_dsny', 0)} tons")
+                    lines.append(f"- **Gesamt:** {data.get('total_tons_collected_all', 0)} tons")
                     lines.append("")
             
             if len(result) > 20:
@@ -667,11 +642,13 @@ async def nyc_organics_collection(params: OrganicsInput) -> Annotated[CallToolRe
             
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "markdown": "\n".join(lines),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": f"Ergebnis: {json_out(result)}",
         })
         
@@ -748,9 +725,11 @@ class ContaminationInput(BaseModel):
     ),
 )
 async def nyc_recycling_contamination(params: ContaminationInput) -> Annotated[CallToolResult, str]:
-    """Retrieve data on recycling contamination rates in NYC.
+    """Retrieve data on NYC recycling diversion and capture rates.
 
-    Data source: Recycling Contamination dataset.
+    Data source: Recycling Diversion and Capture Rates (NYC Open Data).
+    Capture rates are the complement of contamination: higher capture
+    means less recyclable material lost to the refuse stream.
 
     Args:
         borough: Optional borough filter
@@ -760,37 +739,40 @@ async def nyc_recycling_contamination(params: ContaminationInput) -> Annotated[C
 
     Returns:
         Recycling contamination data including rates and common contaminants
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Get data from Socrata
-        dataset_id = "3v9k-8z8z"  # Recycling Contamination
-        
+        dataset_id = "gaq9-z3hz"  # Recycling Diversion and Capture Rates
+
         api_params = {
             "$limit": 100,
-            "$order": "date DESC",
+            "$order": "fiscal_year DESC, fiscal_month_number DESC",
         }
-        
-        # Apply filters
+
+        # Apply filters (district like "BKN01"; fiscal_year as text)
         where_clauses = []
         if params.borough:
-            where_clauses.append(f"borough = '{params.borough}'")
-        if params.material:
-            where_clauses.append(f"material = '{params.material}'")
+            where_clauses.append(
+                f"upper(district) like '%{params.borough[:3].upper()}%'"
+            )
         if params.year:
-            where_clauses.append(f"YEAR(date) = {params.year}")
-        
+            where_clauses.append(f"fiscal_year = '{params.year}'")
+
         if where_clauses:
             api_params["$where"] = " AND ".join(where_clauses)
-        
+
         result = await socrata_request(dataset_id, "json", **api_params)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_contamination_data(params)
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": result,
                 "markdown": json_out(result),
             })
@@ -805,13 +787,10 @@ async def nyc_recycling_contamination(params: ContaminationInput) -> Annotated[C
             
             for data in result[:20]:  # Show first 20
                 if isinstance(data, dict):
-                    lines.append(f"### {data.get('borough', 'Unknown')} - {data.get('material', 'Unknown')}")
-                    lines.append(f"- **Datum:** {data.get('date', 'Unknown')}")
-                    lines.append(f"- **Kontaminationsrate:** {data.get('contamination_rate', 0)}%")
-                    lines.append(f"- **Gesammelt:** {data.get('collected_tons', 0)} tons")
-                    lines.append(f"- **Kontaminiert:** {data.get('contaminated_tons', 0)} tons")
-                    if data.get('common_contaminants'):
-                        lines.append(f"- **H\u00e4ufige Verunreinigungen:** {', '.join(data.get('common_contaminants', []))}")
+                    lines.append(f"### {data.get('month_name', '')} {data.get('fiscal_year', '')} - {data.get('district', 'Unknown')}")
+                    lines.append(f"- **Diversionsrate:** {data.get('diversion_rate_total_total_recycling_total_waste_', '?')}%")
+                    lines.append(f"- **Erfassungsrate Papier:** {data.get('capture_rate_paper_total_paper_max_paper_', '?')}%")
+                    lines.append(f"- **Erfassungsrate MGP:** {data.get('capture_rate_mgp_total_mgp_max_mgp_', '?')}%")
                     lines.append("")
             
             if len(result) > 20:
@@ -819,11 +798,13 @@ async def nyc_recycling_contamination(params: ContaminationInput) -> Annotated[C
             
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "markdown": "\n".join(lines),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": f"Ergebnis: {json_out(result)}",
         })
         

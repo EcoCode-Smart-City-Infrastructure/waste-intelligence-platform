@@ -35,6 +35,8 @@ async def get_client() -> aiohttp.ClientSession:
         _client = aiohttp.ClientSession(
             headers={"User-Agent": USER_AGENT},
             timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
+            # Honor proxy env vars when present (no-op otherwise)
+            trust_env=True,
         )
         _rate_limit_semaphore = asyncio.Semaphore(RATE_LIMIT_REQUESTS)
     return _client
@@ -112,7 +114,7 @@ async def socrata_request(dataset_id: str, endpoint: str = "json", **params: Any
     """
     from .config import SOCRATA_API_URL
     
-    url = f"{SOCRATA_API_URL}/{dataset_id}/{endpoint}"
+    url = f"{SOCRATA_API_URL}/{dataset_id}.{endpoint}"
     
     # Add app_token if available (optional for public datasets)
     app_token = os.environ.get("SOCRATA_APP_TOKEN")

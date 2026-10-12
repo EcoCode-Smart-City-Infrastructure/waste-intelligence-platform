@@ -84,7 +84,7 @@ class FieldInfo(BaseModel):
 
 
 # Tool result wrapper
-async def tool_result(data: Any) -> dict:
+def tool_result(data: Any) -> dict:
     """Wrap tool result with consistent structure."""
     return {
         "status": "success",
@@ -93,7 +93,7 @@ async def tool_result(data: Any) -> dict:
 
 
 # Error result wrapper
-async def error_result(error: str, details: str = "") -> dict:
+def error_result(error: str, details: str = "") -> dict:
     """Wrap error result with consistent structure."""
     return {
         "status": "error",
