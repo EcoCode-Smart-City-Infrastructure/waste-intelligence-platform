@@ -16,7 +16,9 @@ class Config:
     APP_DESCRIPTION = "NYC Waste Intelligence API for MCP + Smart City Testbed"
     
     # Database settings
-    DB_URL = os.environ.get("DB_URL", "postgresql://timescale:password@localhost/wasteintel")
+    # NOTE: no password is baked into the default. Set DB_URL (or the
+    # POSTGRES_PASSWORD-based compose wiring) for any real deployment.
+    DB_URL = os.environ.get("DB_URL", "postgresql://timescale@localhost/wasteintel")
     
     # ML Service settings
     ML_URL = os.environ.get("ML_URL", "http://ml-service:8001")
@@ -37,6 +39,8 @@ class Config:
     # Authentication settings
     API_KEY = os.environ.get("API_KEY")
     REQUIRE_API_KEY = os.environ.get("REQUIRE_API_KEY", "false").lower() == "true"
+
+    ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").lower()
     
     # Rate limiting
     RATE_LIMIT_REQUESTS = int(os.environ.get("RATE_LIMIT_REQUESTS", "100"))
@@ -57,6 +61,7 @@ class Config:
     
     # NYC-specific settings
     NYC_BOROUGHS = ["Manhattan", "Bronx", "Brooklyn", "Queens", "Staten Island"]
+
     
     # Facility metadata
     FACILITY_METADATA = {
@@ -128,3 +133,21 @@ class Config:
             key: value for key, value in cls.__dict__.items()
             if not key.startswith("_") and not callable(value)
         }
+
+
+def _validate_production_config() -> None:
+    """Fail fast when production is missing required secrets."""
+    if Config.ENVIRONMENT != "production":
+        return
+    missing = [name for name in ("DB_URL", "API_KEY") if not os.environ.get(name)]
+    if Config.REQUIRE_API_KEY and not Config.API_KEY:
+        missing.append("API_KEY (REQUIRE_API_KEY=true)")
+    if missing:
+        raise RuntimeError(
+            "refusing to start with ENVIRONMENT=production and unset secrets: "
+            + ", ".join(sorted(set(missing)))
+            + ". Set them in the environment; see .env.example."
+        )
+
+
+_validate_production_config()
