@@ -147,6 +147,23 @@ services:
     networks:
       - waste-intel-network
 
+  # MQTT Bridge: firmware telemetry -> Postgres
+  mqtt-bridge:
+    build:
+      context: .
+      dockerfile: devops/docker/mqtt-bridge.Dockerfile
+    container_name: mqtt-bridge
+    restart: unless-stopped
+    environment:
+      - MQTT_BROKER=mqtt
+      - MQTT_PORT=1883
+      - DATABASE_URL=postgresql://timescale:password@postgres:5432/wasteintel
+    networks:
+      - waste-intel-network
+    depends_on:
+      - mqtt
+      - postgres
+
   # AI Copilot Service
   copilot-service:
     build:
