@@ -27,6 +27,8 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=INFO
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-wasteintel}
+      - APP_SECRET_KEY=${APP_SECRET_KEY:?Set APP_SECRET_KEY in the environment}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
