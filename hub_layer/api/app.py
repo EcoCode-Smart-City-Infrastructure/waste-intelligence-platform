@@ -10,6 +10,7 @@ def create_app() -> Flask:
     """Create and configure the hub-layer Flask app."""
     app = Flask(__name__)
     app.config["JSON_SORT_KEYS"] = False
+    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
