@@ -168,6 +168,7 @@ class TestMLEndpoints:
         """Test waste forecasting."""
         request_data = {
             "features": {
+                "bin_id": "BIN-00123",
                 "historical_tonnage": [10000, 12000, 11000, 13000, 14000],
                 "day_of_week": 3,
             },
@@ -183,6 +184,7 @@ class TestMLEndpoints:
         """Test anomaly detection."""
         request_data = {
             "features": {
+                "bin_id": "BIN-00123",
                 "mass_kg": 450.5,
                 "filllevelpct": 85.2,
                 "gas_ppm": 25.3,
@@ -202,10 +204,11 @@ class TestMLEndpoints:
             "threshold": 0.7
         }
         response = test_client.post("/mcp/waste/contamination", json=request_data)
-        
-        assert response.status_code == 200
-        assert "contamination_type" in response.json()
-        assert "confidence" in response.json()
+
+        # No contamination model is deployed; the API reports unavailability
+        # instead of fabricating a detection.
+        assert response.status_code == 500
+        assert "not trained" in response.json()["detail"]
 
 
 class TestKGEndpoints:

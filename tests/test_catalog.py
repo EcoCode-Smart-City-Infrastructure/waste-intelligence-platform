@@ -20,7 +20,7 @@ class TestSearchDatasets:
     @pytest.mark.asyncio
     async def test_search_all_datasets(self):
         """Test searching all datasets."""
-        from src.nyc_opendata_mcp.models import SearchDatasetsInput
+        from src.nyc_opendata_mcp.tools.catalog import SearchDatasetsInput
         
         input_data = SearchDatasetsInput(query="*")
         result = await nyc_search_datasets(input_data)
@@ -31,7 +31,7 @@ class TestSearchDatasets:
     @pytest.mark.asyncio
     async def test_search_specific_query(self):
         """Test searching with specific query."""
-        from src.nyc_opendata_mcp.models import SearchDatasetsInput
+        from src.nyc_opendata_mcp.tools.catalog import SearchDatasetsInput
         
         input_data = SearchDatasetsInput(query="waste")
         result = await nyc_search_datasets(input_data)
@@ -42,7 +42,7 @@ class TestSearchDatasets:
     @pytest.mark.asyncio
     async def test_search_with_category_filter(self):
         """Test searching with category filter."""
-        from src.nyc_opendata_mcp.models import SearchDatasetsInput
+        from src.nyc_opendata_mcp.tools.catalog import SearchDatasetsInput
         
         input_data = SearchDatasetsInput(
             query="recycling",
@@ -60,7 +60,7 @@ class TestGetDataset:
     @pytest.mark.asyncio
     async def test_get_dataset_by_id(self):
         """Test getting dataset by ID."""
-        from src.nyc_opendata_mcp.models import GetDatasetInput
+        from src.nyc_opendata_mcp.tools.catalog import GetDatasetInput
         
         # Use a known dataset ID (this would be a real ID in production)
         input_data = GetDatasetInput(dataset_id="7c3d-6b2j")
@@ -76,7 +76,7 @@ class TestListCategories:
     @pytest.mark.asyncio
     async def test_list_categories_markdown(self):
         """Test listing categories in markdown format."""
-        from src.nyc_opendata_mcp.models import ListCategoriesInput
+        from src.nyc_opendata_mcp.tools.catalog import ListCategoriesInput
         
         input_data = ListCategoriesInput(format="markdown")
         result = await nyc_list_categories(input_data)
@@ -88,7 +88,7 @@ class TestListCategories:
     @pytest.mark.asyncio
     async def test_list_categories_json(self):
         """Test listing categories in JSON format."""
-        from src.nyc_opendata_mcp.models import ListCategoriesInput
+        from src.nyc_opendata_mcp.tools.catalog import ListCategoriesInput
         
         input_data = ListCategoriesInput(format="json")
         result = await nyc_list_categories(input_data)
@@ -104,7 +104,7 @@ class TestListTags:
     @pytest.mark.asyncio
     async def test_list_tags(self):
         """Test listing tags."""
-        from src.nyc_opendata_mcp.models import ListTagsInput
+        from src.nyc_opendata_mcp.tools.catalog import ListTagsInput
         
         input_data = ListTagsInput(limit=10)
         result = await nyc_list_tags(input_data)
@@ -115,7 +115,7 @@ class TestListTags:
     @pytest.mark.asyncio
     async def test_list_tags_with_category(self):
         """Test listing tags with category filter."""
-        from src.nyc_opendata_mcp.models import ListTagsInput
+        from src.nyc_opendata_mcp.tools.catalog import ListTagsInput
         
         input_data = ListTagsInput(
             category="waste-management",
@@ -146,7 +146,7 @@ class TestAnalyzeDataset:
     @pytest.mark.asyncio
     async def test_analyze_dataset(self):
         """Test analyzing a dataset."""
-        from src.nyc_opendata_mcp.models import AnalyzeDatasetInput
+        from src.nyc_opendata_mcp.tools.catalog import AnalyzeDatasetInput
         
         input_data = AnalyzeDatasetInput(dataset_id="7c3d-6b2j")
         result = await nyc_analyze_dataset(input_data)
