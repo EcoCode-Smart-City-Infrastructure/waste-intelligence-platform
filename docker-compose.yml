@@ -34,6 +34,7 @@ services:
     environment:
       - DB_URL=postgresql://timescale:${POSTGRES_PASSWORD:-password}@postgres:5432/wasteintel
       - ML_URL=http://ml-service:8002
+      - CONTAMINATION_SERVICE_URL=http://contamination-service:8005
       - KG_URL=http://kg-service:8003
       - API_KEY=${WASTE_INTEL_API_KEY:-}
       - REQUIRE_API_KEY=false
@@ -138,6 +139,21 @@ services:
       - postgres
 
   # AI Copilot Service
+  # Contamination Inference Service (YOLOv11 litter-material model)
+  contamination-service:
+    build:
+      context: .
+      dockerfile: services/contamination/Dockerfile
+    container_name: contamination-service
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    environment:
+      - MODEL_REPO=${CONTAMINATION_MODEL_REPO:-CatSat/yolov11-litter-materials}
+      - CONF_THRESHOLD=${CONTAMINATION_CONF_THRESHOLD:-0.25}
+    networks:
+      - waste-intel-network
+
   copilot-service:
     build:
       context: .
