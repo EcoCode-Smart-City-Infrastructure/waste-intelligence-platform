@@ -4,4 +4,3 @@
 
 void initUltrasonicSensor();
 float readFillLevelPercent();
-float readMassKg();
