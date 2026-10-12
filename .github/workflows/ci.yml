@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, init/**, fix/**]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: timescale
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: wasteintel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DB_URL: postgresql://timescale:password@localhost:5432/wasteintel
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: Compile check
+        run: python -m compileall -q src hub_layer scripts
+
+      - name: Load database schema
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          psql "$DB_URL" -f hub-layer/database/schema.sql
+
+      - name: Seed test telemetry
+        run: |
+          psql "$DB_URL" -c "
+            INSERT INTO bins (bin_id, location_name) VALUES ('BIN-00123', 'Test Bin')
+            ON CONFLICT DO NOTHING;
+            INSERT INTO telemetry (bin_id, fill_level_percent, mass_kg, reported_at)
+            SELECT 'BIN-00123', 40 + s, 10 + s * 0.2,
+                   NOW() - (20 - s) * INTERVAL '1 hour'
+            FROM generate_series(1, 20) AS s;"
+
+      - name: Run tests
+        run: pytest tests/ -q
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate compose files
+        run: |
+          python3 -c "
+          import yaml
+          for f in ['docker-compose.yml', 'devops/compose.prod.yml', 'devops/docker/docker-compose.yml']:
+              yaml.safe_load(open(f))
+              print(f, 'OK')
+          "
