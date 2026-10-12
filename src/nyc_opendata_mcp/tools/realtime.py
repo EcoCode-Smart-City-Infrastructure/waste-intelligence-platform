@@ -20,7 +20,7 @@ from ..formatters import (
     json_out,
     md_table,
 )
-from ..http_client import airnow_request, mta_request, noaa_request, socrata_request
+from ..http_client import airnow_request, mta_request, noaa_request, socrata_request, soql_str
 from ..models import tool_result
 
 
@@ -97,7 +97,7 @@ async def nyc_weather_live(params: WeatherLiveInput) -> Annotated[CallToolResult
             return tool_result({
                 "status": "error",
                 "error": "No weather data available",
-                "markdown": "Keine Wetterdaten verf\u00fcgbar.",
+                "markdown": "No weather data available.",
             })
         
         if params.format == "json":
@@ -123,8 +123,8 @@ async def nyc_weather_live(params: WeatherLiveInput) -> Annotated[CallToolResult
             rows.append(row)
         
         lines = [
-            "## Aktuelle Wetterdaten NYC",
-            f"*Stationen: {len(observations)}*",
+            "## Current NYC Weather Data",
+            f"*Stations: {len(observations)}*",
             "",
             md_table(headers, rows),
         ]
@@ -194,7 +194,7 @@ async def nyc_air_quality(params: AirQualityInput) -> Annotated[CallToolResult, 
             return tool_result({
                 "status": "error",
                 "error": "No air quality data available",
-                "markdown": "Keine Luftqualit\u00e4tsdaten verf\u00fcgbar.",
+                "markdown": "No air quality data available.",
             })
         
         # Parse AirNow response
@@ -218,7 +218,7 @@ async def nyc_air_quality(params: AirQualityInput) -> Annotated[CallToolResult, 
             return tool_result({
                 "status": "error",
                 "error": "No air quality data available",
-                "markdown": "Keine Luftqualit\u00e4tsdaten verf\u00fcgbar.",
+                "markdown": "No air quality data available.",
             })
         
         if params.format == "json":
@@ -246,18 +246,18 @@ async def nyc_air_quality(params: AirQualityInput) -> Annotated[CallToolResult, 
             rows.append(row)
         
         lines = [
-            "## Luftqualit\u00e4tsdaten NYC",
-            f"*Stationen: {len(observations)}*",
+            "## NYC Air Quality Data",
+            f"*Stations: {len(observations)}*",
             "",
             md_table(headers, rows),
             "",
             "**AQI-Bewertung:**",
-            "- 0-50: Gut (Gr\u00fcn)",
+            "- 0-50: Good (Green)",
             "- 51-100: Moderat (Gelb)",
-            "- 101-150: Ungesund f\u00fcr empfindliche Gruppen (Orange)",
-            "- 151-200: Ungesund (Rot)",
-            "- 201-300: Sehr ungesund (Violett)",
-            "- 301+: Gef\u00e4hrlich (Dunkelrot)",
+            "- 101-150: Unhealthy for sensitive groups (Orange)",
+            "- 151-200: Unhealthy (Red)",
+            "- 201-300: Very unhealthy (Purple)",
+            "- 301+: Hazardous (Dark red)",
         ]
         
         return tool_result({
@@ -321,7 +321,7 @@ async def nyc_water_quality(params: WaterQualityInput) -> Annotated[CallToolResu
             return tool_result({
                 "status": "error",
                 "error": "No water quality data available",
-                "markdown": "Keine Wasserqualit\u00e4tsdaten verf\u00fcgbar.",
+                "markdown": "No water quality data available.",
             })
         
         # Parse water quality data
@@ -343,7 +343,7 @@ async def nyc_water_quality(params: WaterQualityInput) -> Annotated[CallToolResu
             return tool_result({
                 "status": "error",
                 "error": "No water quality data available",
-                "markdown": "Keine Wasserqualit\u00e4tsdaten verf\u00fcgbar.",
+                "markdown": "No water quality data available.",
             })
         
         if params.format == "json":
@@ -370,15 +370,15 @@ async def nyc_water_quality(params: WaterQualityInput) -> Annotated[CallToolResu
             rows.append(row)
         
         lines = [
-            "## Wasserqualit\u00e4tsdaten NYC",
-            f"*Stationen: {len(observations)}*",
+            "## NYC Water Quality Data",
+            f"*Stations: {len(observations)}*",
             "",
             md_table(headers, rows),
             "",
-            "**Wasserqualit\u00e4tsstandards:**",
+            "**Water quality standards:**",
             "- Enterococcus: < 104 MPN/100mL (sicher)",
             "- E. coli: < 235 MPN/100mL (sicher)",
-            "- Gel\u00f6ster Sauerstoff: > 5 mg/L (gut)",
+            "- Dissolved oxygen: > 5 mg/L (good)",
             "- pH: 6.5-8.5 (normal)",
         ]
         
@@ -436,7 +436,7 @@ async def nyc_pedestrian_traffic(params: PedestrianInput) -> Annotated[CallToolR
         }
         
         if params.location:
-            api_params["$where"] = f"location LIKE '%{params.location}%'"
+            api_params["$where"] = "location LIKE " + soql_str(f"%{params.location}%")
         
         result = await socrata_request(dataset_id, "json", **api_params)
         
@@ -444,7 +444,7 @@ async def nyc_pedestrian_traffic(params: PedestrianInput) -> Annotated[CallToolR
             return tool_result({
                 "status": "error",
                 "error": "No pedestrian data available",
-                "markdown": "Keine Fu\u00dfg\u00e4ngerdaten verf\u00fcgbar.",
+                "markdown": "No pedestrian data available.",
             })
         
         # Parse pedestrian data
@@ -463,7 +463,7 @@ async def nyc_pedestrian_traffic(params: PedestrianInput) -> Annotated[CallToolR
             return tool_result({
                 "status": "error",
                 "error": "No pedestrian data available",
-                "markdown": "Keine Fu\u00dfg\u00e4ngerdaten verf\u00fcgbar.",
+                "markdown": "No pedestrian data available.",
             })
         
         if params.format == "json":
@@ -487,7 +487,7 @@ async def nyc_pedestrian_traffic(params: PedestrianInput) -> Annotated[CallToolR
             rows.append(row)
         
         lines = [
-            "## Fu\u00dfg\u00e4ngerverkehr NYC",
+            "## NYC Pedestrian Traffic",
             f"*Standorte: {len(observations)}*",
             "",
             md_table(headers, rows),
@@ -555,9 +555,9 @@ async def nyc_mta_ridership(params: MTARidershipInput) -> Annotated[CallToolResu
         }
         
         if params.line:
-            api_params["$where"] = f"line = '{params.line}'"
+            api_params["$where"] = f"line = {soql_str(params.line)}"
         if params.station:
-            api_params["$where"] = f"station = '{params.station}'"
+            api_params["$where"] = f"station = {soql_str(params.station)}"
         
         result = await socrata_request(dataset_id, "json", **api_params)
         
@@ -565,7 +565,7 @@ async def nyc_mta_ridership(params: MTARidershipInput) -> Annotated[CallToolResu
             return tool_result({
                 "status": "error",
                 "error": "No MTA data available",
-                "markdown": "Keine MTA-Daten verf\u00fcgbar.",
+                "markdown": "No MTA data available.",
             })
         
         # Parse MTA data
@@ -670,7 +670,7 @@ async def nyc_parking_live(params: ParkingLiveInput) -> Annotated[CallToolResult
         }
         
         if params.lot_id:
-            api_params["$where"] = f"lot_id = '{params.lot_id}'"
+            api_params["$where"] = f"lot_id = {soql_str(params.lot_id)}"
         
         result = await socrata_request(dataset_id, "json", **api_params)
         
@@ -678,7 +678,7 @@ async def nyc_parking_live(params: ParkingLiveInput) -> Annotated[CallToolResult
             return tool_result({
                 "status": "error",
                 "error": "No parking data available",
-                "markdown": "Keine Parkdaten verf\u00fcgbar.",
+                "markdown": "No parking data available.",
             })
         
         # Parse parking data
@@ -724,8 +724,8 @@ async def nyc_parking_live(params: ParkingLiveInput) -> Annotated[CallToolResult
             rows.append(row)
         
         lines = [
-            "## Parkdaten NYC",
-            f"*Parkh\u00e4user: {len(observations)}*",
+            "## NYC Parking Data",
+            f"*Parking garages: {len(observations)}*",
             "",
             md_table(headers, rows),
         ]
