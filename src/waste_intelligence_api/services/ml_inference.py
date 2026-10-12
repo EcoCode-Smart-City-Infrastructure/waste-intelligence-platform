@@ -140,75 +140,75 @@ def _generate_sample_anomaly(features: dict) -> dict:
     }
 
 
-async def run_contamination(image_tensor: list) -> dict:
-    """Run contamination detection CNN model.
-    
+async def run_contamination(
+    image_tensor: list | None = None,
+    image_url: str | None = None,
+    threshold: float = 0.7,
+) -> dict:
+    """Detect contamination in a waste image via the vision inference service.
+
+    When ``CONTAMINATION_SERVICE_URL`` is set, the image (from ``image_url``
+    or a raw ``image_tensor``) is sent to the YOLOv11 litter-material model
+    (``services/contamination``) and real detections are returned. Without
+    the service configured this raises instead of returning fabricated
+    detections.
+
     Args:
-        image_tensor: Image tensor for CNN detection
-        
+        image_tensor: raw image tensor (HWC uint8 list) or None
+        image_url: URL of the image to analyze or None
+        threshold: confidence threshold for detections
+
     Returns:
-        Contamination detection result with type and confidence
+        Contamination detection result with type, confidence, bounding box,
+        full detection list and model identifier.
     """
-    try:
-        # Send request to ML service
-        url = f"{Config.ML_URL}/contamination"
-        
-        request_data = {
-            "image_tensor": image_tensor,
-        }
-        
-        response = requests.post(
-            url,
-            json=request_data,
-            timeout=Config.ML_TIMEOUT,
+    service_url = os.getenv("CONTAMINATION_SERVICE_URL")
+    if not service_url:
+        raise RuntimeError(
+            "contamination vision model is not trained or deployed; "
+            "set CONTAMINATION_SERVICE_URL to enable image-based "
+            "contamination detection"
         )
-        
-        response.raise_for_status()
-        
-        result = response.json()
-        
-        # Validate result
-        if not isinstance(result, dict):
-            raise ValueError("Invalid contamination result format")
-        
-        if "contamination_type" not in result:
-            raise ValueError("Missing contamination_type in contamination result")
-        
-        return result
-        
-    except requests.exceptions.RequestException as e:
-        logger.error(f"ML service request failed: {e}")
-        # Return sample data if ML service is unavailable
-        return _generate_sample_contamination(image_tensor)
-    except Exception as e:
-        logger.error(f"Contamination detection failed: {e}")
-        return _generate_sample_contamination(image_tensor)
 
+    image_bytes: bytes | None = None
+    if image_url:
+        resp = requests.get(image_url, timeout=30)
+        resp.raise_for_status()
+        image_bytes = resp.content
+    elif image_tensor:
+        import io
 
-def _generate_sample_contamination(image_tensor: list) -> dict:
-    """Generate sample contamination detection data when ML service is unavailable."""
-    import random
-    
-    contamination_types = [
-        "Plastic Bag",
-        "Food Waste",
-        "Diaper",
-        "Electronics",
-        "Clothing",
-        "Hazardous Waste",
-        "Construction Debris",
-    ]
-    
-    type_idx = random.randint(0, len(contamination_types) - 1)
-    
+        import numpy as np
+        from PIL import Image
+
+        buf = io.BytesIO()
+        Image.fromarray(np.asarray(image_tensor, dtype=np.uint8)).save(
+            buf, format="JPEG"
+        )
+        image_bytes = buf.getvalue()
+    if not image_bytes:
+        raise RuntimeError("no image provided (image_url or image_tensor required)")
+
+    r = requests.post(
+        f"{service_url.rstrip('/')}/predict",
+        files={"image": ("image.jpg", image_bytes, "image/jpeg")},
+        data={"conf": str(threshold)},
+        timeout=120,
+    )
+    r.raise_for_status()
+    pred = r.json()
+
+    contaminants = pred.get("contaminants", [])
     return {
-        "image_id": "img_" + "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=8)),
-        "contamination_type": contamination_types[type_idx],
-        "confidence": round(random.uniform(0.7, 0.99), 3),
-        "bounding_box": {
-            "x_min": round(random.uniform(0, 0.8), 3),
-            "y_min": round(random.uniform(0, 0.8), 3),
-            "x_max": round(random.uniform(0.2, 1.0), 3),
-            "y_max": round(random.uniform(0.2, 1.0), 3),
-        },
+        "image_id": image_url or "tensor",
+        "contamination_type": (
+            contaminants[0]["material"] if contaminants else "none"
+        ),
+        "confidence": (
+            round(contaminants[0]["confidence"], 3) if contaminants else 0.0
+        ),
+        "bounding_box": contaminants[0]["bbox"] if contaminants else None,
+        "is_contaminated": pred.get("is_contaminated", False),
+        "detections": pred.get("detections", []),
+        "model": pred.get("model"),
     }
