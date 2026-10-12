@@ -15,7 +15,7 @@ from ..formatters import (
     json_out,
     md_table,
 )
-from ..http_client import mta_request, socrata_request
+from ..http_client import get_client, mta_request, socrata_request
 from ..models import MTARidership, PedestrianCount, ParkingData, tool_result
 
 
@@ -31,6 +31,162 @@ class MTAStatusInput(BaseModel):
     )
     format: OutputFormat = Field(default="markdown", description=_FORMAT_FIELD_DESC)
 
+
+
+# MTA NYCT GTFS-Realtime feed groups (verified keyless, October 2026)
+MTA_GTFS_RT_BASE = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds"
+MTA_FEED_GROUPS: dict[str, list[str]] = {
+    "nyct%2Fgtfs": ["1", "2", "3", "4", "5", "6", "7", "S"],
+    "nyct%2Fgtfs-ace": ["A", "C", "E"],
+    "nyct%2Fgtfs-bdfm": ["B", "D", "F", "M"],
+    "nyct%2Fgtfs-g": ["G"],
+    "nyct%2Fgtfs-jz": ["J", "Z"],
+    "nyct%2Fgtfs-l": ["L"],
+    "nyct%2Fgtfs-nqrw": ["N", "Q", "R", "W"],
+    "nyct%2Fgtfs-si": ["SI"],
+}
+
+# Citi Bike GBFS endpoints (keyless, verified October 2026)
+GBFS_STATION_INFO = "https://gbfs.citibikenyc.com/gbfs/en/station_information.json"
+GBFS_STATION_STATUS = "https://gbfs.citibikenyc.com/gbfs/en/station_status.json"
+
+
+async def _fetch_gtfs_feed(feed_suffix: str):
+    """Fetch and parse one GTFS-Realtime feed. Returns None on failure."""
+    from google.transit import gtfs_realtime_pb2
+
+    try:
+        client = await get_client()
+        async with client.get(f"{MTA_GTFS_RT_BASE}/{feed_suffix}") as resp:
+            resp.raise_for_status()
+            payload = await resp.read()
+        feed = gtfs_realtime_pb2.FeedMessage()
+        feed.ParseFromString(payload)
+        return feed
+    except Exception:
+        return None
+
+
+async def _fetch_mta_alerts() -> dict[str, list[str]] | None:
+    """Active service alerts per route from all feed groups.
+
+    Returns None when every feed fails (caller falls back to labeled
+    simulated data).
+    """
+    alerts: dict[str, list[str]] = {}
+    any_ok = False
+    for suffix, lines in MTA_FEED_GROUPS.items():
+        feed = await _fetch_gtfs_feed(suffix)
+        if feed is None:
+            continue
+        any_ok = True
+        for entity in feed.entity:
+            if not entity.HasField("alert"):
+                continue
+            alert = entity.alert
+            header = ""
+            if alert.header_text.translation:
+                header = alert.header_text.translation[0].text
+            routes = {
+                ie.route_id for ie in alert.informed_entity if ie.route_id
+            } or set(lines)
+            for route in routes:
+                alerts.setdefault(route, []).append(header)
+    return alerts if any_ok else None
+
+
+async def _fetch_mta_arrivals() -> dict[str, list[dict]] | None:
+    """Upcoming arrivals per stop from trip updates.
+
+    Returns {stop_id: [{route_id, arrival_epoch, minutes_away}]} or None
+    when all feeds fail.
+    """
+    import time
+
+    now = int(time.time())
+    arrivals: dict[str, list[dict]] = {}
+    any_ok = False
+    for suffix in MTA_FEED_GROUPS:
+        feed = await _fetch_gtfs_feed(suffix)
+        if feed is None:
+            continue
+        any_ok = True
+        for entity in feed.entity:
+            if not entity.HasField("trip_update"):
+                continue
+            tu = entity.trip_update
+            route_id = tu.trip.route_id or ""
+            for stu in tu.stop_time_update:
+                arr = stu.arrival.time if stu.HasField("arrival") else 0
+                if arr and arr >= now - 60:
+                    arrivals.setdefault(stu.stop_id, []).append(
+                        {"route_id": route_id, "arrival_epoch": arr,
+                         "minutes_away": max(0, round((arr - now) / 60))}
+                    )
+    if not any_ok:
+        return None
+    for stop_id in arrivals:
+        arrivals[stop_id].sort(key=lambda a: a["arrival_epoch"])
+    return arrivals
+
+
+async def _fetch_bike_share() -> list[dict] | None:
+    """Live Citi Bike station availability. None on failure."""
+    from ..http_client import http_get_json
+
+    try:
+        info = await http_get_json(GBFS_STATION_INFO)
+        status = await http_get_json(GBFS_STATION_STATUS)
+    except Exception:
+        return None
+    info_stations = {s["station_id"]: s for s in info.get("data", {}).get("stations", [])}
+    status_stations = status.get("data", {}).get("stations", [])
+    if not status_stations:
+        return None
+    out = []
+    for s in status_stations:
+        meta = info_stations.get(s.get("station_id"), {})
+        out.append({
+            "station_id": s.get("station_id"),
+            "name": meta.get("name", "Unknown"),
+            "bikes_available": s.get("num_bikes_available", 0),
+            "docks_available": s.get("num_docks_available", 0),
+            "is_renting": bool(s.get("is_renting")),
+            "last_updated": s.get("last_reported"),
+            "lat": meta.get("lat"),
+            "lon": meta.get("lon"),
+        })
+    return out or None
+
+
+async def _fetch_traffic_incidents(limit: int = 50) -> list[dict] | None:
+    """Recent NYPD motor vehicle collisions. None on failure."""
+    try:
+        rows = await socrata_request(
+            "h9gi-nx95", "json",
+            **{"$limit": min(limit, 100), "$order": "crash_date DESC, crash_time DESC"},
+        )
+    except Exception:
+        return None
+    if not rows:
+        return None
+    out = []
+    for r in rows:
+        try:
+            injured = int(r.get("number_of_persons_injured") or 0)
+            killed = int(r.get("number_of_persons_killed") or 0)
+        except (ValueError, TypeError):
+            injured, killed = 0, 0
+        out.append({
+            "date": r.get("crash_date", "")[:10],
+            "time": r.get("crash_time", ""),
+            "borough": r.get("borough", "Unknown"),
+            "location": r.get("on_street_name") or r.get("off_street_name") or "Unknown",
+            "severity": "Fatal" if killed else ("Injury" if injured else "Property damage"),
+            "persons_injured": injured,
+            "persons_killed": killed,
+        })
+    return out or None
 
 @mcp.tool(
     name="nyc_mta_status",
@@ -53,14 +209,39 @@ async def nyc_mta_status(params: MTAStatusInput) -> Annotated[CallToolResult, st
 
     Returns:
         Current service status for subway lines
+    Data source: MTA GTFS-Realtime service alerts (keyless). Falls back
+    to simulated sample data, labeled as such in the response.
     """
     try:
-        # In production, this would query the actual MTA API
-        # For now, return sample status data
-        
-        # Generate sample status data
-        status_data = _generate_sample_mta_status()
-        
+        # Real path: live GTFS-Realtime service alerts per line
+        from datetime import datetime, timezone
+
+        alerts = await _fetch_mta_alerts()
+        simulated = alerts is None
+        if simulated:
+            status_data = _generate_sample_mta_status()
+        else:
+            status_data = []
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            for _suffix, lines in MTA_FEED_GROUPS.items():
+                for line in lines:
+                    line_alerts = alerts.get(line, [])
+                    if line_alerts:
+                        seen = list(dict.fromkeys(line_alerts))[:3]
+                        status_data.append({
+                            "line": line,
+                            "status": "Delays",
+                            "last_updated": now,
+                            "details": " | ".join(seen),
+                        })
+                    else:
+                        status_data.append({
+                            "line": line,
+                            "status": "Good Service",
+                            "last_updated": now,
+                            "details": "",
+                        })
+
         if params.line:
             status_data = [s for s in status_data if s.get("line") == params.line]
         
@@ -68,12 +249,13 @@ async def nyc_mta_status(params: MTAStatusInput) -> Annotated[CallToolResult, st
             return tool_result({
                 "status": "error",
                 "error": "No status data available",
-                "markdown": "Keine Statusdaten verf\u00fcgbar.",
+                "markdown": "No status data available.",
             })
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "mta-gtfs-realtime",
                 "data": status_data,
                 "markdown": json_out(status_data),
             })
@@ -93,13 +275,14 @@ async def nyc_mta_status(params: MTAStatusInput) -> Annotated[CallToolResult, st
         
         lines = [
             "## MTA Service Status",
-            f"*Linien: {len(status_data)}*",
+            f"*Lines: {len(status_data)}*",
             "",
             md_table(headers, rows),
         ]
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
@@ -213,52 +396,83 @@ async def nyc_mta_station_status(params: MTAStationStatusInput) -> Annotated[Cal
 
     Returns:
         Station status information
+    Data source: MTA GTFS-Realtime trip updates (keyless). Falls back
+    to simulated sample data, labeled as such in the response.
     """
     try:
-        # Generate sample station status data
-        station_data = _generate_sample_station_status()
-        
-        if params.station:
-            station_data = [s for s in station_data if params.station.lower() in s.get("station", "").lower()]
-        if params.line:
-            station_data = [s for s in station_data if params.line in s.get("lines", [])]
+        # Real path: live arrivals per stop from GTFS-Realtime trip updates.
+        # station matches a stop_id prefix (e.g. "127" for 127N/127S);
+        # station names need the static GTFS and are not resolved here.
+        from datetime import datetime, timezone
+
+        arrivals = await _fetch_mta_arrivals()
+        simulated = arrivals is None
+        if simulated:
+            station_data = _generate_sample_station_status()
+
+            if params.station:
+                station_data = [s for s in station_data if params.station.lower() in s.get("station", "").lower()]
+            if params.line:
+                station_data = [s for s in station_data if params.line in s.get("lines", [])]
+        else:
+            station_data = []
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            for stop_id, stop_arrivals in sorted(arrivals.items()):
+                if params.station and params.station.upper() not in stop_id.upper():
+                    continue
+                if params.line:
+                    stop_arrivals = [a for a in stop_arrivals if a["route_id"] == params.line]
+                if not stop_arrivals:
+                    continue
+                next3 = stop_arrivals[:3]
+                station_data.append({
+                    "station": stop_id,
+                    "lines": sorted({a["route_id"] for a in next3}),
+                    "status": "In Service",
+                    "last_updated": now,
+                    "next_arrivals_min": [a["minutes_away"] for a in next3],
+                })
+            station_data = station_data[:50]
         
         if not station_data:
             return tool_result({
                 "status": "error",
                 "error": "No station data available",
-                "markdown": "Keine Stationsdaten verf\u00fcgbar.",
+                "markdown": "No station data available.",
             })
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "mta-gtfs-realtime",
                 "data": station_data,
                 "markdown": json_out(station_data),
             })
         
         # Format as Markdown table
-        headers = ["Station", "Lines", "Status", "Last Updated"]
+        headers = ["Station", "Lines", "Status", "Next Arrivals (min)"]
         rows = []
         for station in station_data:
-            status_emoji = "\U0001F7E2" if station.get("status") == "Good Service" else "\U0001F534"
+            status_emoji = "\U0001F7E2" if station.get("status") in ("Good Service", "In Service") else "\U0001F534"
+            arrivals_txt = ", ".join(str(m) for m in station.get("next_arrivals_min", []))
             row = [
                 station.get("station", ""),
                 ", ".join(station.get("lines", [])),
                 f"{status_emoji} {station.get('status', 'Unknown')}",
-                station.get("last_updated", ""),
+                arrivals_txt or station.get("last_updated", ""),
             ]
             rows.append(row)
         
         lines = [
             "## MTA Station Status",
-            f"*Stationen: {len(station_data)}*",
+            f"*Stations: {len(station_data)}*",
             "",
             md_table(headers, rows),
         ]
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
@@ -349,60 +563,71 @@ async def nyc_traffic_incidents(params: TrafficIncidentsInput) -> Annotated[Call
 
     Returns:
         List of current traffic incidents
+    Data source: NYPD Motor Vehicle Collisions (NYC Open Data). Falls back
+    to simulated sample data, labeled as such in the response.
     """
     try:
-        # Generate sample traffic incidents
-        incidents = _generate_sample_traffic_incidents()
-        
+        # Real path: recent NYPD motor vehicle collisions (NYC Open Data)
+        incidents = await _fetch_traffic_incidents(limit=params.limit * 2)
+        simulated = incidents is None
+        if simulated:
+            incidents = _generate_sample_traffic_incidents()
+
         # Apply filters
         if params.borough:
             incidents = [i for i in incidents if i.get("borough", "").lower() == params.borough.lower()]
         if params.severity:
             incidents = [i for i in incidents if i.get("severity", "").lower() == params.severity.lower()]
-        
+
         incidents = incidents[:params.limit]
         
         if not incidents:
             return tool_result({
                 "status": "error",
                 "error": "No traffic incidents found",
-                "markdown": "Keine Verkehrsvorf\u00e4lle gefunden.",
+                "markdown": "No traffic incidents found.",
             })
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": incidents,
                 "markdown": json_out(incidents),
             })
         
         # Format as Markdown table
-        headers = ["Borough", "Location", "Type", "Severity", "Status"]
+        headers = ["Date", "Borough", "Location", "Severity", "Injured/Killed"]
         rows = []
         for incident in incidents:
             severity_emoji = {
+                "Property damage": "\U0001F7E2",
+                "Injury": "\U0001F7E1",
+                "Fatal": "\U0001F534",
                 "Low": "\U0001F7E2",
                 "Medium": "\U0001F7E1",
                 "High": "\U0001F534",
             }.get(incident.get("severity", ""), "")
             row = [
+                f"{incident.get('date', '')} {incident.get('time', '')}".strip(),
                 incident.get("borough", ""),
                 incident.get("location", ""),
-                incident.get("type", ""),
                 f"{severity_emoji} {incident.get('severity', 'Unknown')}",
-                incident.get("status", ""),
+                f"{incident.get('persons_injured', incident.get('injured', 0))}/"
+                f"{incident.get('persons_killed', incident.get('killed', 0))}",
             ]
             rows.append(row)
         
         lines = [
-            "## Verkehrsvorf\u00e4lle NYC",
-            f"*Vorf\u00e4lle: {len(incidents)}*",
+            "## NYC Traffic Incidents",
+            f"*Incidents: {len(incidents)}*",
             "",
             md_table(headers, rows),
         ]
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
@@ -493,26 +718,32 @@ async def nyc_bike_share(params: BikeShareInput) -> Annotated[CallToolResult, st
 
     Returns:
         Bike share station data with availability
+    Data source: Citi Bike GBFS (keyless, live). Falls back
+    to simulated sample data, labeled as such in the response.
     """
     try:
-        # Generate sample bike share data
-        stations = _generate_sample_bike_share()
-        
+        # Real path: live Citi Bike GBFS availability
+        stations = await _fetch_bike_share()
+        simulated = stations is None
+        if simulated:
+            stations = _generate_sample_bike_share()
+
         if params.station_id:
             stations = [s for s in stations if s.get("station_id") == params.station_id]
-        
+
         stations = stations[:params.limit]
         
         if not stations:
             return tool_result({
                 "status": "error",
                 "error": "No bike share data available",
-                "markdown": "Keine Fahrradverleihdaten verf\u00fcgbar.",
+                "markdown": "No bike share data available.",
             })
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "citibike-gbfs",
                 "data": stations,
                 "markdown": json_out(stations),
             })
@@ -531,14 +762,15 @@ async def nyc_bike_share(params: BikeShareInput) -> Annotated[CallToolResult, st
             rows.append(row)
         
         lines = [
-            "## Citi Bike Stationen",
-            f"*Stationen: {len(stations)}*",
+            "## Citi Bike Stations",
+            f"*Stations: {len(stations)}*",
             "",
             md_table(headers, rows),
         ]
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         

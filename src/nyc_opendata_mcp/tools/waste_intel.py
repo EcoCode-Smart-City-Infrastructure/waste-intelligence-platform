@@ -71,13 +71,15 @@ async def nyc_wastebin_live(params: BinLiveInput) -> Annotated[CallToolResult, s
 
     Returns:
         Latest sensor readings including mass, fill level, and gas levels
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Get bin data from Waste Intelligence API
-        result = await waste_intel_request(f"mcp/waste/bin/{params.bin_id}")
+        result = await waste_intel_request("mcp/waste/bin", bin_id=params.bin_id)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_bin_data(params.bin_id)
         
         bin_data = BinTelemetry(**result) if isinstance(result, dict) else BinTelemetry(
@@ -90,12 +92,14 @@ async def nyc_wastebin_live(params: BinLiveInput) -> Annotated[CallToolResult, s
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "waste-intelligence-api",
                 "data": bin_data.model_dump(),
                 "markdown": json_out(bin_data.model_dump()),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "waste-intelligence-api",
             "markdown": format_bin_telemetry(bin_data.model_dump()),
         })
         
@@ -168,13 +172,15 @@ async def nyc_wastecluster_live(params: ClusterLiveInput) -> Annotated[CallToolR
 
     Returns:
         Aggregated metrics including total mass, average fill level, and bin count
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Get cluster data from Waste Intelligence API
-        result = await waste_intel_request(f"mcp/waste/cluster/{params.cluster_id}")
+        result = await waste_intel_request("mcp/waste/cluster", cluster_id=params.cluster_id)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_cluster_data(params.cluster_id)
         
         cluster_data = ClusterTelemetry(**result) if isinstance(result, dict) else ClusterTelemetry(
@@ -186,12 +192,14 @@ async def nyc_wastecluster_live(params: ClusterLiveInput) -> Annotated[CallToolR
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "waste-intelligence-api",
                 "data": cluster_data.model_dump(),
                 "markdown": json_out(cluster_data.model_dump()),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "waste-intelligence-api",
             "markdown": format_cluster_telemetry(cluster_data.model_dump()),
         })
         
@@ -257,13 +265,15 @@ async def nyc_wastefacility_load(params: FacilityLoadInput) -> Annotated[CallToo
 
     Returns:
         Current load metrics and 24-hour forecast
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Get facility data from Waste Intelligence API
-        result = await waste_intel_request(f"mcp/waste/facility/{params.facility_id}")
+        result = await waste_intel_request("mcp/waste/facility", facility_id=params.facility_id)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_facility_data(params.facility_id)
         
         facility_data = FacilityLoad(**result) if isinstance(result, dict) else FacilityLoad(
@@ -277,12 +287,14 @@ async def nyc_wastefacility_load(params: FacilityLoadInput) -> Annotated[CallToo
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "waste-intelligence-api",
                 "data": facility_data.model_dump(),
                 "markdown": json_out(facility_data.model_dump()),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "waste-intelligence-api",
             "markdown": format_facility_load(facility_data.model_dump()),
         })
         
@@ -330,6 +342,10 @@ class ForecastInput(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
+    bin_id: str = Field(
+        default="esp32-bin-001",
+        description="Waste bin identifier whose telemetry history is forecast",
+    )
     features: dict = Field(
         default_factory=dict,
         description="Input features for forecasting (e.g., historical data, weather, events)",
@@ -365,6 +381,7 @@ async def nyc_waste_forecast(params: ForecastInput) -> Annotated[CallToolResult,
 
     Returns:
         Forecast predictions with confidence intervals
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Add default features if none provided
@@ -378,14 +395,16 @@ async def nyc_waste_forecast(params: ForecastInput) -> Annotated[CallToolResult,
                 "special_events": [],
             }
         
-        # Add forecast horizon
+        # Add forecast horizon and bin identity
         params.features["horizon_hours"] = params.horizon_hours
-        
+        params.features.setdefault("bin_id", params.bin_id)
+
         # Get forecast from Waste Intelligence API
         result = await waste_intel_post("mcp/waste/forecast", params.features)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_forecast(params)
         
         forecast = MLForecastResult(**result) if isinstance(result, dict) else MLForecastResult(
@@ -398,12 +417,14 @@ async def nyc_waste_forecast(params: ForecastInput) -> Annotated[CallToolResult,
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "waste-intelligence-api",
                 "data": forecast.model_dump(),
                 "markdown": json_out(forecast.model_dump()),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "waste-intelligence-api",
             "markdown": format_ml_result(forecast.model_dump(), "Forecast"),
         })
         
@@ -437,6 +458,10 @@ class AnomalyInput(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
+    bin_id: str = Field(
+        default="esp32-bin-001",
+        description="Waste bin identifier whose latest reading is checked",
+    )
     features: dict = Field(
         default_factory=dict,
         description="Input features for anomaly detection (e.g., sensor readings)",
@@ -472,6 +497,7 @@ async def nyc_waste_anomaly(params: AnomalyInput) -> Annotated[CallToolResult, s
 
     Returns:
         Anomaly detection results with scores
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Add default features if none provided
@@ -483,14 +509,16 @@ async def nyc_waste_anomaly(params: AnomalyInput) -> Annotated[CallToolResult, s
                 "temperature_c": 28.1,
             }
         
-        # Add threshold
+        # Add threshold and bin identity
         params.features["threshold"] = params.threshold
-        
+        params.features.setdefault("bin_id", params.bin_id)
+
         # Get anomaly detection from Waste Intelligence API
         result = await waste_intel_post("mcp/waste/anomaly", params.features)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_anomaly(params)
         
         anomaly = MLAnomalyResult(**result) if isinstance(result, dict) else MLAnomalyResult(
@@ -503,12 +531,14 @@ async def nyc_waste_anomaly(params: AnomalyInput) -> Annotated[CallToolResult, s
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "waste-intelligence-api",
                 "data": anomaly.model_dump(),
                 "markdown": json_out(anomaly.model_dump()),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "waste-intelligence-api",
             "markdown": format_ml_result(anomaly.model_dump(), "Anomaly Detection"),
         })
         
@@ -586,6 +616,7 @@ async def nyc_waste_contamination(params: ContaminationInput) -> Annotated[CallT
 
     Returns:
         Contamination detection results with bounding boxes
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Prepare request data
@@ -605,8 +636,9 @@ async def nyc_waste_contamination(params: ContaminationInput) -> Annotated[CallT
         # Get contamination detection from Waste Intelligence API
         result = await waste_intel_post("mcp/waste/contamination", request_data)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_contamination(params)
         
         contamination = MLContaminationResult(**result) if isinstance(result, dict) else MLContaminationResult(
@@ -619,12 +651,14 @@ async def nyc_waste_contamination(params: ContaminationInput) -> Annotated[CallT
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "waste-intelligence-api",
                 "data": contamination.model_dump(),
                 "markdown": json_out(contamination.model_dump()),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "waste-intelligence-api",
             "markdown": format_ml_result(contamination.model_dump(), "Contamination Detection"),
         })
         
@@ -702,6 +736,7 @@ async def nyc_waste_kg_query(params: KGQueryInput) -> Annotated[CallToolResult, 
 
     Returns:
         Knowledge graph query results with entities and relationships
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Prepare request data
@@ -713,8 +748,9 @@ async def nyc_waste_kg_query(params: KGQueryInput) -> Annotated[CallToolResult, 
         # Query knowledge graph via Waste Intelligence API
         result = await waste_intel_post("mcp/waste/kg", request_data)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_kg_result(params)
         
         kg_result = KGQueryResult(**result) if isinstance(result, dict) else KGQueryResult(
@@ -726,12 +762,14 @@ async def nyc_waste_kg_query(params: KGQueryInput) -> Annotated[CallToolResult, 
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "waste-intelligence-api",
                 "data": kg_result.model_dump(),
                 "markdown": json_out(kg_result.model_dump()),
             })
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "waste-intelligence-api",
             "markdown": format_kg_result(kg_result.model_dump()),
         })
         
@@ -904,6 +942,7 @@ async def nyc_waste_circular_economy(params: CircularEconomyInput) -> Annotated[
 
     Returns:
         Suggestions for recycling, composting, or waste-to-energy pathways
+    When live data is unavailable, this tool falls back to simulated sample data, labeled as such in the response.
     """
     try:
         # Prepare request data
@@ -918,32 +957,34 @@ async def nyc_waste_circular_economy(params: CircularEconomyInput) -> Annotated[
         # Query circular economy suggestions from Waste Intelligence API
         result = await waste_intel_post("mcp/waste/circular_economy", request_data)
         
-        if not result:
-            # Return sample data if no real data available
+        simulated = not result
+        if simulated:
+            # Sample data fallback (labeled as simulated in the response)
             result = _generate_sample_circular_economy(params)
         
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "waste-intelligence-api",
                 "data": result,
                 "markdown": json_out(result),
             })
         
         # Format as Markdown
         lines = [
-            f"## Kreislaufwirtschaft-Vorschl\u00e4ge f\u00fcr {params.quantity_kg} kg {params.waste_type}",
+            f"## Circular economy suggestions for {params.quantity_kg} kg {params.waste_type}",
             "",
         ]
         
         if isinstance(result, list):
             for i, suggestion in enumerate(result, 1):
                 lines.append(f"### {i}. {suggestion.get('pathway', 'Unknown')}")
-                lines.append(f"- **Typ:** {suggestion.get('type', 'Unknown')}")
-                lines.append(f"- **Beschreibung:** {suggestion.get('description', 'N/A')}")
+                lines.append(f"- **Type:** {suggestion.get('type', 'Unknown')}")
+                lines.append(f"- **Description:** {suggestion.get('description', 'N/A')}")
                 lines.append(f"- **Effizienz:** {suggestion.get('efficiency', 0)}%")
-                lines.append(f"- **Kohlenstoff-Fu\u00dfabdruck:** {suggestion.get('carbon_footprint', 0)} kg CO2e")
+                lines.append(f"- **Carbon footprint:** {suggestion.get('carbon_footprint', 0)} kg CO2e")
                 if suggestion.get('facilities'):
-                    lines.append(f"- **Einrichtungen:** {', '.join(suggestion.get('facilities', []))}")
+                    lines.append(f"- **Facilities:** {', '.join(suggestion.get('facilities', []))}")
                 lines.append("")
         elif isinstance(result, dict):
             for key, value in result.items():
@@ -952,6 +993,7 @@ async def nyc_waste_circular_economy(params: CircularEconomyInput) -> Annotated[
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "waste-intelligence-api",
             "markdown": "\n".join(lines),
         })
         

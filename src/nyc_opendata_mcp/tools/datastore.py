@@ -84,7 +84,7 @@ async def nyc_datastore_query(
             return tool_result({
                 "status": "error",
                 "error": "No data returned",
-                "markdown": "Keine Daten zur\u00fcckgegeben.",
+                "markdown": "No data returned.",
             })
         
         if params.format == "json":
@@ -102,7 +102,7 @@ async def nyc_datastore_query(
                 rows = [list(row.values()) for row in result]
                 
                 lines = [
-                    f"## Abfrageergebnisse f\u00fcr Resource {params.resource_id}",
+                    f"## Query results for resource {params.resource_id}",
                     f"*Zeilen: {len(result)}*",
                     "",
                     md_table(headers, rows),
@@ -179,7 +179,7 @@ async def nyc_datastore_sql(
             return tool_result({
                 "status": "error",
                 "error": "Only SELECT queries are allowed",
-                "markdown": "Nur SELECT-Abfragen sind erlaubt.",
+                "markdown": "Only SELECT queries are allowed.",
             })
         
         # Execute SQL query via Socrata
@@ -194,7 +194,7 @@ async def nyc_datastore_sql(
             return tool_result({
                 "status": "error",
                 "error": "No data returned",
-                "markdown": "Keine Daten zur\u00fcckgegeben.",
+                "markdown": "No data returned.",
             })
         
         if params.format == "json":
@@ -212,8 +212,8 @@ async def nyc_datastore_sql(
                 rows = [list(row.values()) for row in result]
                 
                 lines = [
-                    f"## SQL-Abfrageergebnisse f\u00fcr Resource {params.resource_id}",
-                    f"*Abfrage: {params.sql[:100]}...*",
+                    f"## SQL query results for resource {params.resource_id}",
+                    f"*Query: {params.sql[:100]}...*",
                     f"*Zeilen: {len(result)}*",
                     "",
                     md_table(headers, rows),
@@ -289,7 +289,7 @@ async def nyc_get_resource(
             return tool_result({
                 "status": "error",
                 "error": "No data returned",
-                "markdown": "Keine Daten zur\u00fcckgegeben.",
+                "markdown": "No data returned.",
             })
         
         if params.format == "json":
@@ -309,13 +309,13 @@ async def nyc_get_resource(
             
             for i, row in enumerate(result[:10], 1):  # Show first 10 rows
                 if isinstance(row, dict):
-                    lines.append(f"### Datensatz {i}")
+                    lines.append(f"### Dataset {i}")
                     for key, value in row.items():
                         lines.append(f"- **{key}:** {value}")
                     lines.append("")
             
             if len(result) > 10:
-                lines.append(f"*... und {len(result) - 10} weitere Datens\u00e4tze*")
+                lines.append(f"*... and {len(result) - 10} more datasets*")
             
             return tool_result({
                 "status": "success",
