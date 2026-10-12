@@ -17,8 +17,6 @@ services:
       - AIRNOW_API_KEY=${AIRNOW_API_KEY:-}
       - MTA_API_KEY=${MTA_API_KEY:-}
       - WASTE_INTEL_API_KEY=${WASTE_INTEL_API_KEY:-}
-    volumes:
-      - ./logs:/app/logs
     networks:
       - waste-intel-network
     depends_on:
@@ -58,7 +56,6 @@ services:
       - POSTGRES_DB=wasteintel
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init_database.sql:/docker-entrypoint-initdb.d/init_database.sql
     networks:
       - waste-intel-network
     healthcheck:
@@ -92,7 +89,6 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     networks:
       - waste-intel-network
@@ -106,7 +102,6 @@ services:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana:/etc/grafana/provisioning
     networks:
       - waste-intel-network
     depends_on:
@@ -122,28 +117,6 @@ services:
       - "9001:9001"
     volumes:
       - mqtt_data:/var/lib/mosquitto
-      - ./mqtt/config:/mosquitto/config
-      - ./mqtt/log:/mosquitto/log
-    networks:
-      - waste-intel-network
-
-  # ML Service (Placeholder - would be separate service)
-  ml-service:
-    image: python:3.11-slim
-    container_name: ml-service
-    restart: unless-stopped
-    ports:
-      - "8002:8002"
-    networks:
-      - waste-intel-network
-
-  # Knowledge Graph Service (Placeholder - would be separate service)
-  kg-service:
-    image: python:3.11-slim
-    container_name: kg-service
-    restart: unless-stopped
-    ports:
-      - "8003:8003"
     networks:
       - waste-intel-network
 
@@ -157,7 +130,7 @@ services:
     ports:
       - "8004:8004"
     environment:
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}"
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openai/gpt-4o-mini}
       - WASTE_INTEL_API_URL=http://waste-intel-api:8001
@@ -170,15 +143,11 @@ services:
       - REQUIRE_API_KEY=false
       - DEBUG=${DEBUG:-false}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    volumes:
-      - ./copilot_service/logs:/app/logs
     networks:
       - waste-intel-network
     depends_on:
       - waste-intel-api
       - nyc-opendata-mcp
-      - kg-service
-      - ml-service
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8004/health').raise_for_status()"]
       interval: 30s
