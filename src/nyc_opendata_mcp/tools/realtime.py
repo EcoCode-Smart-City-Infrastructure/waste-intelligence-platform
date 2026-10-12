@@ -20,7 +20,7 @@ from ..formatters import (
     json_out,
     md_table,
 )
-from ..http_client import airnow_request, mta_request, noaa_request, socrata_request
+from ..http_client import airnow_request, mta_request, noaa_request, socrata_request, soql_str
 from ..models import tool_result
 
 
@@ -436,7 +436,7 @@ async def nyc_pedestrian_traffic(params: PedestrianInput) -> Annotated[CallToolR
         }
         
         if params.location:
-            api_params["$where"] = f"location LIKE '%{params.location}%'"
+            api_params["$where"] = "location LIKE " + soql_str(f"%{params.location}%")
         
         result = await socrata_request(dataset_id, "json", **api_params)
         
@@ -555,9 +555,9 @@ async def nyc_mta_ridership(params: MTARidershipInput) -> Annotated[CallToolResu
         }
         
         if params.line:
-            api_params["$where"] = f"line = '{params.line}'"
+            api_params["$where"] = f"line = {soql_str(params.line)}"
         if params.station:
-            api_params["$where"] = f"station = '{params.station}'"
+            api_params["$where"] = f"station = {soql_str(params.station)}"
         
         result = await socrata_request(dataset_id, "json", **api_params)
         
@@ -670,7 +670,7 @@ async def nyc_parking_live(params: ParkingLiveInput) -> Annotated[CallToolResult
         }
         
         if params.lot_id:
-            api_params["$where"] = f"lot_id = '{params.lot_id}'"
+            api_params["$where"] = f"lot_id = {soql_str(params.lot_id)}"
         
         result = await socrata_request(dataset_id, "json", **api_params)
         
