@@ -18,7 +18,7 @@ from ..formatters import (
     to_dataset_summary,
     to_resource_info,
 )
-from ..http_client import socrata_request
+from ..http_client import socrata_request, soql_str
 from ..models import (
     AnalysisResult,
     DatasetAnalysis,
@@ -90,7 +90,7 @@ async def nyc_search_datasets(
         
         # Filter by category if specified
         if params.filter_category:
-            api_params["$where"] = f"category='{params.filter_category}'"
+            api_params["$where"] = f"category={soql_str(params.filter_category)}"
 
         # Use the dataset search endpoint
         result = await socrata_request("", "json", **api_params)
