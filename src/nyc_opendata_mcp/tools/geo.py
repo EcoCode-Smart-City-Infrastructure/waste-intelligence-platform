@@ -124,6 +124,7 @@ async def nyc_geo_features(params: GeoFeaturesInput) -> Annotated[CallToolResult
 
     Returns:
         Features from the specified layer
+    Note: this tool currently returns simulated sample data, not live data.
     """
     try:
         # Get layer info
@@ -145,6 +146,7 @@ async def nyc_geo_features(params: GeoFeaturesInput) -> Annotated[CallToolResult
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated",
                 "data": {
                     "layer_id": params.layer_id,
                     "layer_name": service_name,
@@ -194,6 +196,7 @@ async def nyc_geo_features(params: GeoFeaturesInput) -> Annotated[CallToolResult
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
@@ -409,6 +412,7 @@ async def nyc_geo_spatial_query(params: SpatialQueryInput) -> Annotated[CallTool
 
     Returns:
         Features within the specified radius
+    Note: this tool currently returns simulated sample data, not live data.
     """
     try:
         # For now, return sample features near the point
@@ -436,6 +440,7 @@ async def nyc_geo_spatial_query(params: SpatialQueryInput) -> Annotated[CallTool
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated",
                 "data": [f.model_dump() for f in filtered_features],
                 "markdown": json_out([f.model_dump() for f in filtered_features]),
             })
@@ -470,6 +475,7 @@ async def nyc_geo_spatial_query(params: SpatialQueryInput) -> Annotated[CallTool
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
