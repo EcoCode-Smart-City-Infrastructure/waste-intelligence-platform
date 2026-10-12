@@ -15,7 +15,7 @@ from ..formatters import (
     json_out,
     md_table,
 )
-from ..http_client import socrata_request
+from ..http_client import socrata_request, soql_str
 from ..models import WasteDataset, tool_result
 
 
@@ -65,7 +65,7 @@ async def nyc_waste_datasets(params: WasteDatasetsInput) -> Annotated[CallToolRe
             return tool_result({
                 "status": "error",
                 "error": "No waste datasets found",
-                "markdown": "Keine Abfalldatens\u00e4tze gefunden.",
+                "markdown": "No waste datasets found.",
             })
         
         if params.format == "json":
@@ -77,8 +77,8 @@ async def nyc_waste_datasets(params: WasteDatasetsInput) -> Annotated[CallToolRe
         
         # Format as Markdown
         lines = [
-            "## NYC Abfallwirtschaft Datens\u00e4tze",
-            f"*Datens\u00e4tze: {len(datasets)}*",
+            "## NYC Waste Management Datasets",
+            f"*Datasets: {len(datasets)}*",
             "",
         ]
         
@@ -88,7 +88,7 @@ async def nyc_waste_datasets(params: WasteDatasetsInput) -> Annotated[CallToolRe
             lines.append(f"- **Kategorie:** {dataset.category}")
             lines.append(f"- **Aktualisierung:** {dataset.update_frequency}")
             lines.append(f"- **Letzte Aktualisierung:** {dataset.last_updated}")
-            lines.append(f"- **Beschreibung:** {dataset.description}")
+            lines.append(f"- **Description:** {dataset.description}")
             lines.append("")
         
         return tool_result({
@@ -213,7 +213,7 @@ async def nyc_waste_tonnage(params: TonnageInput) -> Annotated[CallToolResult, s
         # Apply filters (month column is "YYYY / MM")
         where_clauses = []
         if params.borough:
-            where_clauses.append(f"borough = '{params.borough}'")
+            where_clauses.append(f"borough = {soql_str(params.borough)}")
         if params.year and params.month:
             where_clauses.append(f"month = '{params.year} / {params.month:02d}'")
         elif params.year:
@@ -259,8 +259,8 @@ async def nyc_waste_tonnage(params: TonnageInput) -> Annotated[CallToolResult, s
                 rows = [list(row.values()) for row in result]
                 
                 lines = [
-                    "## Abfall-Tonnage NYC",
-                    f"*Datens\u00e4tze: {len(result)}*",
+                    "## NYC Waste Tonnage",
+                    f"*Datasets: {len(result)}*",
                     "",
                     md_table(headers, rows),
                 ]
@@ -377,7 +377,7 @@ async def nyc_waste_facilities(params: FacilitiesInput) -> Annotated[CallToolRes
         # Apply filters (the dataset has no borough column)
         where_clauses = []
         if params.facility_type:
-            where_clauses.append(f"facility_type = '{params.facility_type}'")
+            where_clauses.append(f"facility_type = {soql_str(params.facility_type)}")
 
         if where_clauses:
             api_params["$where"] = " AND ".join(where_clauses)
@@ -400,23 +400,23 @@ async def nyc_waste_facilities(params: FacilitiesInput) -> Annotated[CallToolRes
         # Format as Markdown
         if isinstance(result, list):
             lines = [
-                "## Abfallwirtschaftseinrichtungen NYC",
-                f"*Einrichtungen: {len(result)}*",
+                "## NYC Waste Management Facilities",
+                f"*Facilities: {len(result)}*",
                 "",
             ]
             
             for facility in result[:20]:  # Show first 20
                 if isinstance(facility, dict):
                     lines.append(f"### {facility.get('facility_name', 'Unknown')}")
-                    lines.append(f"- **Typ:** {facility.get('facility_type', 'Unknown')}")
-                    lines.append(f"- **Eigent\u00fcmer:** {facility.get('facility_owner_dsny_or_private', 'Unknown')}")
-                    lines.append(f"- **Jahr:** {facility.get('calendar_year', 'Unknown')}")
+                    lines.append(f"- **Type:** {facility.get('facility_type', 'Unknown')}")
+                    lines.append(f"- **Owner:** {facility.get('facility_owner_dsny_or_private', 'Unknown')}")
+                    lines.append(f"- **Year:** {facility.get('calendar_year', 'Unknown')}")
                     if facility.get('facility_contracted_tons'):
-                        lines.append(f"- **Vertragstonnage:** {facility.get('facility_contracted_tons')} tons")
+                        lines.append(f"- **Contracted tonnage:** {facility.get('facility_contracted_tons')} tons")
                     lines.append("")
             
             if len(result) > 20:
-                lines.append(f"*... und {len(result) - 20} weitere Einrichtungen*")
+                lines.append(f"*... and {len(result) - 20} more facilities*")
             
             return tool_result({
                 "status": "success",
@@ -625,20 +625,20 @@ async def nyc_organics_collection(params: OrganicsInput) -> Annotated[CallToolRe
         if isinstance(result, list):
             lines = [
                 "## Organics-Sammlung NYC",
-                f"*Datens\u00e4tze: {len(result)}*",
+                f"*Datasets: {len(result)}*",
                 "",
             ]
             
             for data in result[:20]:  # Show first 20
                 if isinstance(data, dict):
-                    lines.append(f"### Fiskaljahr {data.get('fiscal_year', 'Unknown')}")
-                    lines.append(f"- **DSNY gesammelt:** {data.get('tons_collected_dsny', 0)} tons")
-                    lines.append(f"- **Nicht-DSNY gesammelt:** {data.get('tons_collected_non_dsny', 0)} tons")
-                    lines.append(f"- **Gesamt:** {data.get('total_tons_collected_all', 0)} tons")
+                    lines.append(f"### Fiscal year {data.get('fiscal_year', 'Unknown')}")
+                    lines.append(f"- **Collected by DSNY:** {data.get('tons_collected_dsny', 0)} tons")
+                    lines.append(f"- **Collected by non-DSNY:** {data.get('tons_collected_non_dsny', 0)} tons")
+                    lines.append(f"- **Total:** {data.get('total_tons_collected_all', 0)} tons")
                     lines.append("")
             
             if len(result) > 20:
-                lines.append(f"*... und {len(result) - 20} weitere Datens\u00e4tze*")
+                lines.append(f"*... and {len(result) - 20} more datasets*")
             
             return tool_result({
                 "status": "success",
@@ -754,7 +754,7 @@ async def nyc_recycling_contamination(params: ContaminationInput) -> Annotated[C
         where_clauses = []
         if params.borough:
             where_clauses.append(
-                f"upper(district) like '%{params.borough[:3].upper()}%'"
+                "upper(district) like " + soql_str(f"%{params.borough[:3].upper()}%")
             )
         if params.year:
             where_clauses.append(f"fiscal_year = '{params.year}'")
@@ -781,20 +781,20 @@ async def nyc_recycling_contamination(params: ContaminationInput) -> Annotated[C
         if isinstance(result, list):
             lines = [
                 "## Recycling-Kontamination NYC",
-                f"*Datens\u00e4tze: {len(result)}*",
+                f"*Datasets: {len(result)}*",
                 "",
             ]
             
             for data in result[:20]:  # Show first 20
                 if isinstance(data, dict):
                     lines.append(f"### {data.get('month_name', '')} {data.get('fiscal_year', '')} - {data.get('district', 'Unknown')}")
-                    lines.append(f"- **Diversionsrate:** {data.get('diversion_rate_total_total_recycling_total_waste_', '?')}%")
-                    lines.append(f"- **Erfassungsrate Papier:** {data.get('capture_rate_paper_total_paper_max_paper_', '?')}%")
-                    lines.append(f"- **Erfassungsrate MGP:** {data.get('capture_rate_mgp_total_mgp_max_mgp_', '?')}%")
+                    lines.append(f"- **Diversion rate:** {data.get('diversion_rate_total_total_recycling_total_waste_', '?')}%")
+                    lines.append(f"- **Paper capture rate:** {data.get('capture_rate_paper_total_paper_max_paper_', '?')}%")
+                    lines.append(f"- **MGP capture rate:** {data.get('capture_rate_mgp_total_mgp_max_mgp_', '?')}%")
                     lines.append("")
             
             if len(result) > 20:
-                lines.append(f"*... und {len(result) - 20} weitere Datens\u00e4tze*")
+                lines.append(f"*... and {len(result) - 20} more datasets*")
             
             return tool_result({
                 "status": "success",
