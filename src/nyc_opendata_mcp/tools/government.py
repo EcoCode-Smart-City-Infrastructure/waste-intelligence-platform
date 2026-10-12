@@ -15,7 +15,7 @@ from ..formatters import (
     json_out,
     md_table,
 )
-from ..http_client import http_get_json
+from ..http_client import http_get_json, socrata_request, soql_str
 from ..models import CouncilMember, Legislation, tool_result
 
 
@@ -36,6 +36,99 @@ class CouncilMembersInput(BaseModel):
     )
     format: OutputFormat = Field(default="markdown", description=_FORMAT_FIELD_DESC)
 
+
+
+# Real NYC Open Data datasets (verified October 2026)
+COUNCIL_MEMBERS_DATASET = "uvw5-9znb"  # City Council Members (1999 to Present)
+LEGISLATION_DATASET = "6ctv-n46c"  # City Council Legislation: Bills and Local Laws
+
+
+async def _fetch_council_members(
+    district: int | None = None,
+    search: str | None = None,
+    limit: int = 100,
+) -> list | None:
+    """Fetch council members from the real dataset.
+
+    Returns None when the request fails or yields nothing (caller falls
+    back to labeled simulated data). The dataset has no party, email or
+    phone columns.
+    """
+    params: dict = {"$limit": min(limit, 100), "$order": "district"}
+    where = []
+    if district:
+        where.append(f"district = '{district}'")
+    if search:
+        clauses = ["upper(name) like " + soql_str(f"%{search.upper()}%")]
+        if search.isdigit():  # district is numeric in Socrata
+            clauses.append(f"district = {search}")
+        where.append("(" + " OR ".join(clauses) + ")")
+    if where:
+        params["$where"] = " AND ".join(where)
+    try:
+        rows = await socrata_request(COUNCIL_MEMBERS_DATASET, "json", **params)
+    except Exception:
+        return None
+    if not rows:
+        return None
+    members = []
+    for r in rows:
+        try:
+            members.append(CouncilMember(
+                id=str(r.get("council_member_id", "")),
+                name=r.get("name", "Unknown"),
+                district=int(r.get("district", 0)),
+            ))
+        except (ValueError, TypeError):
+            continue
+    return members or None
+
+
+async def _fetch_legislation(
+    status: str | None = None,
+    search: str | None = None,
+    sponsor: str | None = None,
+    matter_id: str | None = None,
+    file_num: str | None = None,
+    limit: int = 50,
+) -> list | None:
+    """Fetch legislation from the real dataset. Returns None on failure."""
+    params: dict = {"$limit": min(limit, 100), "$order": "intro_date DESC"}
+    where = []
+    if matter_id:
+        where.append(f"matter_id = {soql_str(matter_id)}")
+    if file_num:
+        where.append("upper(file_num) = " + soql_str(file_num.upper()))
+    if status:
+        where.append("upper(status) like " + soql_str(f"%{status.upper()}%"))
+    if search:
+        safe = search.upper().replace("'", "''")
+        where.append(
+            f"(upper(name) like '%{safe}%' OR upper(title) like '%{safe}%' "
+            f"OR upper(summary) like '%{safe}%')"
+        )
+    if sponsor:
+        where.append("upper(primary_sponsor) like " + soql_str(f"%{sponsor.upper()}%"))
+    if where:
+        params["$where"] = " AND ".join(where)
+    try:
+        rows = await socrata_request(LEGISLATION_DATASET, "json", **params)
+    except Exception:
+        return None
+    if not rows:
+        return None
+    items = []
+    for r in rows:
+        sponsors = [r["primary_sponsor"]] if r.get("primary_sponsor") else []
+        items.append(Legislation(
+            id=str(r.get("matter_id", "")),
+            title=r.get("title") or r.get("name") or "Untitled",
+            type=str(r.get("file_num", "")),
+            status=r.get("status", ""),
+            introduced_date=str(r.get("intro_date", "")),
+            sponsors=sponsors,
+        ))
+    return items or None
 
 @mcp.tool(
     name="nyc_council_members",
@@ -59,17 +152,22 @@ async def nyc_council_members(params: CouncilMembersInput) -> Annotated[CallTool
 
     Returns:
         List of council members with contact information
+    Data source: City Council Members dataset (NYC Open Data). Falls back
+    to simulated sample data, labeled as such in the response.
     """
     try:
-        # Generate sample council members
-        # In production, this would query the actual API
-        members = _generate_sample_council_members()
-        
-        # Apply filters
-        if params.district:
-            members = [m for m in members if m.district == params.district]
-        if params.party:
-            members = [m for m in members if m.party.lower() == params.party.lower()]
+        # Real path: NYC Open Data council members dataset
+        members = await _fetch_council_members(district=params.district)
+        simulated = not members
+        if simulated:
+            # Labeled simulated fallback
+            members = _generate_sample_council_members()
+
+            # Apply filters
+            if params.district:
+                members = [m for m in members if m.district == params.district]
+            if params.party:
+                members = [m for m in members if m.party.lower() == params.party.lower()]
         
         if not members:
             return tool_result({
@@ -81,22 +179,24 @@ async def nyc_council_members(params: CouncilMembersInput) -> Annotated[CallTool
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": [m.model_dump() for m in members],
                 "markdown": json_out([m.model_dump() for m in members]),
             })
         
         # Format as Markdown table
-        headers = ["District", "Name", "Party", "Email", "Phone"]
+        headers = ["District", "Name"]
         rows = []
         for member in members:
             row = [
                 str(member.district),
                 member.name,
-                member.party,
-                member.email,
-                member.phone,
             ]
+            if member.party or member.email:
+                row += [member.party, member.email]
             rows.append(row)
+        if any(len(r) > 2 for r in rows):
+            headers += ["Party", "Email"]
         
         lines = [
             "## NYC Stadtrat Mitglieder",
@@ -107,6 +207,7 @@ async def nyc_council_members(params: CouncilMembersInput) -> Annotated[CallTool
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": "\n".join(lines),
         })
         
@@ -238,21 +339,27 @@ async def nyc_council_search(params: CouncilSearchInput) -> Annotated[CallToolRe
 
     Returns:
         List of matching council members
+    Data source: City Council Members dataset (NYC Open Data). Falls back
+    to simulated sample data, labeled as such in the response.
     """
     try:
-        members = _generate_sample_council_members()
-        
-        # Search by name, district, or email
-        query_lower = params.query.lower()
-        results = []
-        for member in members:
-            if (
-                query_lower in member.name.lower() or
-                query_lower in str(member.district) or
-                query_lower in member.email.lower() or
-                query_lower in member.party.lower()
-            ):
-                results.append(member)
+        # Real path: search the NYC Open Data council members dataset
+        results = await _fetch_council_members(search=params.query)
+        simulated = not results
+        if simulated:
+            members = _generate_sample_council_members()
+
+            # Search by name, district, or email
+            query_lower = params.query.lower()
+            results = []
+            for member in members:
+                if (
+                    query_lower in member.name.lower() or
+                    query_lower in str(member.district) or
+                    query_lower in member.email.lower() or
+                    query_lower in member.party.lower()
+                ):
+                    results.append(member)
         
         if not results:
             return tool_result({
@@ -264,6 +371,7 @@ async def nyc_council_search(params: CouncilSearchInput) -> Annotated[CallToolRe
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": [m.model_dump() for m in results],
                 "markdown": json_out([m.model_dump() for m in results]),
             })
@@ -285,6 +393,7 @@ async def nyc_council_search(params: CouncilSearchInput) -> Annotated[CallToolRe
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": "\n".join(lines),
         })
         
@@ -330,7 +439,7 @@ class LegislationInput(BaseModel):
 async def nyc_legislation(params: LegislationInput) -> Annotated[CallToolResult, str]:
     """Retrieve list of NYC Council legislation.
 
-    Data source: NYC Council Legistar API.
+    Data source: City Council Legislation dataset (NYC Open Data).
 
     Args:
         type: Optional legislation type filter
@@ -341,22 +450,29 @@ async def nyc_legislation(params: LegislationInput) -> Annotated[CallToolResult,
 
     Returns:
         List of legislation with details
+    Falls back to simulated sample data, labeled as such in the response.
     """
     try:
-        # Generate sample legislation
-        legislation = _generate_sample_legislation()
-        
-        # Apply filters
-        if params.type:
-            legislation = [l for l in legislation if l.type.lower() == params.type.lower()]
-        if params.status:
-            legislation = [l for l in legislation if l.status.lower() == params.status.lower()]
-        if params.sponsor:
-            legislation = [l for l in legislation if any(
-                params.sponsor.lower() in s.lower() for s in l.sponsors
-            )]
-        
-        legislation = legislation[:params.limit]
+        # Real path: NYC Open Data legislation dataset
+        legislation = await _fetch_legislation(
+            status=params.status, sponsor=params.sponsor, limit=params.limit
+        )
+        simulated = not legislation
+        if simulated:
+            # Labeled simulated fallback
+            legislation = _generate_sample_legislation()
+
+            # Apply filters
+            if params.type:
+                legislation = [l for l in legislation if l.type.lower() == params.type.lower()]
+            if params.status:
+                legislation = [l for l in legislation if l.status.lower() == params.status.lower()]
+            if params.sponsor:
+                legislation = [l for l in legislation if any(
+                    params.sponsor.lower() in s.lower() for s in l.sponsors
+                )]
+
+            legislation = legislation[:params.limit]
         
         if not legislation:
             return tool_result({
@@ -368,6 +484,7 @@ async def nyc_legislation(params: LegislationInput) -> Annotated[CallToolResult,
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": [l.model_dump() for l in legislation],
                 "markdown": json_out([l.model_dump() for l in legislation]),
             })
@@ -394,6 +511,7 @@ async def nyc_legislation(params: LegislationInput) -> Annotated[CallToolResult,
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": "\n".join(lines),
         })
         
@@ -501,16 +619,24 @@ async def nyc_legislation_detail(params: LegislationDetailInput) -> Annotated[Ca
 
     Returns:
         Detailed information about the legislation
+    Data source: City Council Legislation dataset (NYC Open Data). Falls back
+    to simulated sample data, labeled as such in the response.
     """
     try:
-        legislation = _generate_sample_legislation()
-        
-        # Find matching legislation
-        leg = None
-        for l in legislation:
-            if l.id == params.legislation_id:
-                leg = l
-                break
+        # Real path: look up by matter id, then by file number
+        items = await _fetch_legislation(matter_id=params.legislation_id)
+        if not items:
+            items = await _fetch_legislation(file_num=params.legislation_id)
+        simulated = not items
+        leg = items[0] if items else None
+        if simulated:
+            legislation = _generate_sample_legislation()
+
+            # Find matching legislation
+            for l in legislation:
+                if l.id == params.legislation_id:
+                    leg = l
+                    break
         
         if not leg:
             return tool_result({
@@ -522,6 +648,7 @@ async def nyc_legislation_detail(params: LegislationDetailInput) -> Annotated[Ca
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated" if simulated else "nyc-open-data-socrata",
                 "data": leg.model_dump(),
                 "markdown": json_out(leg.model_dump()),
             })
@@ -544,6 +671,7 @@ async def nyc_legislation_detail(params: LegislationDetailInput) -> Annotated[Ca
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated" if simulated else "nyc-open-data-socrata",
             "markdown": "\n".join(lines),
         })
         
@@ -590,6 +718,7 @@ async def nyc_mayoral_orders(params: MayoralOrdersInput) -> Annotated[CallToolRe
 
     Returns:
         List of mayoral orders
+    Note: this tool currently returns simulated sample data, not live data.
     """
     try:
         # Generate sample mayoral orders
@@ -611,6 +740,7 @@ async def nyc_mayoral_orders(params: MayoralOrdersInput) -> Annotated[CallToolRe
         if params.format == "json":
             return tool_result({
                 "status": "success",
+                "data_source": "simulated",
                 "data": orders,
                 "markdown": json_out(orders),
             })
@@ -636,6 +766,7 @@ async def nyc_mayoral_orders(params: MayoralOrdersInput) -> Annotated[CallToolRe
         
         return tool_result({
             "status": "success",
+            "data_source": "simulated",
             "markdown": "\n".join(lines),
         })
         
