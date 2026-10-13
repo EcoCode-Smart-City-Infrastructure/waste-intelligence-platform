@@ -57,6 +57,7 @@ services:
       - POSTGRES_DB=wasteintel
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./hub_layer/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     networks:
       - waste-intel-network
     healthcheck:
@@ -153,6 +154,22 @@ services:
       - CONF_THRESHOLD=${CONTAMINATION_CONF_THRESHOLD:-0.25}
     networks:
       - waste-intel-network
+
+  # Forecasting Service (real statistical forecasting + anomaly detection)
+  ml-service:
+    build:
+      context: .
+      dockerfile: services/forecasting/Dockerfile
+    container_name: forecasting-service
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=postgresql://timescale:${POSTGRES_PASSWORD:-password}@postgres:5432/wasteintel
+    networks:
+      - waste-intel-network
+    depends_on:
+      - postgres
 
   copilot-service:
     build:

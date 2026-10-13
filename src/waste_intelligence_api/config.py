@@ -21,7 +21,7 @@ class Config:
     DB_URL = os.environ.get("DB_URL", "postgresql://timescale@localhost/wasteintel")
     
     # ML Service settings
-    ML_URL = os.environ.get("ML_URL", "http://ml-service:8001")
+    ML_URL = os.environ.get("ML_URL", "http://ml-service:8002")
     ML_TIMEOUT = float(os.environ.get("ML_TIMEOUT", "30.0"))
     
     # Knowledge Graph settings
