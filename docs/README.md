@@ -1,39 +1,18 @@
-# Platform Overview
+# Waste Intelligence — Web App
 
-This project implements a distributed IoT mesh waste-intelligence platform for organic waste monitoring, diversion analytics, routing optimization, and city-scale operational intelligence.
+Zero-build static web app for the EcoCode Waste Intelligence Platform, published by GitHub Pages from branch `web-app`, folder `docs/`.
 
-## System layers
+## Views
+- **Dashboard** — demo fleet KPIs, urgent bins, live DSNY tonnage aggregated by borough.
+- **Live NYC Data** — direct Socrata queries: `ebb7-mvp5` (tonnage), `gaq9-z3hz` (diversion/capture), `6yag-pnij` (organics), `6r9j-qrwz` (facilities). Labelled sample fallback only if the live call fails.
+- **Bins & Routes** — demo fleet (hub API returns no bins), add/collect bins, nearest-neighbour collection route, localStorage persistence.
+- **Forecasting** — ports `services/forecasting/app.py`: current-cycle cut on a drop > 30 points, least-squares slope, R², time-to-full, z-score anomaly.
+- **Knowledge Graph** — the repo's real sample: `cloud_platform/analytics/kg/data/w2rkg_nyc_sample.json` (31 nodes, 55 edges), in `kg.json`.
+- **Contamination** — backend acceptance map from `services/contamination/app.py`, with manual material tagging. YOLOv11 itself needs the backend service and cannot run on Pages.
+- **Connect** — probes a locally running hub / forecasting / contamination service at `/health`.
 
-1. Sensor Layer
-   - ESP32-enabled bins with ultrasonic and load-cell sensing
-   - MQTT, LoRaWAN, BLE-Mesh uplink
-   - Battery management and calibration logic
-
-2. Mesh Layer
-   - MQTT broker, LoRaWAN server, and Node-RED aggregation
-   - Packet normalization and cluster synchronization
-
-3. Hub Layer
-   - Flask-based API and regional facility logic
-   - Haversine routing and facility forecasting
-
-4. Cloud Layer
-   - Ingestion, analytics, mapping, and dashboard services
-   - Predictive modeling and histographic analysis
-
-5. DevOps Layer
-   - Docker Compose orchestration
-   - Prometheus and Grafana monitoring
-   - GitHub Actions CI/CD
-
-## Data flow
-
-Sensor -> Mesh -> Hub -> Cloud -> Analytics -> Dashboards -> NYC agencies
-
-## Design goals
-
-- Real-time operational visibility
-- Auditable diversion metrics
-- Optimized facility routing and forecasting
-- Multi-scale mapping from building to borough
-- Safe and secure cloud deployment using environment variables and access controls
+## Run locally
+```bash
+python3 -m http.server 8000   # then open http://localhost:8000/
+```
+No build step, no API key.

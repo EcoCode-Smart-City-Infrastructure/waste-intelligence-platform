@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waste Intelligence — NYC Operations Web App</title>
+<meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true">♻</span>
+    <div><strong>Waste Intelligence</strong><span>NYC operations · EcoCode Smart City</span></div>
+  </div>
+  <nav id="nav" aria-label="Sections">
+    <a href="#dashboard" data-nav="dashboard">Dashboard</a>
+    <a href="#live" data-nav="live">Live NYC Data</a>
+    <a href="#bins" data-nav="bins">Bins &amp; Routes</a>
+    <a href="#forecast" data-nav="forecast">Forecasting</a>
+    <a href="#graph" data-nav="graph">Knowledge Graph</a>
+    <a href="#contamination" data-nav="contamination">Contamination</a>
+    <a href="#connect" data-nav="connect">Connect</a>
+  </nav>
+</header>
+
+<main>
+<!-- DASHBOARD -->
+<section id="view-dashboard" class="view">
+  <h1>NYC waste, in one operations view</h1>
+  <p class="lede">Live city data where it exists, a working demo fleet where the backend is not running, and every number labelled with its source. No login, no API key, no server needed — this page runs entirely in your browser.</p>
+  <div class="kpis" id="kpis"></div>
+  <div class="grid2">
+    <div class="card">
+      <h2>Urgent bins <span class="pill warn" id="urgentCount"></span></h2>
+      <p class="muted">Fill ≥ 80% or forecast to fill within 12 hours. Click a bin to open it in Forecasting.</p>
+      <ul id="urgentList" class="list"></ul>
+      <a class="btn" href="#bins">Manage all bins →</a>
+    </div>
+    <div class="card">
+      <h2>What each view does</h2>
+      <ul class="list">
+        <li><strong>Live NYC Data</strong> — pulls DSNY tonnage, organics, diversion and facility data straight from NYC Open Data (Socrata). Falls back to a labelled sample only if the network call fails.</li>
+        <li><strong>Bins &amp; Routes</strong> — add, update and collect demo bins, then build a nearest-neighbour collection route.</li>
+        <li><strong>Forecasting</strong> — ports the platform's real algorithm: current fill cycle, least-squares trend, R², time-to-full, and z-score anomaly check.</li>
+        <li><strong>Knowledge Graph</strong> — the repo's real 31-node / 55-edge W2RKG sample, searchable and clickable.</li>
+        <li><strong>Contamination</strong> — the backend's exact stream-acceptance map, with manual material tagging (the YOLOv11 model itself needs the backend service).</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Latest live tonnage <span class="pill" id="liveBadge">checking…</span></h2>
+    <div class="tablewrap"><table id="dashTonnage"><thead><tr><th>Month</th><th>Borough</th><th>Refuse (t)</th><th>Paper (t)</th><th>MGP (t)</th><th>Organics (t)</th></tr></thead><tbody></tbody></table></div>
+    <p class="muted small">Source: DSNY Monthly Tonnage Data, dataset <code>ebb7-mvp5</code> on data.cityofnewyork.us. If live data cannot be reached, this table shows the labelled sample and the badge says so.</p>
+  </div>
+</section>
+
+<!-- LIVE -->
+<section id="view-live" class="view hidden">
+  <h1>Live NYC data</h1>
+  <p class="lede">Direct Socrata queries — no proxy, no key. Use the filters, then check the source badge on each table.</p>
+  <div class="card controls">
+    <label>Dataset
+      <select id="liveDataset">
+        <option value="ebb7-mvp5">DSNY Monthly Tonnage (ebb7-mvp5)</option>
+        <option value="gaq9-z3hz">Recycling Diversion &amp; Capture Rates (gaq9-z3hz)</option>
+        <option value="6yag-pnij">Other Organics Collection Tonnages (6yag-pnij)</option>
+        <option value="6r9j-qrwz">DSNY Disposal Facilities Used by Year (6r9j-qrwz)</option>
+      </select>
+    </label>
+    <label>Borough / filter text <input id="liveFilter" placeholder="e.g. Brooklyn, Manhattan, 2025"></label>
+    <label>Rows <select id="liveLimit"><option>10</option><option selected>25</option><option>50</option></select></label>
+    <button class="btn primary" id="liveLoad">Load live data</button>
+    <span class="pill" id="liveSourceBadge">—</span>
+  </div>
+  <div class="card">
+    <div class="tablewrap"><table id="liveTable"><thead></thead><tbody></tbody></table></div>
+    <p class="muted small" id="liveNote"></p>
+    <p class="muted small">Dataset list and IDs are the ones the platform's MCP server queries in <code>src/nyc_opendata_mcp/tools/waste_datasets.py</code>. Open Data endpoints: <code>https://data.cityofnewyork.us/resource/&lt;id&gt;.json</code></p>
+  </div>
+</section>
+
+<!-- BINS -->
+<section id="view-bins" class="view hidden">
+  <h1>Bins &amp; routes</h1>
+  <p class="lede">Demo fleet — the hub API's bin list currently returns empty, so this fleet is generated in your browser and saved to localStorage. It is labelled demo everywhere, never presented as live sensor data.</p>
+  <div class="card controls">
+    <label>Borough <select id="binBorough"><option value="">All boroughs</option><option>Manhattan</option><option>Brooklyn</option><option>Queens</option><option>Bronx</option><option>Staten Island</option></select></label>
+    <label>Status <select id="binStatus"><option value="">All</option><option value="urgent">Urgent (≥80%)</option><option value="watch">Watch (60–79%)</option><option value="ok">OK (&lt;60%)</option></select></label>
+    <label>Search <input id="binSearch" placeholder="bin id or site"></label>
+    <button class="btn" id="routeBtn">Build route from urgent bins</button>
+    <button class="btn" id="resetFleet">Reset demo fleet</button>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2>Fleet <span class="pill" id="binCount"></span></h2>
+      <div class="tablewrap"><table id="binTable"><thead><tr><th>Bin</th><th>Site</th><th>Fill</th><th>Action</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Add a bin</h2>
+        <form id="addBinForm" class="form">
+          <label>Bin ID <input required id="newBinId" placeholder="BIN-MN-101"></label>
+          <label>Site <input required id="newBinSite" placeholder="e.g. Union Square"></label>
+          <label>Borough <select id="newBinBorough"><option>Manhattan</option><option>Brooklyn</option><option>Queens</option><option>Bronx</option><option>Staten Island</option></select></label>
+          <label>Fill % <input type="number" id="newBinFill" min="0" max="100" value="40"></label>
+          <button class="btn primary" type="submit">Add bin</button>
+        </form>
+      </div>
+      <div class="card" id="routeCard">
+        <h2>Collection route</h2>
+        <p class="muted" id="routeSummary">Press “Build route from urgent bins” — or select bins below by ticking them, then build a custom route.</p>
+        <ol id="routeList"></ol>
+        <button class="btn hidden" id="customRouteBtn">Build route from selected bins</button>
+        <button class="btn hidden" id="copyRouteBtn">Copy route as text</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FORECAST -->
+<section id="view-forecast" class="view hidden">
+  <h1>Forecasting &amp; anomaly detection</h1>
+  <p class="lede">Same math as <code>services/forecasting/app.py</code>: drop pre-collection history after a fill drop over 30 points, fit a least-squares line to the current cycle, report slope, R² and time-to-full. Anomaly = z-score of the latest reading against its own history.</p>
+  <div class="card controls">
+    <label>Bin <select id="fcBin"></select></label>
+    <label>Horizon <select id="fcHorizon"><option value="6">6 h</option><option value="12">12 h</option><option selected value="24">24 h</option><option value="48">48 h</option></select></label>
+    <label>Add a reading (%) <input type="number" id="fcReading" min="0" max="100" placeholder="e.g. 73"></label>
+    <button class="btn primary" id="fcAdd">Add reading &amp; refit</button>
+  </div>
+  <div class="kpis" id="fcKpis"></div>
+  <div class="card"><canvas id="fcChart" width="900" height="320" aria-label="Fill history and forecast chart"></canvas>
+  <p class="muted small" id="fcNote"></p></div>
+  <div class="card">
+    <h2>How to read this</h2>
+    <ul class="list">
+      <li><strong>Slope</strong> is fill points per hour from the current cycle only. A collection (drop &gt; 30 points) restarts the cycle, exactly as the backend does.</li>
+      <li><strong>R² near 1</strong> means the trend fits well; near 0 means the forecast is shaky — treat time-to-full as a guide, not a promise.</li>
+      <li><strong>Anomaly</strong> flags a latest reading more than 2 standard deviations from its cycle mean. The backend raises 422 when history is too thin; here you get the same warning in plain words.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- GRAPH -->
+<section id="view-graph" class="view hidden">
+  <h1>Waste-to-Resource Knowledge Graph</h1>
+  <p class="lede">The repo's real sample graph (<code>cloud_platform/analytics/kg/data/w2rkg_nyc_sample.json</code>): 31 nodes, 55 edges. Click a node to highlight its neighbours; ask “what can this become?” and follow the edges.</p>
+  <div class="card controls">
+    <label>Search <input id="kgSearch" placeholder="e.g. Food Scraps, Biogas, Compost"></label>
+    <label>Type <select id="kgType"><option value="">All types</option><option>Waste_Type</option><option>Waste_Stream</option><option>Process</option><option>Resource</option><option>Facility</option><option>Actor</option><option>Constraint</option></select></label>
+    <label>Ask: what can <select id="kgAsk"></select> become? <button class="btn" id="kgAskBtn">Trace it</button></label>
+  </div>
+  <div class="grid2">
+    <div class="card"><svg id="kgSvg" viewBox="0 0 900 520" role="img" aria-label="Knowledge graph diagram"></svg>
+    <p class="muted small">Node colours group by type. Lines are the graph's real edges; hovering a node shows its connections.</p></div>
+    <div class="card" id="kgDetail"><h2>Pick a node</h2><p class="muted">Click any node, or use “Trace it” to follow waste → process → resource paths.</p></div>
+  </div>
+</section>
+
+<!-- CONTAMINATION -->
+<section id="view-contamination" class="view hidden">
+  <h1>Contamination check</h1>
+  <p class="lede">The production check is YOLOv11 (<code>CatSat/yolov11-litter-materials</code>) behind <code>POST /predict</code> in <code>services/contamination/app.py</code> — that model cannot run on GitHub Pages, so this page does the honest browser version: upload a photo to inspect it, tick the materials you can see, and the verdict uses the backend's exact acceptance map.</p>
+  <div class="grid2">
+    <div class="card">
+      <h2>1 · Photo (optional)</h2>
+      <input type="file" id="photoInput" accept="image/*">
+      <div id="photoPreview" class="photo"></div>
+      <p class="muted small">The photo never leaves your device. No model runs in this page — tagging below is manual, and the result says so.</p>
+      <h2>2 · Stream</h2>
+      <div class="radios" id="streamRadios">
+        <label><input type="radio" name="stream" value="recycling" checked> Recycling</label>
+        <label><input type="radio" name="stream" value="organics"> Organics</label>
+        <label><input type="radio" name="stream" value="landfill"> Landfill</label>
+      </div>
+      <h2>3 · Materials you can see</h2>
+      <div class="checks" id="materialChecks"></div>
+      <button class="btn primary" id="checkBtn">Check contamination</button>
+    </div>
+    <div class="card" id="contamResult"><h2>Verdict</h2><p class="muted">Tick materials and press Check contamination.</p>
+      <p class="muted small">Acceptance map, verbatim from the backend: recycling accepts Plastic, Metal, Glass, Paper. Landfill accepts Other. Organics accepts none of the detected litter materials — any of them in an organics bin is a contaminant by that map.</p></div>
+  </div>
+</section>
+
+<!-- CONNECT -->
+<section id="view-connect" class="view hidden">
+  <h1>Connect your own backend</h1>
+  <p class="lede">This static app works standalone. If you are running the platform locally or on a server, point it at your services and it will probe them — no credentials are stored.</p>
+  <div class="card">
+    <form id="connectForm" class="form">
+      <label>Hub API base URL <input id="hubUrl" placeholder="http://localhost:5000"></label>
+      <label>Forecasting service base URL <input id="fcUrl" placeholder="http://localhost:8002"></label>
+      <label>Contamination service base URL <input id="fcContamUrl" placeholder="http://localhost:8005"></label>
+      <button class="btn primary" type="submit">Probe /health endpoints</button>
+    </form>
+    <div id="connectResult"></div>
+    <p class="muted small">Run the stack with <code>docker compose up</code> from the repo root, then use the ports above. Browsers block plain-HTTP calls from an HTTPS Pages site — if a probe is blocked, that is mixed-content protection, not a backend failure; run this page locally (same folder, <code>python3 -m http.server</code>) for local backends.</p>
+  </div>
+  <div class="card">
+    <h2>Repo &amp; deployment notes</h2>
+    <ul class="list">
+      <li>Source repo: <a href="https://github.com/EcoCode-Smart-City-Infrastructure/waste-intelligence-platform">EcoCode-Smart-City-Infrastructure/waste-intelligence-platform</a></li>
+      <li>This app lives on branch <code>web-app</code>, in <code>docs/</code>, published by GitHub Pages.</li>
+      <li>Backend services are <em>not</em> deployed by Pages — forecasting, contamination and the hub API still need Docker / a server. This page labels every demo number so it is never mistaken for production telemetry.</li>
+    </ul>
+  </div>
+</section>
+</main>
+
+<footer><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
+<script src="app.js"></script>
+</body>
+</html>
