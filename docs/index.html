@@ -305,6 +305,17 @@
     <div id="wiBriefing"><p class="muted">Loading briefing…</p></div>
   </div>
   <div class="card">
+    <h2>Diagnose &amp; repair — limited, local-only troubleshooting</h2>
+    <p class="muted small">Say "diagnose the app" in chat, or press the button here. Diagnostics are read-only: they check live Socrata feeds, the knowledge graph and loops files, both briefing sources, saved local data, the Groq key's <em>presence</em> (never its value), and any Connect backend URLs you have entered this session. Repairs only ever change <em>this browser</em>: retry a feed, reload graph data, re-probe a backend, reset the demo fleet, or clear saved local data. A repair never runs from a chat message alone — you click the repair button, and destructive repairs ask you to confirm first. This card cannot fix a GitHub Pages deployment, a repo secret, an Actions workflow, or a server that is actually down; when that is the problem it says so and gives the exact next step instead of pretending it fixed it.</p>
+    <div class="controls">
+      <button class="btn primary" id="wiDiagBtn">Run diagnostics</button>
+      <span class="muted small" id="wiDiagStatus">Not run yet in this visit.</span>
+    </div>
+    <div id="wiDiagResults"></div>
+    <div id="wiRepairActions" class="controls"></div>
+    <p class="muted small" id="wiRepairResult"></p>
+  </div>
+  <div class="card">
     <h2>Chat</h2>
     <div id="wiChat" class="chatbox"></div>
     <div class="controls">
@@ -313,7 +324,7 @@
       <button class="btn" id="wiStopBtn">Stop</button>
       <button class="btn" id="wiNewChatBtn">New chat</button>
     </div>
-    <p class="muted small">Try: <button class="btn" data-quick="What can Food Scraps become?">What can Food Scraps become?</button> <button class="btn" data-quick="Explain the urgent bins">Explain the urgent bins</button> <button class="btn" data-quick="How do I check contamination?">How do I check contamination?</button> <button class="btn" data-quick="What does the loop bridge mean?">What does the loop bridge mean?</button></p>
+    <p class="muted small">Try: <button class="btn" data-quick="What can Food Scraps become?">What can Food Scraps become?</button> <button class="btn" data-quick="Explain the urgent bins">Explain the urgent bins</button> <button class="btn" data-quick="How do I check contamination?">How do I check contamination?</button> <button class="btn" data-quick="What does the loop bridge mean?">What does the loop bridge mean?</button> <button class="btn" data-quick="Diagnose the app">Diagnose the app</button></p>
     <p class="muted small">History: last 50 messages kept in this browser, last 10 sent to Groq as context. Streaming via Groq's OpenAI-compatible SSE endpoint. If you ask for a key or secret value, the assistant will refuse — it never echoes a saved key.</p>
   </div>
 </section>

@@ -561,6 +561,7 @@ function wiDemoAnswer(q){
     return `Demo fleet right now: ${fleet.length} bins, average fill ${Math.round(fleet.reduce((s,b)=>s+b.fill,0)/fleet.length)}%. Urgent bins (>=80%): ${urgent.length?urgent.map(b=>`${b.id} at ${b.site} (${b.fill}%)`).join(', '):'none'}. Open [Bins & Routes](#bins) to collect one, or [Forecasting](#forecast) to see when a bin will fill. These are demo bins — the hub API returns no bins — not live sensor readings.`;
   }
   if(l.includes('contamination')) return "Contamination check, from services/contamination/app.py: the production model is YOLOv11 (CatSat/yolov11-litter-materials). On Pages it cannot run, so the [Contamination](#contamination) view uses manual tagging with the backend's exact map: recycling accepts Plastic, Metal, Glass, Paper; landfill accepts Other; organics accepts none of those detected litter materials, so any of them in an organics bin is a contaminant by that map.";
+  if(l.includes('troubleshoot')||l.includes('diagnos')||l.includes('not working')||l.includes("isn't working")||l.includes('broken')||l.includes("won't load")||l.includes('blank')||l.includes('fix')||l.includes('repair')) return "Run diagnostics first: press 'Run diagnostics' in the Diagnose & repair card in this Assistant view. It checks live Socrata feeds, the graph and loops files, both briefing sources, saved local data, and your Connect backends, then offers click-to-apply repairs (retry feeds, reload graph, reset demo fleet, clear saved data). Repairs are local to this browser only and never run from chat alone. It cannot fix a Pages deployment, a repo secret, an Actions workflow, or a server that is actually down — in those cases it tells you the exact next step instead of claiming a fix.";
   if(l.includes('loop')||l.includes('bridge')||l.includes('cycle')) return "The loop is Waste → Process → Resource → Demand → Facility → back to Waste. Honest caveat: no node in the 31-node sample sits on a directed cycle, because the sample's demand actors do not operate facilities. So every demonstration loop has 4 real steps plus 1 dashed, labelled bridge (demand → facility, or facility → next load). Try the loop gallery in the [Knowledge Graph](#graph) view, or ask for a specific element, e.g. 'What can Food Scraps become?'";
   if(l.includes('forecast')||l.includes('fill')||l.includes('anomaly')) return "Forecasting ports services/forecasting/app.py: drop pre-collection history after a fill drop over 30 points, fit a least-squares line to the current cycle, and report slope, R-squared, time-to-full, plus a z-score anomaly check (flag over 2). See the [Forecasting](#forecast) view, pick a bin, and add a reading to refit.";
   if(l.includes('tonnage')||l.includes('live')||l.includes('nyc data')||l.includes('socrata')) return "Live NYC data comes straight from NYC Open Data (Socrata, no key): DSNY Monthly Tonnage ebb7-mvp5, Recycling Diversion and Capture gaq9-z3hz, Other Organics 6yag-pnij, and Disposal Facilities 6r9j-qrwz. Open the [Live NYC Data](#live) view to filter and load them; if a live call fails, that view shows a labelled sample instead of pretending it is live.";
@@ -610,12 +611,22 @@ $$('[data-quick]').forEach(b=>b.addEventListener('click',()=>{$('#wiChatInput').
 async function wiAsk(){
   const inp=$('#wiChatInput'); const q=inp.value.trim(); if(!q) return; inp.value='';
   wiAddMsg('you',q);
+  // Troubleshooting intent: ground truth is diagnostics, not the model.
+  // Run diagnostics, summarise them, and stop — never claim a fix the
+  // diagnostics did not perform, and never apply a repair from chat alone.
+  if(/troubleshoot|diagnos|not working|isn't working|isnt working|broken|won't load|wont load|blank page|fix (it|this|the|my)|repair/i.test(q)){
+    const d=await wiRunDiagnostics();
+    const f=d&&d.fails.length?`Failing now: ${d.fails.join(', ')}.`:'Nothing failing right now.';
+    const w=d&&d.warns.length?` Warnings: ${d.warns.join(', ')}.`:'';
+    wiAddMsg('assistant',`Diagnostics run (${d?d.total:'?'} checks). ${f}${w} Repairs are in the Diagnose & repair card above — click the repair you want; destructive repairs confirm first. I have not applied any repair from this message. If a feed or backend is failing, the card's repair is retry/reload/re-probe; if a server, deployment, secret, or workflow is the problem, the card gives the exact next step instead.`);
+    return;
+  }
   const backend=$('#wiChatBackend').value; const model=$('#wiGroqModel').value; localStorage.setItem('wi_chat_backend',backend); localStorage.setItem('wi_groq_model',model);
   const key=localStorage.getItem('wi_groq_key');
   if(/show (me )?your (groq )?key|what is (the|my) (groq )?key|reveal.*key|print.*secret/i.test(q)){wiAddMsg('assistant','I will not reveal a saved key or secret value — not in chat, not in the app, and not in any file. If you need to replace it, paste a new key in the Connect card above (it overwrites the old one in this browser only).'); return;}
   if(/(delete|remove|destroy).*(bin|fleet)|change.*route.*to|modify.*(bin|fleet)|actuat|run.*(command|task)/i.test(q)&&!/explain|how (do|would)/i.test(q)){wiAddMsg('assistant',wiDemoAnswer(q)); return;}
   if(backend==='demo'||!key){wiAddMsg('assistant',wiDemoAnswer(q)+'  [Offline demo answer — save a Groq key above for live streaming.]'); return;}
-  const sys=`You are the Waste Intelligence Assistant for the EcoCode Waste Intelligence Platform web app. Answer concisely and accurately about bins, forecasting, the knowledge graph, contamination, and NYC waste data. Grounding context: ${wiContext()} Rules: never claim demo fleet numbers are live sensor data; never invent conversion metrics — use only the sample numbers in context or say they are not in the sample; never reveal, repeat, or hint at any API key or secret; do not help delete, modify, or actuate backend systems — explain and point to the relevant view instead.`;
+  const sys=`You are the Waste Intelligence Assistant for the EcoCode Waste Intelligence Platform web app. Answer concisely and accurately about bins, forecasting, the knowledge graph, contamination, and NYC waste data. Grounding context: ${wiContext()} Rules: never claim demo fleet numbers are live sensor data; never invent conversion metrics — use only the sample numbers in context or say they are not in the sample; never reveal, repeat, or hint at any API key or secret; do not help delete, modify, or actuate backend systems; if the user reports something broken, do not claim you fixed it — tell them to run diagnostics in the Diagnose & repair card, which can only repair things in this browser. For other changes, explain and point to the relevant view instead.`;
   const history=wiChatHistory().filter(m=>m.who==='you'||m.who==='assistant').slice(-10).map(m=>({role:m.who==='you'?'user':'assistant',content:m.text}));
   const messages=[{role:'system',content:sys},...history,{role:'user',content:q}];
   const msgEl=wiAddMsg('assistant','Thinking…'); const bodyEl=msgEl.querySelector('div:last-child');
@@ -662,6 +673,78 @@ $('#connectForm')?.addEventListener('submit',async e=>{e.preventDefault(); const
   const out=await Promise.all(jobs.map(async([name,url])=>{try{const r=await fetch(url.replace(/\/$/,'')+'/health',{signal:AbortSignal.timeout(6000)}); const t=await r.text(); return `<li><strong>${name}</strong>: HTTP ${r.status} — ${esc(t.slice(0,160))}</li>`;}
     catch(err){return `<li><strong>${name}</strong>: unreachable / blocked — ${esc(err.message)} (see mixed-content note below)</li>`;}}));
   box.innerHTML='<ul class="list">'+out.join('')+'</ul>';});
+
+/* ---------- limited troubleshooting: diagnose & repair (local browser only) ---------- */
+async function wiProbe(url, ms=8000){
+  const t0=performance.now();
+  try{const r=await fetch(url,{signal:AbortSignal.timeout(ms)}); return {ok:r.ok,status:r.status,ms:Math.round(performance.now()-t0)};}
+  catch(e){return {ok:false,status:0,ms:Math.round(performance.now()-t0),error:e.name==='TimeoutError'?'timed out':e.message};}
+}
+function wiLocalInfo(key){
+  try{
+    const v=localStorage.getItem(key);
+    if(v===null) return {present:false};
+    let parsed='unparseable';
+    try{const j=JSON.parse(v); parsed=Array.isArray(j)?j.length+' items':typeof j;}catch(e){}
+    return {present:true,bytes:v.length,parsed};
+  }catch(e){return {present:false,error:e.message};}
+}
+let wiLastDiag=null;
+async function wiRunDiagnostics(){
+  const box=$('#wiDiagResults'), status=$('#wiDiagStatus'), actions=$('#wiRepairActions');
+  if(!box) return null;
+  status.textContent='Running…'; box.innerHTML='<p class="muted">Checking feeds, files, briefings, local data, and backends…</p>'; actions.innerHTML='';
+  const checks=[];
+  const add=(name,state,detail,repair)=>checks.push({name,state,detail,repair});
+  add('Browser connection', navigator.onLine?'ok':'fail', navigator.onLine?'Online.':'Browser reports offline — repairs cannot reach any feed until the device is back online.', null);
+  add('Page origin', location.protocol==='https:'?'ok':'warn', location.protocol+' — Pages is HTTPS; plain-HTTP backends will be blocked by the browser (mixed content), not by this app.', null);
+  const socrata=await Promise.all(['ebb7-mvp5','gaq9-z3hz','6yag-pnij','6r9j-qrwz'].map(async id=>{const p=await wiProbe(`https://data.cityofnewyork.us/resource/${id}.json?$limit=1`); return {id,p};}));
+  socrata.forEach(({id,p})=>add(`Live feed ${id}`, p.ok?'ok':'fail', p.ok?`HTTP ${p.status} in ${p.ms} ms.`:`Unreachable (${p.status||p.error||'network error'}). The Live and Dashboard views will show a labelled sample until it returns.`, 'retry-live'));
+  try{const r=await fetch('kg.json'); const j=await r.json(); add('Knowledge graph file', (j.nodes||[]).length===31&&(j.edges||[]).length===55?'ok':'warn', `${(j.nodes||[]).length} nodes / ${(j.edges||[]).length} edges (sample is 31 / 55).`, 'reload-kg');}
+  catch(e){add('Knowledge graph file','fail','kg.json could not be loaded — the Graph view will be empty until it loads.','reload-kg');}
+  try{const r=await fetch('loops.json'); const j=await r.json(); add('Curated loops file', Array.isArray(j)&&j.length?'ok':'warn', `${Array.isArray(j)?j.length:0} curated loops.`, 'reload-kg');}
+  catch(e){add('Curated loops file','fail','loops.json could not be loaded — the loop gallery will miss curated loops.','reload-kg');}
+  const bw=await wiProbe('ai-briefing.json'); add('Briefing — waste repo', bw.ok?'ok':'warn', bw.ok?`HTTP ${bw.status}.`:'No waste-repo briefing published yet (workflow not run, or file missing). This is expected until a briefing workflow runs.', null);
+  const bo=await wiProbe('https://etienne0101-lab.github.io/OpenForge-Workbench-/waste-ai-briefing.json'); add('Briefing — OpenForge repo (GROQ_API)', bo.ok?'ok':'warn', bo.ok?`HTTP ${bo.status}.`:'No OpenForge briefing published yet — copy the workflow to the OpenForge repo and dispatch it there. This card cannot run that workflow itself.', null);
+  const fleetInfo=wiLocalInfo('wip_fleet'); add('Saved demo fleet', fleetInfo.present?(fleetInfo.parsed==='unparseable'?'fail':'ok'):'warn', fleetInfo.present?`${fleetInfo.bytes} bytes, ${fleetInfo.parsed}.`:'No saved fleet — the seeded demo fleet is in use.', fleetInfo.parsed==='unparseable'?'reset-fleet':null);
+  const loopsInfo=wiLocalInfo('wip_custom_loops'); add('Saved custom loops', loopsInfo.parsed==='unparseable'?'fail':'ok', loopsInfo.present?`${loopsInfo.bytes} bytes, ${loopsInfo.parsed}.`:'None saved.', loopsInfo.parsed==='unparseable'?'clear-custom-loops':null);
+  const histInfo=wiLocalInfo('wi_assistant_history'); add('Assistant history', 'ok', histInfo.present?`${histInfo.bytes} bytes, ${histInfo.parsed}.`:'None saved in this browser.', null);
+  add('Groq key (presence only)', localStorage.getItem('wi_groq_key')?'ok':'warn', localStorage.getItem('wi_groq_key')?'A key is saved in this browser (its value is never read or shown here).':'No key saved — live chat falls back to demo mode. Paste a key in the Connect card above for live chat.', null);
+  const urls=[['Hub API',$('#hubUrl')?.value||''],['Forecasting',$('#fcUrl')?.value||''],['Contamination',$('#fcContamUrl')?.value||'']].filter(([,u])=>u.trim());
+  if(!urls.length){add('Connect backends','warn','No backend URLs entered in the Connect view this session — nothing to probe. Enter them in Connect and press Probe, or run diagnostics again after entering them.',null);}
+  else{
+    for(const [name,url] of urls){
+      const p=await wiProbe(url.replace(/\/$/,'')+'/health',6000);
+      const mixed=location.protocol==='https:'&&url.startsWith('http://');
+      add(`Backend ${name}`, p.ok?'ok':'fail', p.ok?`HTTP ${p.status} in ${p.ms} ms.`:`Unreachable (${p.status||p.error||'blocked'}). ${mixed?'This is likely mixed-content blocking: an HTTPS page cannot call a plain-HTTP backend — run this page locally (same folder, python3 -m http.server) or put the backend behind HTTPS.':''}`, 'reprobe-connect');
+    }
+  }
+  const fails=checks.filter(c=>c.state==='fail'), warns=checks.filter(c=>c.state==='warn');
+  box.innerHTML='<ul class="list">'+checks.map(c=>`<li><span class="pill${c.state==='ok'?'':' warn'}">${c.state.toUpperCase()}</span> <strong>${esc(c.name)}</strong> — ${esc(c.detail)}</li>`).join('')+'</ul>';
+  status.textContent=`Done: ${checks.filter(c=>c.state==='ok').length} OK, ${fails.length} failed, ${warns.length} warnings.`;
+  const repairs=[...new Set(checks.map(c=>c.repair).filter(Boolean))];
+  const labels={'retry-live':'Retry live feeds','reload-kg':'Reload graph + loops','reprobe-connect':'Re-probe Connect backends','reset-fleet':'Reset demo fleet (confirm)','clear-custom-loops':'Clear custom loops (confirm)','clear-history':'Clear assistant history','clear-all-local':'Clear all saved app data (confirm, key kept)','reload-page':'Reload page'};
+  actions.innerHTML='<p class="muted small">Repairs (each needs a click; destructive ones confirm first):</p>'+[...repairs,'clear-history','reload-page'].map(a=>`<button class="btn" data-repair="${a}">${labels[a]}</button>`).join('');
+  $$('#wiRepairActions [data-repair]').forEach(b=>b.addEventListener('click',()=>wiDoRepair(b.dataset.repair)));
+  wiLastDiag={fails:fails.map(c=>c.name),warns:warns.map(c=>c.name),total:checks.length};
+  return wiLastDiag;
+}
+async function wiDoRepair(action){
+  const out=$('#wiRepairResult'); out.textContent='Working…';
+  try{
+    if(action==='retry-live'){await loadLive(); await loadDashboard(); out.textContent='Live feeds retried — check the Dashboard and Live views for the LIVE badge, or a labelled sample if a feed is still down.';}
+    else if(action==='reload-kg'){await loadKG(); out.textContent='Graph and loops reloaded from kg.json / loops.json.';}
+    else if(action==='reprobe-connect'){const f=$('#connectForm'); if(f) f.dispatchEvent(new Event('submit',{cancelable:true})); out.textContent='Connect backends re-probed — see the Connect view result.';}
+    else if(action==='reset-fleet'){if(!confirm('Reset the demo fleet to its seeded defaults and delete saved readings? This cannot be undone.')){out.textContent='Fleet reset cancelled.'; return;} fleet=structuredClone(DEFAULT_BINS); selectedBins.clear(); saveFleet(); localStorage.removeItem('wip_readings'); renderBins(); loadDashboard(); out.textContent='Demo fleet reset to seeded defaults.';}
+    else if(action==='clear-custom-loops'){if(!confirm('Delete all custom loops saved in this browser? Curated loops are unaffected.')){out.textContent='Custom-loop clear cancelled.'; return;} localStorage.removeItem('wip_custom_loops'); await loadKG(); out.textContent='Custom loops cleared.';}
+    else if(action==='clear-history'){localStorage.removeItem('wi_assistant_history'); $('#wiChat').innerHTML=''; wiAddMsg('assistant','History cleared. Ask about bins, forecasting, the knowledge graph, or contamination.'); out.textContent='Assistant history cleared.';}
+    else if(action==='clear-all-local'){if(!confirm('Clear all saved app data in this browser (fleet, readings, custom loops, assistant history)? Your Groq key is NOT cleared by this.')){out.textContent='Clear-all cancelled.'; return;} ['wip_fleet','wip_readings','wip_custom_loops','wi_assistant_history'].forEach(k=>localStorage.removeItem(k)); fleet=structuredClone(DEFAULT_BINS); selectedBins.clear(); renderBins(); loadDashboard(); await loadKG(); $('#wiChat').innerHTML=''; wiAddMsg('assistant','Saved app data cleared (Groq key kept). Ask about bins, forecasting, the knowledge graph, or contamination.'); out.textContent='Saved app data cleared (Groq key kept).';}
+    else if(action==='reload-page'){location.reload(); return;}
+    await wiRunDiagnostics();
+  }catch(e){out.textContent='Repair failed: '+e.message;}
+}
+$('#wiDiagBtn')?.addEventListener('click',wiRunDiagnostics);
+
 
 /* ---------- boot ---------- */
 renderBins(); loadDashboard(); loadLive(); loadKG(); route();
