@@ -21,6 +21,8 @@
     <a href="#contamination" data-nav="contamination">Contamination</a>
     <a href="#connect" data-nav="connect">Connect</a>
     <a href="kepler.html">Kepler 3D Map</a>
+    <a href="login.html" id="authNavLink">Sign in</a>
+    <a href="#" id="authSignOut" hidden>Sign out</a>
   </nav>
 </header>
 
@@ -28,7 +30,7 @@
 <!-- DASHBOARD -->
 <section id="view-dashboard" class="view">
   <h1>NYC waste, in one operations view</h1>
-  <p class="lede">Live city data where it exists, a working demo fleet where the backend is not running, and every number labelled with its source. No login, no API key, no server needed — this page runs entirely in your browser.</p>
+  <p class="lede">Live city data where it exists, a working demo fleet where the backend is not running, and every number labelled with its source. No API key, no server needed — this page runs entirely in your browser, and signing in (optional, top right) keeps your session in this browser.</p>
   <div class="kpis" id="kpis"></div>
   <div class="grid2">
     <div class="card">
@@ -209,6 +211,8 @@
 </main>
 
 <footer><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
+<script src="auth-config.js"></script>
+<script src="auth.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

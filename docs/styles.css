@@ -22,3 +22,5 @@ svg text{font-size:11px;font-family:inherit}svg .node{cursor:pointer}svg .node c
 .radios,.checks{display:flex;gap:1rem;flex-wrap:wrap;margin:.5rem 0}.checks label,.radios label{font-weight:500;background:#f1f5f1;padding:.45rem .7rem;border-radius:999px;cursor:pointer}
 footer{max-width:1120px;margin:0 auto;padding:0 1rem 2rem;color:var(--muted);font-size:.85rem}
 @media(max-width:760px){.grid2,.kpis{grid-template-columns:1fr}nav{margin-left:0}h1{font-size:1.4rem}.controls input,.controls select{min-width:140px}main{padding:1rem .7rem}}
+/* Login header chip */
+#authSignOut{opacity:.85}

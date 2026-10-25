@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — Waste Intelligence Web App</title>
+<meta name="description" content="Create an account or sign in to the Waste Intelligence web app with email, Google, or Apple.">
+<link rel="stylesheet" href="styles.css">
+<style>
+.auth-wrap{max-width:520px;margin:2.5rem auto;padding:0 1rem}
+.auth-card{background:#fff;border:1px solid #dbe3dc;border-radius:16px;padding:1.5rem;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.auth-tabs{display:flex;gap:.5rem;margin-bottom:1rem}
+.auth-tabs button{flex:1;padding:.6rem;border:1px solid #c8d3c9;border-radius:999px;background:#f1f5f1;cursor:pointer;font-weight:700}
+.auth-tabs button.active{background:#1d7a4f;color:#fff;border-color:#1d7a4f}
+.auth-provider{width:100%;display:flex;align-items:center;justify-content:center;gap:.6rem;padding:.65rem;border:1px solid #c8d3c9;border-radius:999px;background:#fff;cursor:pointer;font-weight:700;margin:.4rem 0}
+.auth-provider:hover{background:#f1f5f1}
+.auth-msg{margin:.6rem 0;padding:.6rem .8rem;border-radius:9px;font-size:.9rem}
+.auth-msg.err{background:#fdecea;color:#b42318}
+.auth-msg.ok{background:#e6f2e9;color:#0f5132}
+.auth-note{color:#5a6a5f;font-size:.85rem}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true">♻</span>
+    <div><strong>Waste Intelligence</strong><span>NYC operations · EcoCode Smart City</span></div>
+  </div>
+  <nav><a href="index.html">← Back to the app</a></nav>
+</header>
+<main class="auth-wrap">
+  <h1>Sign in to Waste Intelligence</h1>
+  <p class="lede">Create an account with your email, or continue with Google or Apple. The app itself stays open as a demo — signing in saves your session in this browser and shows it in the app header.</p>
+
+  <div class="auth-card" id="alreadySignedIn" hidden>
+    <p id="alreadySignedInText"></p>
+    <p><a class="btn primary" href="index.html#dashboard">Continue to the app →</a> <button class="btn" id="signOutBtn" type="button">Sign out</button></p>
+  </div>
+
+  <div class="auth-card">
+    <div class="auth-tabs" role="tablist">
+      <button type="button" id="tabSignin" class="active">Sign in</button>
+      <button type="button" id="tabSignup">Create account</button>
+    </div>
+
+    <form id="signinForm" class="form">
+      <label>Email <input id="signinEmail" type="email" autocomplete="email" required></label>
+      <label>Password <input id="signinPassword" type="password" autocomplete="current-password" required></label>
+      <button class="btn primary" type="submit">Sign in</button>
+      <p id="signinMsg" class="auth-msg" hidden></p>
+      <p class="auth-note">No account yet? <a href="#" data-show-signup>Create one with your email</a>.</p>
+    </form>
+
+    <form id="signupForm" class="form" hidden>
+      <label>Display name <input id="signupName" type="text" autocomplete="name" required></label>
+      <label>Email <input id="signupEmail" type="email" autocomplete="email" required></label>
+      <label>Password (at least 8 characters) <input id="signupPassword" type="password" autocomplete="new-password" required></label>
+      <label>Confirm password <input id="signupPassword2" type="password" autocomplete="new-password" required></label>
+      <button class="btn primary" type="submit">Create account</button>
+      <p id="signupMsg" class="auth-msg" hidden></p>
+      <p class="auth-note">Accounts created here live in this browser only (localStorage, password stored as a SHA-256 hash, never in plain text). They do not travel between devices and no verification email is sent — this is demo-grade local auth, not a server account system. Do not reuse a real password here. For shared, server-verified accounts, connect Firebase Auth, Auth0, or Supabase in <code>auth-config.js</code>.</p>
+    </form>
+
+    <hr>
+    <button class="auth-provider" type="button" data-provider="google">G&nbsp; Continue with Google</button>
+    <button class="auth-provider" type="button" data-provider="apple">&nbsp; Continue with Apple</button>
+    <p id="providerMsg" class="auth-msg" hidden></p>
+    <div id="providerSetup" class="card" hidden><p id="providerSetupText"></p><p class="auth-note">In the meantime, <a href="#" data-show-signup>create a local email account</a> — that path works today, in this browser.</p></div>
+    <p class="auth-note" style="text-align:center"><a href="index.html#dashboard">Continue as a guest →</a></p>
+  </div>
+</main>
+<footer><p>Waste Intelligence web app · Sign-in is local to this browser unless a Google/Apple client ID is configured in <code>auth-config.js</code>.</p></footer>
+<script src="auth-config.js"></script>
+<script src="auth.js"></script>
+</body>
+</html>
