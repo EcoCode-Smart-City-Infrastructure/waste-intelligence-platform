@@ -159,7 +159,11 @@ function buildConfig() {
       },
       mapState: { latitude: 40.73, longitude: -73.94, zoom: 10.2, pitch: 45, bearing: 0, dragRotate: true, isSplit: false },
       mapStyle: {
-        styleType: 'carto_dark',
+        // Built-in 'dark' (Kepler 3's MapLibre default, no token) rather than
+        // a custom style id: the custom 'carto_dark' id did not produce
+        // visible tiles in live verification (plain light canvas), while the
+        // CARTO styles stay selectable from Kepler's own base-map control.
+        styleType: 'dark',
         topLayerGroups: {}, visibleLayerGroups: { label: true, road: true, border: true, building: true, water: true, land: true, '3d building': false },
         threeDBuildingColor: [9, 17, 24],
         mapStyles: {
