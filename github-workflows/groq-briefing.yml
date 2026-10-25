@@ -15,10 +15,12 @@
 # - The key is NEVER printed (no set -x, no header logging), NEVER committed,
 #   and NEVER appears in the web app bundle. The app reads only ai-briefing.json.
 #
-# SECRET NAME — CHANGE THIS ONE LINE IF YOURS DIFFERS, NEVER PASTE A VALUE:
-# If your Groq key is stored under a different secret name (for example
-# PROJECT_ATMA in another repo), replace GROQ_API_KEY below with that name.
-# Do not paste the key value into this file, into chat, or into any app file.
+# SECRET NAME — GROQ_API (same name as the OpenForge repo secret, for now):
+# This workflow runs in the WASTE repo, so it can only read a secret stored in
+# the WASTE repo. If you want this workflow (rather than the OpenForge one in
+# groq-waste-briefing-openforge.yml) to power the briefing, add a GROQ_API
+# secret to the waste repo with the same value. Do not paste the key value
+# into this file, into chat, or into any app file.
 name: Groq briefing (waste)
 
 on:
@@ -61,7 +63,7 @@ jobs:
 
       - name: Ask Groq for a briefing (secret used only inside this runner)
         env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API }}
         run: |
           python3 - << 'PY'
           import json, os, urllib.request
@@ -69,7 +71,7 @@ jobs:
           summary = open('/tmp/tonnage_summary.txt').read().strip()
           key = os.environ.get('GROQ_API_KEY', '')
           if not key:
-              raise SystemExit('GROQ_API_KEY secret is not set on this repo/branch — add it in Settings > Secrets and variables > Actions, then re-run.')
+              raise SystemExit('GROQ_API secret is not set on this repo/branch — add it in Settings > Secrets and variables > Actions, then re-run.')
           payload = json.dumps({
               'model': 'llama-3.3-70b-versatile',
               'temperature': 0.3,

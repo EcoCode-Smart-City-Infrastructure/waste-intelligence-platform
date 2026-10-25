@@ -1,0 +1,108 @@
+# Groq waste briefing — RUNS IN THE OPENFORGE REPO, NOT THE WASTE REPO.
+#
+# DESTINATION: copy this file BY HAND to .github/workflows/groq-waste-briefing.yml
+# in Etienne0101-lab/OpenForge-Workbench- (main branch, GitHub web UI: Add file >
+# Create new file, paste, commit to main), then run it from Actions > Groq waste
+# briefing > Run workflow, branch main. The GitHub App Muse uses cannot create
+# files under .github/workflows/ (403), so this one step is manual.
+#
+# WHY HERE: a repo secret can only be read by workflows running in its own repo.
+# GROQ_API lives in the OpenForge repo, so only an OpenForge workflow can use it.
+# This workflow reads secrets.GROQ_API inside the runner ONLY, fetches the latest
+# public DSNY tonnage from NYC Open Data (no key needed for Socrata), asks Groq
+# for a short briefing, and commits ONLY docs/waste-ai-briefing.json to main.
+# OpenForge Pages then serves that file at
+# https://etienne0101-lab.github.io/OpenForge-Workbench-/waste-ai-briefing.json
+# (Pages sends Access-Control-Allow-Origin: *, verified 2026-10-25), and the
+# Waste Intelligence web app's Assistant view fetches it and shows the newest
+# briefing. The key is NEVER printed (no set -x, no header logging), NEVER
+# committed, and NEVER appears in either web app bundle.
+#
+# SECRET NAME: GROQ_API, as installed in the OpenForge repo. Do not paste the
+# key value into this file, into chat, or into any app file.
+name: Groq waste briefing (OpenForge secret)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Fetch latest public DSNY tonnage (Socrata, no key)
+        run: |
+          curl -s "https://data.cityofnewyork.us/resource/ebb7-mvp5.json?\$limit=500&\$order=month%20DESC" -o /tmp/tonnage.json
+          python3 - << 'PY'
+          import json, collections
+          rows = json.load(open('/tmp/tonnage.json'))
+          month = rows[0]['month'] if rows else 'unknown'
+          by = collections.defaultdict(lambda: {'refuse': 0.0, 'paper': 0.0, 'mgp': 0.0, 'organics': 0.0})
+          for r in rows:
+              if r.get('month') != month:
+                  continue
+              b = by[r.get('borough', 'unknown')]
+              b['refuse'] += float(r.get('refusetonscollected') or 0)
+              b['paper'] += float(r.get('papertonscollected') or 0)
+              b['mgp'] += float(r.get('mgptonscollected') or 0)
+              b['organics'] += float(r.get('resorganicstons') or 0) + float(r.get('schoolorganictons') or 0)
+          summary = f"Latest DSNY tonnage month in the feed: {month}. " + "; ".join(
+              f"{k}: refuse {v['refuse']:.0f}t, paper {v['paper']:.0f}t, MGP {v['mgp']:.0f}t, organics {v['organics']:.0f}t"
+              for k, v in sorted(by.items()))
+          open('/tmp/tonnage_summary.txt', 'w').write(summary)
+          print(summary)
+          PY
+
+      - name: Ask Groq for a briefing (OpenForge secret, inside this runner only)
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API }}
+        run: |
+          python3 - << 'PY'
+          import json, os, urllib.request
+          from datetime import datetime, timezone
+          summary = open('/tmp/tonnage_summary.txt').read().strip()
+          key = os.environ.get('GROQ_API_KEY', '')
+          if not key:
+              raise SystemExit('GROQ_API secret is not set on Etienne0101-lab/OpenForge-Workbench- — add it in Settings > Secrets and variables > Actions, then re-run.')
+          payload = json.dumps({
+              'model': 'llama-3.3-70b-versatile',
+              'temperature': 0.3,
+              'max_tokens': 400,
+              'messages': [
+                  {'role': 'system', 'content': 'You write short public briefings for the EcoCode Waste Intelligence Platform. Use only the tonnage summary supplied. Do not invent numbers, do not claim sensor or demo-fleet data is live, and keep it under 200 words.'},
+                  {'role': 'user', 'content': f'Write a short briefing about NYC waste collection based on this summary. State the month and borough totals plainly.\n\n{summary}'},
+              ],
+          }).encode()
+          req = urllib.request.Request(
+              'https://api.groq.com/openai/v1/chat/completions',
+              data=payload, headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key})
+          with urllib.request.urlopen(req, timeout=60) as resp:
+              data = json.load(resp)
+          briefing = data['choices'][0]['message']['content'].strip()
+          out = {
+              'generated_at': datetime.now(timezone.utc).isoformat(),
+              'model': 'llama-3.3-70b-versatile',
+              'source_datasets': ['ebb7-mvp5 (DSNY Monthly Tonnage Data, data.cityofnewyork.us)'],
+              'source_repo': 'Etienne0101-lab/OpenForge-Workbench-',
+              'tonnage_summary': summary,
+              'briefing': briefing,
+          }
+          with open('docs/waste-ai-briefing.json', 'w') as f:
+              json.dump(out, f, indent=2)
+          print('Briefing written to docs/waste-ai-briefing.json (key never printed).')
+          PY
+
+      - name: Commit briefing to main branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/waste-ai-briefing.json
+          git commit -m "Waste AI briefing from Groq (OpenForge GROQ_API, Actions)" || echo "No briefing changes to commit."
+          git push origin main

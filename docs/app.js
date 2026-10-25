@@ -580,9 +580,22 @@ function wiInitAssistant(){
   const savedModel=localStorage.getItem('wi_groq_model'); if(savedModel) $('#wiGroqModel').value=savedModel;
   const savedBackend=localStorage.getItem('wi_chat_backend'); if(savedBackend) $('#wiChatBackend').value=savedBackend;
   try{const h=wiChatHistory(); if(h.length){h.forEach(m=>wiAddMsg(m.who,m.text));} else wiAddMsg('assistant',"Hi — I'm the Waste Assistant. Ask about bins, forecasting, the knowledge graph, or contamination. With a Groq key saved above I answer live; without one I answer from the demo knowledge base in this page.");}catch(e){wiAddMsg('assistant',"Hi — I'm the Waste Assistant. Ask about bins, forecasting, the knowledge graph, or contamination.");}
-  fetch('ai-briefing.json').then(r=>{if(!r.ok) throw new Error('no briefing'); return r.json();}).then(b=>{
-    $('#wiBriefing').innerHTML=`<p><span class="pill">${esc(b.generated_at||'')}</span> <span class="pill">${esc(b.model||'Groq')}</span></p><p>${esc(b.briefing||'')}</p><p class="muted small">Sources: ${esc((b.source_datasets||[]).join(', ')||'NYC Open Data (Socrata)')}. Generated inside GitHub Actions from the repo secret; the key itself is never in this file.</p>`;
-  }).catch(()=>{$('#wiBriefing').innerHTML='<p class="muted">No briefing yet. Copy <code>github-workflows/groq-briefing.yml</code> to <code>.github/workflows/groq-briefing.yml</code> on the <code>web-app</code> branch and dispatch it — it uses the repo secret inside the runner only, then commits <code>docs/ai-briefing.json</code> for this card.</p>';});
+  // Briefing sources (newest wins): this repo's own briefing, and the
+  // OpenForge repo's briefing — the OpenForge workflow runs with the
+  // GROQ_API secret stored in Etienne0101-lab/OpenForge-Workbench- and
+  // publishes docs/waste-ai-briefing.json on OpenForge Pages (CORS: *),
+  // so this app can read it without ever seeing the key. A secret in one
+  // repo cannot be read by another repo's workflow, which is why the
+  // OpenForge workflow must live in the OpenForge repo itself.
+  Promise.allSettled([
+    fetch('ai-briefing.json').then(r=>{if(!r.ok) throw new Error('no briefing'); return r.json();}).then(b=>({...b,_source:'Waste repo Actions (GROQ_API)'})),
+    fetch('https://etienne0101-lab.github.io/OpenForge-Workbench-/waste-ai-briefing.json').then(r=>{if(!r.ok) throw new Error('no briefing'); return r.json();}).then(b=>({...b,_source:b._source||'OpenForge repo Actions (GROQ_API)'}))
+  ]).then(results=>{
+    const briefings=results.filter(r=>r.status==='fulfilled').map(r=>r.value).sort((a,b)=>String(b.generated_at||'').localeCompare(String(a.generated_at||'')));
+    if(!briefings.length) throw new Error('no briefing');
+    const b=briefings[0];
+    $('#wiBriefing').innerHTML=`<p><span class="pill">${esc(b.generated_at||'')}</span> <span class="pill">${esc(b.model||'Groq')}</span> <span class="pill">${esc(b._source)}</span></p><p>${esc(b.briefing||'')}</p><p class="muted small">Sources: ${esc((b.source_datasets||[]).join(', ')||'NYC Open Data (Socrata)')}. Generated inside GitHub Actions from a repo secret; the key itself is never in this file.</p>`;
+  }).catch(()=>{$('#wiBriefing').innerHTML='<p class="muted">No briefing yet. For the OpenForge route: copy <code>github-workflows/groq-waste-briefing-openforge.yml</code> to <code>.github/workflows/groq-waste-briefing.yml</code> in <code>Etienne0101-lab/OpenForge-Workbench-</code> (by hand — the GitHub App cannot create workflow files) and dispatch it there; it uses that repo\'s <code>GROQ_API</code> secret inside the runner only, then publishes <code>docs/waste-ai-briefing.json</code> on OpenForge Pages for this card. Alternative: add a <code>GROQ_API</code> secret to this waste repo and run <code>github-workflows/groq-briefing.yml</code> here instead.</p>';});
 }
 $('#wiSaveKeyBtn')?.addEventListener('click',()=>{const k=$('#wiGroqKey').value.trim(); if(!k){alert('Paste a Groq key first.');return;} localStorage.setItem('wi_groq_key',k); localStorage.setItem('wi_groq_model',$('#wiGroqModel').value); $('#wiKeyStatus').textContent='Key saved in this browser'; $('#wiGroqKey').value=''; wiAddMsg('assistant','Groq key saved in this browser only. Ask me something and I will answer live via Groq.');});
 $('#wiRemoveKeyBtn')?.addEventListener('click',()=>{localStorage.removeItem('wi_groq_key'); $('#wiKeyStatus').textContent='No key saved — demo mode'; wiAddMsg('assistant','Saved Groq key removed. Back to offline demo mode.');});
