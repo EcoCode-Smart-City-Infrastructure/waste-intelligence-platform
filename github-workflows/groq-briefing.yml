@@ -1,0 +1,106 @@
+# Groq briefing for the Waste Intelligence web app — repo-secret backend, Actions only.
+#
+# WHY THIS FILE LIVES HERE, NOT IN .github/workflows/:
+# The GitHub App Muse uses cannot create files under .github/workflows/ (403).
+# Copy this file ONCE, by hand, to .github/workflows/groq-briefing.yml on the
+# web-app branch (GitHub web UI: Add file > Create new file, paste, commit to
+# web-app), then run it from Actions > Groq briefing > Run workflow, branch web-app.
+#
+# WHAT IT DOES (and does NOT do):
+# - Runs on demand only (workflow_dispatch). It does NOT power live chat.
+# - Inside the runner ONLY, it reads the repo secret named below as the Groq
+#   API key, fetches the latest public DSNY tonnage from NYC Open Data
+#   (no key needed for Socrata), asks Groq for a short briefing grounded in
+#   that tonnage, and commits ONLY docs/ai-briefing.json to the web-app branch.
+# - The key is NEVER printed (no set -x, no header logging), NEVER committed,
+#   and NEVER appears in the web app bundle. The app reads only ai-briefing.json.
+#
+# SECRET NAME — CHANGE THIS ONE LINE IF YOURS DIFFERS, NEVER PASTE A VALUE:
+# If your Groq key is stored under a different secret name (for example
+# PROJECT_ATMA in another repo), replace GROQ_API_KEY below with that name.
+# Do not paste the key value into this file, into chat, or into any app file.
+name: Groq briefing (waste)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out web-app branch
+        uses: actions/checkout@v4
+        with:
+          ref: web-app
+
+      - name: Fetch latest public DSNY tonnage (Socrata, no key)
+        run: |
+          curl -s "https://data.cityofnewyork.us/resource/ebb7-mvp5.json?\$limit=500&\$order=month%20DESC" -o /tmp/tonnage.json
+          python3 - << 'PY'
+          import json, collections
+          rows = json.load(open('/tmp/tonnage.json'))
+          month = rows[0]['month'] if rows else 'unknown'
+          by = collections.defaultdict(lambda: {'refuse': 0.0, 'paper': 0.0, 'mgp': 0.0, 'organics': 0.0})
+          for r in rows:
+              if r.get('month') != month:
+                  continue
+              b = by[r.get('borough', 'unknown')]
+              b['refuse'] += float(r.get('refusetonscollected') or 0)
+              b['paper'] += float(r.get('papertonscollected') or 0)
+              b['mgp'] += float(r.get('mgptonscollected') or 0)
+              b['organics'] += float(r.get('resorganicstons') or 0) + float(r.get('schoolorganictons') or 0)
+          summary = f"Latest DSNY tonnage month in the feed: {month}. " + "; ".join(
+              f"{k}: refuse {v['refuse']:.0f}t, paper {v['paper']:.0f}t, MGP {v['mgp']:.0f}t, organics {v['organics']:.0f}t"
+              for k, v in sorted(by.items()))
+          open('/tmp/tonnage_summary.txt', 'w').write(summary)
+          print(summary)
+          PY
+
+      - name: Ask Groq for a briefing (secret used only inside this runner)
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          python3 - << 'PY'
+          import json, os, urllib.request
+          from datetime import datetime, timezone
+          summary = open('/tmp/tonnage_summary.txt').read().strip()
+          key = os.environ.get('GROQ_API_KEY', '')
+          if not key:
+              raise SystemExit('GROQ_API_KEY secret is not set on this repo/branch — add it in Settings > Secrets and variables > Actions, then re-run.')
+          payload = json.dumps({
+              'model': 'llama-3.3-70b-versatile',
+              'temperature': 0.3,
+              'max_tokens': 400,
+              'messages': [
+                  {'role': 'system', 'content': 'You write short public briefings for the EcoCode Waste Intelligence Platform. Use only the tonnage summary supplied. Do not invent numbers, do not claim sensor or demo-fleet data is live, and keep it under 200 words.'},
+                  {'role': 'user', 'content': f'Write a short briefing about NYC waste collection based on this summary. State the month and borough totals plainly.\n\n{summary}'},
+              ],
+          }).encode()
+          req = urllib.request.Request(
+              'https://api.groq.com/openai/v1/chat/completions',
+              data=payload, headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key})
+          with urllib.request.urlopen(req, timeout=60) as resp:
+              data = json.load(resp)
+          briefing = data['choices'][0]['message']['content'].strip()
+          out = {
+              'generated_at': datetime.now(timezone.utc).isoformat(),
+              'model': 'llama-3.3-70b-versatile',
+              'source_datasets': ['ebb7-mvp5 (DSNY Monthly Tonnage Data, data.cityofnewyork.us)'],
+              'tonnage_summary': summary,
+              'briefing': briefing,
+          }
+          with open('docs/ai-briefing.json', 'w') as f:
+              json.dump(out, f, indent=2)
+          print('Briefing written to docs/ai-briefing.json (key never printed).')
+          PY
+
+      - name: Commit briefing to web-app branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/ai-briefing.json
+          git commit -m "AI briefing from Groq (Actions, repo secret)" || echo "No briefing changes to commit."
+          git push origin web-app

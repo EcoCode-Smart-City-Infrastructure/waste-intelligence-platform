@@ -10,7 +10,7 @@ const fmt = n => (n==null||isNaN(n)?'—':Number(n).toLocaleString(undefined,{ma
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- routing ---------- */
-const VIEWS=['dashboard','live','bins','forecast','graph','contamination','connect'];
+const VIEWS=['dashboard','live','bins','forecast','graph','contamination','connect','assistant'];
 function route(){
   const v=(location.hash||'#dashboard').slice(1).split('?')[0];
   const view=VIEWS.includes(v)?v:'dashboard';
@@ -18,6 +18,7 @@ function route(){
   $$('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.nav===view));
   if(view==='forecast') drawForecast();
   if(view==='graph' && kgData) drawGraph();
+  if(view==='assistant') wiInitAssistant();
 }
 window.addEventListener('hashchange',route);
 
@@ -530,6 +531,98 @@ $('#copyAskBtn')?.addEventListener('click',()=>{
   const msg=`Add a W2RKG loop to the waste web app (branch web-app, docs/loops.json): ${text}. Use the sample first (31 nodes / 55 edges in docs/kg.json); if the pathway is not in the sample, research real conversion data, label every source, and do not invent metrics. The loop format is {"name":"...","desc":"...","stages":["<node id>",...]} with stages in Waste → Process → Resource → Actor → Facility order. After pushing, the loop should appear in the app's Your loops gallery.`;
   navigator.clipboard?.writeText(msg).then(()=>{alert('Request copied — paste it into Muse chat.');}).catch(()=>{prompt('Copy this request for Muse:',msg);});
 });
+
+
+/* ---------- embedded AI assistant (mirrors copilot_service + ATMA chat) ---------- */
+function wiMd(t){
+  let h=esc(t);
+  h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>');
+  h=h.replace(/\[([^\]]+)\]\(#(dashboard|live|bins|forecast|graph|contamination|connect|assistant)\)/g,'<a href="#$2">$1</a>');
+  return h;
+}
+function wiChatHistory(){try{return JSON.parse(localStorage.getItem('wi_assistant_history')||'[]');}catch(e){return [];}}
+function wiSaveChatHistory(){try{const msgs=$$('#wiChat .msg').map(d=>({who:d.classList.contains('me')?'you':'assistant',text:d.dataset.text||''})).slice(-50); localStorage.setItem('wi_assistant_history',JSON.stringify(msgs));}catch(e){}}
+function wiAddMsg(who,text){
+  const d=document.createElement('div'); d.className='msg'+(who==='you'?' me':''); d.dataset.text=text;
+  d.innerHTML=`<div class="who">${who==='you'?'You':'Waste Assistant'}</div><div>${wiMd(text)}</div>`;
+  $('#wiChat').appendChild(d); $('#wiChat').scrollTop=$('#wiChat').scrollHeight; wiSaveChatHistory(); return d;
+}
+function wiContext(){
+  const urgent=fleet.filter(b=>b.fill>=80);
+  const avg=fleet.length?Math.round(fleet.reduce((s,b)=>s+b.fill,0)/fleet.length):0;
+  return `Waste Intelligence Platform web app (static GitHub Pages). Demo fleet: ${fleet.length} bins, average fill ${avg}%, urgent (>=80%): ${urgent.map(b=>`${b.id} ${b.site} ${b.fill}%`).join('; ')||'none'}. Knowledge graph sample: 31 nodes, 55 edges (Waste -> Process -> Resource -> Demand -> Facility). No node sits on a directed cycle in the sample: demand actors do not operate facilities, so loops have 4 real steps + 1 labelled bridge. Live data comes from NYC Open Data Socrata (DSNY tonnage ebb7-mvp5, diversion gaq9-z3hz, organics 6yag-pnij, facilities 6r9j-qrwz). Contamination stream map: recycling accepts Plastic, Metal, Glass, Paper; landfill accepts Other; organics accepts none of the detected litter materials. Forecasting: current-cycle least-squares trend, R-squared, time-to-full, z-score anomaly. Demo fleet numbers are NOT live sensor data.`;
+}
+function wiDemoAnswer(q){
+  const l=q.toLowerCase();
+  if(l.includes('groq')||l.includes('secret')||l.includes('api key')) return "Security model: a repo secret is never in this browser bundle and cannot power live chat. It is only used inside a GitHub Actions workflow to refresh docs/ai-briefing.json. Live chat needs a Groq key you paste in the Connect card above, stored only in this browser's localStorage and sent only to api.groq.com. With no key, I answer from the built-in demo knowledge base in this page.";
+  if(l.includes('delete')||l.includes('remove a bin')||l.includes('change the route')||l.includes('modify')||l.includes('actuat')) return "I won't change bins or routes directly — this assistant is read-only, mirroring the platform copilot's guardrails (no write / delete / actuate actions). To change something, use the [Bins & Routes](#bins) view yourself, or the [Forecasting](#forecast) view for a bin. I can explain what a change would do first, if you like.";
+  if(l.includes('urgent')||l.includes('bin')){
+    const urgent=fleet.filter(b=>b.fill>=80);
+    return `Demo fleet right now: ${fleet.length} bins, average fill ${Math.round(fleet.reduce((s,b)=>s+b.fill,0)/fleet.length)}%. Urgent bins (>=80%): ${urgent.length?urgent.map(b=>`${b.id} at ${b.site} (${b.fill}%)`).join(', '):'none'}. Open [Bins & Routes](#bins) to collect one, or [Forecasting](#forecast) to see when a bin will fill. These are demo bins — the hub API returns no bins — not live sensor readings.`;
+  }
+  if(l.includes('contamination')) return "Contamination check, from services/contamination/app.py: the production model is YOLOv11 (CatSat/yolov11-litter-materials). On Pages it cannot run, so the [Contamination](#contamination) view uses manual tagging with the backend's exact map: recycling accepts Plastic, Metal, Glass, Paper; landfill accepts Other; organics accepts none of those detected litter materials, so any of them in an organics bin is a contaminant by that map.";
+  if(l.includes('loop')||l.includes('bridge')||l.includes('cycle')) return "The loop is Waste → Process → Resource → Demand → Facility → back to Waste. Honest caveat: no node in the 31-node sample sits on a directed cycle, because the sample's demand actors do not operate facilities. So every demonstration loop has 4 real steps plus 1 dashed, labelled bridge (demand → facility, or facility → next load). Try the loop gallery in the [Knowledge Graph](#graph) view, or ask for a specific element, e.g. 'What can Food Scraps become?'";
+  if(l.includes('forecast')||l.includes('fill')||l.includes('anomaly')) return "Forecasting ports services/forecasting/app.py: drop pre-collection history after a fill drop over 30 points, fit a least-squares line to the current cycle, and report slope, R-squared, time-to-full, plus a z-score anomaly check (flag over 2). See the [Forecasting](#forecast) view, pick a bin, and add a reading to refit.";
+  if(l.includes('tonnage')||l.includes('live')||l.includes('nyc data')||l.includes('socrata')) return "Live NYC data comes straight from NYC Open Data (Socrata, no key): DSNY Monthly Tonnage ebb7-mvp5, Recycling Diversion and Capture gaq9-z3hz, Other Organics 6yag-pnij, and Disposal Facilities 6r9j-qrwz. Open the [Live NYC Data](#live) view to filter and load them; if a live call fails, that view shows a labelled sample instead of pretending it is live.";
+  const matched=kgData?matchNodes(q):[];
+  if(matched.length){
+    const loop=buildElementLoop(matched[0]);
+    if(loop) return `${kgName(matched[0])} loop: ${loop.stages.map(s=>s.name).join(' → ')}. ${loop.transitions.filter(t=>t.real).length} of ${loop.transitions.length} steps are real sample edges; the rest are labelled bridges. Open the [Knowledge Graph](#graph) view and tap that element to play the animated loop with its full conversion metrics.`;
+  }
+  if(l.includes('knowledge graph')||l.includes('waste-to-resource')||l.includes('w2rkg')) return "The Waste-to-Resource Knowledge Graph (W2RKG) is the platform's semantic engine: waste types and streams → processes → resources → actors (demand) → facilities. The web app uses the repo's real 31-node / 55-edge sample in kg.json. Open the [Knowledge Graph](#graph) view for the circular navigation ring, the animated flow, and a loop for every element.";
+  return "I can explain this web app: bins and routes, forecasting, the knowledge graph and its loops, contamination checks, and live NYC data — all labelled as live, demo, or sample. Try one of the quick prompts above, or ask about a specific bin, waste type, process, or resource. With a Groq key saved above, I answer live via Groq; without one, I answer from the demo knowledge base in this page.";
+}
+let wiAbort=null, wiInitDone=false;
+function wiInitAssistant(){
+  if(wiInitDone) return; wiInitDone=true;
+  const hasKey=!!localStorage.getItem('wi_groq_key');
+  $('#wiKeyStatus').textContent=hasKey?'Key saved in this browser':'No key saved — demo mode';
+  const savedModel=localStorage.getItem('wi_groq_model'); if(savedModel) $('#wiGroqModel').value=savedModel;
+  const savedBackend=localStorage.getItem('wi_chat_backend'); if(savedBackend) $('#wiChatBackend').value=savedBackend;
+  try{const h=wiChatHistory(); if(h.length){h.forEach(m=>wiAddMsg(m.who,m.text));} else wiAddMsg('assistant',"Hi — I'm the Waste Assistant. Ask about bins, forecasting, the knowledge graph, or contamination. With a Groq key saved above I answer live; without one I answer from the demo knowledge base in this page.");}catch(e){wiAddMsg('assistant',"Hi — I'm the Waste Assistant. Ask about bins, forecasting, the knowledge graph, or contamination.");}
+  fetch('ai-briefing.json').then(r=>{if(!r.ok) throw new Error('no briefing'); return r.json();}).then(b=>{
+    $('#wiBriefing').innerHTML=`<p><span class="pill">${esc(b.generated_at||'')}</span> <span class="pill">${esc(b.model||'Groq')}</span></p><p>${esc(b.briefing||'')}</p><p class="muted small">Sources: ${esc((b.source_datasets||[]).join(', ')||'NYC Open Data (Socrata)')}. Generated inside GitHub Actions from the repo secret; the key itself is never in this file.</p>`;
+  }).catch(()=>{$('#wiBriefing').innerHTML='<p class="muted">No briefing yet. Copy <code>github-workflows/groq-briefing.yml</code> to <code>.github/workflows/groq-briefing.yml</code> on the <code>web-app</code> branch and dispatch it — it uses the repo secret inside the runner only, then commits <code>docs/ai-briefing.json</code> for this card.</p>';});
+}
+$('#wiSaveKeyBtn')?.addEventListener('click',()=>{const k=$('#wiGroqKey').value.trim(); if(!k){alert('Paste a Groq key first.');return;} localStorage.setItem('wi_groq_key',k); localStorage.setItem('wi_groq_model',$('#wiGroqModel').value); $('#wiKeyStatus').textContent='Key saved in this browser'; $('#wiGroqKey').value=''; wiAddMsg('assistant','Groq key saved in this browser only. Ask me something and I will answer live via Groq.');});
+$('#wiRemoveKeyBtn')?.addEventListener('click',()=>{localStorage.removeItem('wi_groq_key'); $('#wiKeyStatus').textContent='No key saved — demo mode'; wiAddMsg('assistant','Saved Groq key removed. Back to offline demo mode.');});
+$('#wiTestKeyBtn')?.addEventListener('click',async()=>{
+  const k=localStorage.getItem('wi_groq_key')||$('#wiGroqKey').value.trim(); if(!k){$('#wiKeyResult').textContent='No key to test — paste one above, or use demo mode.'; return;}
+  try{const r=await fetch('https://api.groq.com/openai/v1/models',{headers:{Authorization:'Bearer '+k}}); const j=await r.json().catch(()=>({})); $('#wiKeyResult').textContent=r.ok?`Key works: Groq returned ${(j.data||[]).length} models (error codes only are shown on failure; the key itself is never displayed).`:`Key test failed: HTTP ${r.status} — ${(j.error&&j.error.message)||'check the key and try again.'}`;}
+  catch(e){$('#wiKeyResult').textContent='Key test could not reach Groq: '+e.message;}
+});
+$('#wiGroqModel')?.addEventListener('change',e=>localStorage.setItem('wi_groq_model',e.target.value));
+$('#wiChatBackend')?.addEventListener('change',e=>localStorage.setItem('wi_chat_backend',e.target.value));
+$$('[data-quick]').forEach(b=>b.addEventListener('click',()=>{$('#wiChatInput').value=b.dataset.quick; wiAsk();}));
+async function wiAsk(){
+  const inp=$('#wiChatInput'); const q=inp.value.trim(); if(!q) return; inp.value='';
+  wiAddMsg('you',q);
+  const backend=$('#wiChatBackend').value; const model=$('#wiGroqModel').value; localStorage.setItem('wi_chat_backend',backend); localStorage.setItem('wi_groq_model',model);
+  const key=localStorage.getItem('wi_groq_key');
+  if(/show (me )?your (groq )?key|what is (the|my) (groq )?key|reveal.*key|print.*secret/i.test(q)){wiAddMsg('assistant','I will not reveal a saved key or secret value — not in chat, not in the app, and not in any file. If you need to replace it, paste a new key in the Connect card above (it overwrites the old one in this browser only).'); return;}
+  if(/(delete|remove|destroy).*(bin|fleet)|change.*route.*to|modify.*(bin|fleet)|actuat|run.*(command|task)/i.test(q)&&!/explain|how (do|would)/i.test(q)){wiAddMsg('assistant',wiDemoAnswer(q)); return;}
+  if(backend==='demo'||!key){wiAddMsg('assistant',wiDemoAnswer(q)+'  [Offline demo answer — save a Groq key above for live streaming.]'); return;}
+  const sys=`You are the Waste Intelligence Assistant for the EcoCode Waste Intelligence Platform web app. Answer concisely and accurately about bins, forecasting, the knowledge graph, contamination, and NYC waste data. Grounding context: ${wiContext()} Rules: never claim demo fleet numbers are live sensor data; never invent conversion metrics — use only the sample numbers in context or say they are not in the sample; never reveal, repeat, or hint at any API key or secret; do not help delete, modify, or actuate backend systems — explain and point to the relevant view instead.`;
+  const history=wiChatHistory().filter(m=>m.who==='you'||m.who==='assistant').slice(-10).map(m=>({role:m.who==='you'?'user':'assistant',content:m.text}));
+  const messages=[{role:'system',content:sys},...history,{role:'user',content:q}];
+  const msgEl=wiAddMsg('assistant','Thinking…'); const bodyEl=msgEl.querySelector('div:last-child');
+  wiAbort=new AbortController();
+  try{
+    const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},signal:wiAbort.signal,body:JSON.stringify({model,messages,temperature:0.3,max_tokens:1200,stream:true})});
+    if(!r.ok||!r.body){const t=await r.text(); bodyEl.textContent=`Chat error (${r.status}): ${t.slice(0,300)}. Check your key/model in the Connect card above.`; wiSaveChatHistory(); return;}
+    const reader=r.body.getReader(); const dec=new TextDecoder(); let buf='', full='';
+    while(true){const {done,value}=await reader.read(); if(done) break; buf+=dec.decode(value,{stream:true}); const parts=buf.split('\n\n'); buf=parts.pop();
+      for(const p of parts){const line=p.trim(); if(!line.startsWith('data:')) continue; const data=line.slice(5).trim(); if(data==='[DONE]') continue;
+        try{const j=JSON.parse(data); const tok=j.choices&&j.choices[0]&&j.choices[0].delta?j.choices[0].delta.content:''; if(tok){full+=tok; msgEl.dataset.text=full; bodyEl.innerHTML=wiMd(full); $('#wiChat').scrollTop=$('#wiChat').scrollHeight;}}catch{}}}
+    if(!full) bodyEl.textContent='Stream completed without a text response — try again or switch model/backend.';
+    wiSaveChatHistory();
+  }catch(e){if(e.name==='AbortError') bodyEl.textContent+='  [Stopped]'; else bodyEl.textContent='Network error: '+e.message+'. Check your key and connection.'; wiSaveChatHistory();}
+  finally{wiAbort=null;}
+}
+$('#wiSendBtn')?.addEventListener('click',wiAsk);
+$('#wiStopBtn')?.addEventListener('click',()=>{if(wiAbort) wiAbort.abort();});
+$('#wiChatInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault(); wiAsk();}});
+$('#wiNewChatBtn')?.addEventListener('click',()=>{$('#wiChat').innerHTML=''; localStorage.removeItem('wi_assistant_history'); wiAddMsg('assistant','New chat started. Ask about bins, forecasting, the knowledge graph, or contamination.');});
 
 
 /* ---------- contamination ---------- */

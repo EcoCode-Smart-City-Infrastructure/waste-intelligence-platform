@@ -60,3 +60,10 @@ body{background:linear-gradient(180deg,#eef4ec 0%,#f4f6f3 22%,#fdf8ec 100%)}
 #studioImport{width:100%;padding:.55rem .7rem;border:1px solid #c8d3c9;border-radius:9px;font:inherit}
 .kg-loops-card,.kg-ask-card{margin:1rem 0}
 @media(max-width:760px){.loop-gallery{grid-template-columns:1fr 1fr}}
+
+/* --- Embedded assistant (mirrors ATMA chat + copilot guardrails) --- */
+.chatbox{height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:12px;padding:.8rem;background:#fbfdfb;margin-bottom:.8rem}
+.msg{margin:.6rem 0;padding:.7rem .9rem;border-radius:14px;background:#eef4ec;max-width:92%}
+.msg.me{margin-left:auto;background:#dcefe2;text-align:left}
+.msg .who{font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:.2rem}
+.msg code{background:#e6ede7;padding:.1rem .3rem;border-radius:4px}

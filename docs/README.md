@@ -25,6 +25,16 @@ Zero-build static web app for the EcoCode Waste Intelligence Platform, published
   Stages are node IDs from `kg.json`, in Waste → Process → Resource → Actor → Facility order. Transitions between consecutive stages are computed from `kg.json` edges at render time; a missing edge is rendered as a labelled bridge.
 - **Ask Muse in chat (the AI research step)**: the static Pages app runs no AI model. To get a researched loop, tell Muse in chat, for example: “Add a W2RKG loop to the waste web app (branch web-app, docs/loops.json): coffee grounds to animal feed.” Muse should use the sample first, then research real conversion data with labelled sources, never invent metrics, add the loop to `loops.json`, and push it — it then appears in “Your loops” on the next visit. The in-app “Copy request for Muse” button copies exactly that request template with your words filled in.
 
+## Embedded AI assistant (Assistant view)
+
+Mirrors the platform's `copilot_service/` (prompt builder, context manager, tool router, guardrails) and Project ATMA's streaming chat, adapted to a static Pages app.
+
+- **Live chat — Groq direct (most effective for Pages):** paste your own Groq key in the Assistant view's Connect card. It lives only in that browser's localStorage and is sent only to `https://api.groq.com/openai/v1/chat/completions`, streaming (SSE), with last 50 messages kept locally and last 10 sent as context. Models: `llama-3.3-70b-versatile` (default) and `llama-3.1-8b-instant`. A “Test key” button calls only the models endpoint and reports status/count, never the key.
+- **Demo mode (no key):** answers from a built-in knowledge base in the page — fleet summary, knowledge-graph loops, contamination map, forecasting method, live-data sources — labelled as demo.
+- **Repo-secret backend — Actions briefing only:** a repo secret cannot power live chat on a static site, because the browser can never read it and any key shipped in the bundle would be public. Its one legitimate use here is `github-workflows/groq-briefing.yml`: copy it by hand to `.github/workflows/groq-briefing.yml` on the `web-app` branch (the GitHub App cannot create workflow files) and dispatch it. Inside the runner only, it reads `${{ secrets.GROQ_API_KEY }}` (rename that one line if your secret is named differently — never paste the value), fetches the latest public DSNY tonnage, asks Groq for a short briefing, and commits only `docs/ai-briefing.json`, which the Assistant view displays. The key is never printed or committed.
+- **Guardrails:** the assistant is read-only. It will not delete or modify bins, change routes, actuate anything, or reveal a key/secret value. It explains and links to the view where you make the change yourself. This mirrors `copilot_service`'s forbidden actions (route/actuate/write/delete) and sensitive-field handling.
+- **Optional shared-key proxy (not built by default):** if you later want visitors to chat without pasting their own key, the correct route is a tiny serverless proxy (Cloudflare Worker / Vercel Function) holding the Groq key as *its own* secret with rate limiting — not a repo secret, and not in this repo. Say the word and that is a separate, small deployment.
+
 ## Run locally
 ```bash
 python3 -m http.server 8000   # then open http://localhost:8000/

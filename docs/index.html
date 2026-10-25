@@ -20,6 +20,7 @@
     <a href="#graph" data-nav="graph">Knowledge Graph</a>
     <a href="#contamination" data-nav="contamination">Contamination</a>
     <a href="#connect" data-nav="connect">Connect</a>
+    <a href="#assistant" data-nav="assistant">Assistant</a>
     <a href="kepler.html">Kepler 3D Map</a>
     <a href="login.html" id="authNavLink">Sign in</a>
     <a href="#" id="authSignOut" hidden>Sign out</a>
@@ -278,6 +279,42 @@
       <li>This app lives on branch <code>web-app</code>, in <code>docs/</code>, published by GitHub Pages.</li>
       <li>Backend services are <em>not</em> deployed by Pages — forecasting, contamination and the hub API still need Docker / a server. This page labels every demo number so it is never mistaken for production telemetry.</li>
     </ul>
+  </div>
+</section>
+
+<!-- ASSISTANT -->
+<section id="view-assistant" class="view hidden">
+  <h1>Embedded AI assistant</h1>
+  <p class="lede">Mirrors the platform's own copilot service (<code>copilot_service/</code>: prompt builder, context manager, tool router, guardrails) and Project ATMA's streaming chat — adapted to this static app. The assistant is a <strong>read-only advisor</strong>: it explains, summarises, and navigates you to a view. It will not delete or modify bins, change a route, or actuate anything; those changes are yours to make in the Bins, Forecasting, and Graph views.</p>
+  <div class="card">
+    <h2>Connect — Groq key <span class="pill" id="wiKeyStatus">checking…</span></h2>
+    <p class="muted small">Most effective method for live chat on GitHub Pages: paste <em>your own</em> Groq key here. It is stored only in this browser's localStorage, sent only from this browser to <code>https://api.groq.com</code>, and never committed to the repo, never sent to GitHub Pages, and never shown back to you in full. No key = offline demo mode, which answers from the sample graph, fleet, and app data in this page. A repo secret cannot power live chat — see the briefing card below for what a repo secret <em>can</em> do.</p>
+    <div class="controls">
+      <label>Groq API key <input type="password" id="wiGroqKey" placeholder="Paste your Groq key here"></label>
+      <label>Model <select id="wiGroqModel"><option>llama-3.3-70b-versatile</option><option>llama-3.1-8b-instant</option></select></label>
+      <label>Backend <select id="wiChatBackend"><option value="groq">Groq direct (live, needs key)</option><option value="demo">Demo (offline, no key)</option></select></label>
+      <button class="btn primary" id="wiSaveKeyBtn">Save key in this browser</button>
+      <button class="btn" id="wiRemoveKeyBtn">Remove saved key</button>
+      <button class="btn" id="wiTestKeyBtn">Test key (models only)</button>
+    </div>
+    <p class="muted small" id="wiKeyResult"></p>
+  </div>
+  <div class="card">
+    <h2>Latest AI briefing — from the repo secret, via Actions <span class="pill">not live chat</span></h2>
+    <p class="muted small">This is the one legitimate use of a repo-stored Groq key on a static site. A GitHub Actions workflow (copy <code>github-workflows/groq-briefing.yml</code> to <code>.github/workflows/groq-briefing.yml</code> on the <code>web-app</code> branch, then dispatch it — the GitHub App cannot create workflow files directly) reads the secret <em>inside the runner only</em>, asks Groq for a briefing grounded in the latest public DSNY tonnage, and commits only <code>docs/ai-briefing.json</code>. The key is never printed or committed, and the browser never sees it. Until that workflow has run once, this card will say so plainly.</p>
+    <div id="wiBriefing"><p class="muted">Loading briefing…</p></div>
+  </div>
+  <div class="card">
+    <h2>Chat</h2>
+    <div id="wiChat" class="chatbox"></div>
+    <div class="controls">
+      <label style="flex:1">Message <input id="wiChatInput" placeholder="Ask about bins, forecasting, the knowledge graph, or contamination…"></label>
+      <button class="btn primary" id="wiSendBtn">Send</button>
+      <button class="btn" id="wiStopBtn">Stop</button>
+      <button class="btn" id="wiNewChatBtn">New chat</button>
+    </div>
+    <p class="muted small">Try: <button class="btn" data-quick="What can Food Scraps become?">What can Food Scraps become?</button> <button class="btn" data-quick="Explain the urgent bins">Explain the urgent bins</button> <button class="btn" data-quick="How do I check contamination?">How do I check contamination?</button> <button class="btn" data-quick="What does the loop bridge mean?">What does the loop bridge mean?</button></p>
+    <p class="muted small">History: last 50 messages kept in this browser, last 10 sent to Groq as context. Streaming via Groq's OpenAI-compatible SSE endpoint. If you ask for a key or secret value, the assistant will refuse — it never echoes a saved key.</p>
   </div>
 </section>
 </main>
