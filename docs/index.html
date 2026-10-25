@@ -32,6 +32,11 @@
   <h1>NYC waste, in one operations view</h1>
   <p class="lede">Live city data where it exists, a working demo fleet where the backend is not running, and every number labelled with its source. No API key, no server needed — this page runs entirely in your browser, and signing in (optional, top right) keeps your session in this browser.</p>
   <div class="kpis" id="kpis"></div>
+  <div class="card flow-strip">
+    <h2>The loop, in one example <span class="pill">live from the knowledge graph</span></h2>
+    <div class="flow-strip-track" aria-hidden="true"><span>♻</span><span class="flow-dot"></span><span class="flow-dot d2"></span><span class="flow-dot d3"></span></div>
+    <p><strong>Food Scraps → Anaerobic Digestion → Biogas → Waste Processor</strong> — then the processor's facility takes waste again. Real sample metrics: 90% process efficiency, 90% diversion, 150 m³ biogas per tonne of waste, 30,000,000 m³/year of demand. <a href="#graph">Open the circular flow →</a></p>
+  </div>
   <div class="grid2">
     <div class="card">
       <h2>Urgent bins <span class="pill warn" id="urgentCount"></span></h2>
@@ -146,17 +151,43 @@
 
 <!-- GRAPH -->
 <section id="view-graph" class="view hidden">
-  <h1>Waste-to-Resource Knowledge Graph</h1>
-  <p class="lede">The repo's real sample graph (<code>cloud_platform/analytics/kg/data/w2rkg_nyc_sample.json</code>): 31 nodes, 55 edges. Click a node to highlight its neighbours; ask “what can this become?” and follow the edges.</p>
+  <div class="kg-hero">
+    <div class="kg-blob" aria-hidden="true"></div>
+    <h1>Waste-to-Resource Knowledge Graph</h1>
+    <p class="lede">The repo's real sample graph (<code>cloud_platform/analytics/kg/data/w2rkg_nyc_sample.json</code>): 31 nodes, 55 edges — now drawn as a circle, because nothing here ends at a landfill. Waste becomes a process, a process becomes a resource, demand pulls that resource back through a facility, and the facility takes waste again.</p>
+  </div>
+  <div class="card kg-ring-card">
+    <h2>Circular navigation <span class="pill">tap a segment</span></h2>
+    <p class="muted small">The ring is the menu. Each segment filters the graph to one node type; the centre shows what you are looking at. “All” restores the full graph. The search and type dropdown below still work exactly as before.</p>
+    <div class="kg-ring" id="kgRing" role="group" aria-label="Filter graph by node type"></div>
+  </div>
   <div class="card controls">
     <label>Search <input id="kgSearch" placeholder="e.g. Food Scraps, Biogas, Compost"></label>
-    <label>Type <select id="kgType"><option value="">All types</option><option>Waste_Type</option><option>Waste_Stream</option><option>Process</option><option>Resource</option><option>Facility</option><option>Actor</option><option>Constraint</option></select></label>
+    <label>Type <select id="kgType"><option value="">All types</option><option value="Waste">Waste (types + streams)</option><option>Waste_Type</option><option>Waste_Stream</option><option>Process</option><option>Resource</option><option>Facility</option><option>Actor</option><option>Constraint</option></select></label>
     <label>Ask: what can <select id="kgAsk"></select> become? <button class="btn" id="kgAskBtn">Trace it</button></label>
   </div>
+  <div class="card kg-flow-card">
+    <h2>Animated resource flow <span class="pill">waste → process → resource → demand → back again</span></h2>
+    <p class="muted small">Pick a pathway and press Play. The dot travels the loop, and the steps below update with that pathway's real conversion metrics — not a generic animation. The loop-closure step is the point: demand is served by an actor who operates a facility that accepts waste, so the circle closes.</p>
+    <div class="controls">
+      <label>Waste <select id="flowWaste"></select></label>
+      <label>Process <select id="flowProcess"></select></label>
+      <label>Resource <select id="flowResource"></select></label>
+      <label>Input (tonnes) <input type="number" id="flowTonnes" min="0.1" step="0.1" value="1"></label>
+      <label>Speed <select id="flowSpeed"><option value="12">Slow (12s)</option><option selected value="7">Normal (7s)</option><option value="4">Fast (4s)</option></select></label>
+      <button class="btn primary" id="flowPlayBtn">▶ Play flow</button>
+      <button class="btn" id="flowShowBtn">Show this path on the graph</button>
+    </div>
+    <div class="kg-flow-wrap">
+      <svg id="flowSvg" viewBox="0 0 520 340" role="img" aria-label="Circular resource flow diagram"></svg>
+      <div id="flowSteps"></div>
+    </div>
+    <div id="flowMetrics"></div>
+  </div>
   <div class="grid2">
-    <div class="card"><svg id="kgSvg" viewBox="0 0 900 520" role="img" aria-label="Knowledge graph diagram"></svg>
-    <p class="muted small">Node colours group by type. Lines are the graph's real edges; hovering a node shows its connections.</p></div>
-    <div class="card" id="kgDetail"><h2>Pick a node</h2><p class="muted">Click any node, or use “Trace it” to follow waste → process → resource paths.</p></div>
+    <div class="card kg-graph-card"><svg id="kgSvg" viewBox="0 0 900 520" role="img" aria-label="Knowledge graph diagram"></svg>
+    <p class="muted small">Node colours group by type. Edges are now soft biomorphic curves, not straight lines — they are the graph's real edges, only drawn the way a flow looks. Click a node to highlight its neighbours; a traced path animates along its curves.</p></div>
+    <div class="card" id="kgDetail"><h2>Pick a node</h2><p class="muted">Click any node, or use “Trace it” to follow waste → process → resource paths. Every conversion metric from the sample — efficiency, diversion, yield, energy, carbon, value, demand — is shown in full below.</p></div>
   </div>
 </section>
 

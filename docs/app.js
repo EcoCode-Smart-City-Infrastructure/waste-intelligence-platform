@@ -153,6 +153,7 @@ function drawForecast(){
   const X=h=>40+h/(pts[pts.length-1].h+H)*(cv.width-80), Y=v=>cv.height-30-(v-min)/(max-min)*(cv.height-70);
   ctx.strokeStyle='#dbe3dc'; ctx.beginPath(); ctx.moveTo(40,20); ctx.lineTo(40,cv.height-30); ctx.lineTo(cv.width-20,cv.height-30); ctx.stroke();
   ctx.fillStyle='#5a6a5f'; ctx.font='12px system-ui'; ctx.fillText('100%',4,Y(100)); ctx.fillText('0%',10,Y(0));
+  const grad=ctx.createLinearGradient(0,20,0,cv.height-30); grad.addColorStop(0,'rgba(29,122,79,.25)'); grad.addColorStop(1,'rgba(29,122,79,0)'); ctx.fillStyle=grad; ctx.beginPath(); pts.forEach((p,i)=>{i?ctx.lineTo(X(p.h),Y(p.fill)):ctx.moveTo(X(p.h),Y(p.fill));}); ctx.lineTo(X(pts[pts.length-1].h),Y(0)); ctx.lineTo(X(pts[0].h),Y(0)); ctx.closePath(); ctx.fill();
   ctx.strokeStyle='#1d7a4f'; ctx.lineWidth=2; ctx.beginPath(); pts.forEach((p,i)=>{i?ctx.lineTo(X(p.h),Y(p.fill)):ctx.moveTo(X(p.h),Y(p.fill));}); ctx.stroke();
   ctx.strokeStyle='#b7791f'; ctx.setLineDash([6,4]); ctx.beginPath(); ctx.moveTo(X(pts[pts.length-1].h),Y(pts[pts.length-1].fill)); ctx.lineTo(X(pts[pts.length-1].h+H),Y(fc)); ctx.stroke(); ctx.setLineDash([]);
   ctx.fillStyle='#b7791f'; ctx.beginPath(); ctx.arc(X(pts[pts.length-1].h+H),Y(fc),5,0,7); ctx.fill();
@@ -162,44 +163,166 @@ $('#fcHorizon')?.addEventListener('change',drawForecast);
 $('#fcAdd')?.addEventListener('click',()=>{const v=+$('#fcReading').value; if(isNaN(v)||v<0||v>100){alert('Enter a reading between 0 and 100.');return;}
   const bin=currentBin(); const map=JSON.parse(localStorage.getItem('wip_readings')||'{}'); (map[bin.id]||(map[bin.id]=[])).push(v); localStorage.setItem('wip_readings',JSON.stringify(map)); bin.fill=v; saveFleet(); drawForecast(); loadDashboard();});
 
-/* ---------- knowledge graph ---------- */
-let kgData=null;
-async function loadKG(){try{const r=await fetch('kg.json'); kgData=await r.json();}catch(e){kgData={nodes:[],edges:[]};}
-  const sel=$('#kgAsk'); kgData.nodes.filter(n=>n.type==='Waste_Type'||n.type==='Waste_Stream').forEach(n=>{const o=document.createElement('option');o.value=n.id;o.textContent=n.name;sel.appendChild(o);});
-  drawGraph();}
+/* ---------- knowledge graph: circular, organic, animated ---------- */
+let kgData=null, kgSelected=null, kgTracePath=[];
 const COLORS={Waste_Type:'#1d7a4f',Waste_Stream:'#2a9d8f',Process:'#7c5cbf',Resource:'#b7791f',Facility:'#2563eb',Actor:'#64748b',Constraint:'#b42318'};
-let kgSelected=null;
+const TYPE_ORDER=['Waste_Type','Waste_Stream','Process','Resource','Facility','Actor','Constraint'];
+const RING=[{label:'All',filter:''},{label:'Waste',filter:'Waste'},{label:'Process',filter:'Process'},{label:'Resource',filter:'Resource'},{label:'Facility',filter:'Facility'},{label:'Actor',filter:'Actor'},{label:'Constraint',filter:'Constraint'}];
+const kgNode=id=>kgData.nodes.find(n=>n.id===id);
+const kgName=id=>(kgNode(id)||{name:id}).name;
+const typeMatches=(n,f)=>!f||(f==='Waste'?(n.type==='Waste_Type'||n.type==='Waste_Stream'):n.type===f);
+function fmtVal(v){if(Array.isArray(v))return v.join(', '); if(v&&typeof v==='object')return Object.entries(v).map(([k,x])=>`${k} ${x}`).join(', '); return String(v);}
+function fmtProps(p){return Object.entries(p||{}).map(([k,v])=>`${k.replaceAll('_',' ')}: ${fmtVal(v)}`).join(' · ');}
+async function loadKG(){try{const r=await fetch('kg.json'); kgData=await r.json();}catch(e){kgData={nodes:[],edges:[]};}
+  const wastes=kgData.nodes.filter(n=>n.type==='Waste_Type'||n.type==='Waste_Stream');
+  [['#kgAsk'],['#flowWaste']].forEach(([sel])=>{const el=$(sel); wastes.forEach(n=>{const o=document.createElement('option');o.value=n.id;o.textContent=n.name;el.appendChild(o);});});
+  buildRing(); populateFlowProcesses(); populateFlowResources(); renderFlow(); drawGraph();}
+function buildRing(){
+  const ring=$('#kgRing'); if(!ring) return;
+  ring.innerHTML=`<div class="kg-ring-hub" id="kgRingHub"></div>`+RING.map((s,i)=>{const a=(-90+i*360/RING.length)*Math.PI/180, x=50+42*Math.cos(a), y=50+42*Math.sin(a);
+    return `<button class="kg-ring-seg" data-filter="${s.filter}" style="left:${x}%;top:${y}%" aria-label="Filter to ${s.label}">${s.label}</button>`;}).join('');
+  $$('#kgRing .kg-ring-seg').forEach(b=>b.addEventListener('click',()=>{$('#kgType').value=b.dataset.filter; syncRing(); drawGraph();}));
+  syncRing();
+}
+function syncRing(){
+  const f=$('#kgType').value;
+  $$('#kgRing .kg-ring-seg').forEach(b=>b.classList.toggle('active',b.dataset.filter===f));
+  const seg=RING.find(s=>s.filter===f)||RING[0];
+  const count=kgData?kgData.nodes.filter(n=>typeMatches(n,f)).length:0;
+  const hub=$('#kgRingHub'); if(hub) hub.innerHTML=`<strong>${seg.label}</strong><span>${count} node${count===1?'':'s'}</span><span class="small">of ${kgData?kgData.nodes.length:0}</span>`;
+}
 function drawGraph(){
   if(!kgData) return;
   const q=($('#kgSearch').value||'').toLowerCase(), type=$('#kgType').value;
-  const nodes=kgData.nodes.filter(n=>(!q||(n.name+n.id).toLowerCase().includes(q))&&(!type||n.type===type));
+  const nodes=[...kgData.nodes].sort((a,b)=>TYPE_ORDER.indexOf(a.type)-TYPE_ORDER.indexOf(b.type)||a.name.localeCompare(b.name))
+    .filter(n=>(!q||(n.name+n.id).toLowerCase().includes(q))&&typeMatches(n,type));
   const ids=new Set(nodes.map(n=>n.id));
   const edges=kgData.edges.filter(e=>ids.has(e.from)&&ids.has(e.to));
-  const svg=$('#kgSvg'); const pos={}; nodes.forEach((n,i)=>{const a=i/nodes.length*Math.PI*2; pos[n.id]=[450+330*Math.cos(a),260+200*Math.sin(a)];});
+  const svg=$('#kgSvg'); const pos={}; nodes.forEach((n,i)=>{const a=i/Math.max(1,nodes.length)*Math.PI*2-Math.PI/2; pos[n.id]=[450+340*Math.cos(a),260+195*Math.sin(a)];});
   const neigh=new Set([kgSelected]); if(kgSelected){edges.forEach(e=>{if(e.from===kgSelected)neigh.add(e.to); if(e.to===kgSelected)neigh.add(e.from);});}
-  svg.innerHTML=edges.map(e=>{const [x1,y1]=pos[e.from],[x2,y2]=pos[e.to]; const dim=kgSelected&&!(neigh.has(e.from)&&neigh.has(e.to));
-    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${dim?'#e2e8e2':'#94a894'}" stroke-width="1.2"/>`;}).join('')
-    +nodes.map(n=>{const [x,y]=pos[n.id]; const dim=kgSelected&&!neigh.has(n.id);
-      return `<g class="node" data-node="${n.id}" opacity="${dim?0.35:1}"><circle cx="${x}" cy="${y}" r="${n.id===kgSelected?13:9}" fill="${COLORS[n.type]||'#333'}"/><text x="${x}" y="${y+24}" text-anchor="middle">${esc(n.name.length>22?n.name.slice(0,21)+'…':n.name)}</text></g>`;}).join('');
+  const inTrace=(a,b)=>kgTracePath.length>1&&kgTracePath.some((x,i)=>i<kgTracePath.length-1&&kgTracePath[i]===a&&kgTracePath[i+1]===b);
+  const defs=Object.entries(COLORS).map(([t,c])=>`<linearGradient id="grad-${t}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${c}"/><stop offset="100%" stop-color="${c}" stop-opacity=".65"/></linearGradient>`).join('');
+  const edgeHtml=edges.map(e=>{const [x1,y1]=pos[e.from],[x2,y2]=pos[e.to], mx=(x1+x2)/2, my=(y1+y2)/2;
+    const cx=mx+(mx-450)*0.22, cy=my+(my-260)*0.22, dim=kgSelected&&!(neigh.has(e.from)&&neigh.has(e.to)), traced=inTrace(e.from,e.to);
+    return `<path d="M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}" fill="none" class="${traced?'flow-edge':''}" stroke="${traced?'#1d7a4f':dim?'#e6ebe6':'#9db3a0'}" stroke-width="${traced?3:1.2}"/>`;}).join('');
+  const nodeHtml=nodes.map(n=>{const [x,y]=pos[n.id]; const dim=kgSelected&&!neigh.has(n.id);
+    return `<g class="node" data-node="${n.id}" opacity="${dim?0.35:1}"><circle cx="${x}" cy="${y}" r="${n.id===kgSelected?14:10}" fill="url(#grad-${n.type})" stroke="#fff" stroke-width="2"/><text x="${x}" y="${y+26}" text-anchor="middle">${esc(n.name.length>22?n.name.slice(0,21)+'…':n.name)}</text></g>`;}).join('');
+  svg.innerHTML=`<defs>${defs}</defs>`+edgeHtml+nodeHtml;
   $$('#kgSvg .node').forEach(g=>g.addEventListener('click',()=>showNode(g.dataset.node)));
+  syncRing();
+}
+function conversionBlock(n){
+  const d=n.detail||{}, rows=[];
+  const add=(label,key,unit='')=>{if(d[key]!=null) rows.push(`<tr><td>${label}</td><td><strong>${fmtVal(d[key])}${unit}</strong></td></tr>`);};
+  if(n.type==='Process'){add('Efficiency','efficiency','%');add('Processing time','processing_time_hours',' h');add('Energy required','energy_requirement_kwh_per_tonne',' kWh/t');add('Carbon footprint','carbon_footprint_kg_co2_per_tonne',' kg CO₂/t');add('Biogas yield','biogas_yield_m3_per_tonne',' m³/t');add('Larvae yield','larvae_yield_kg_per_tonne_waste',' kg/t');add('Optimal temperature','optimal_temperature_c',' °C');}
+  if(n.type==='Resource'){add('Economic value','economic_value_per_tonne',' $/t');add('Market demand','market_demand');add('Quality grade','quality_grade');add('Energy content','energy_content_mj_per_kg',' MJ/kg');add('Methane content','methane_content_percent','%');}
+  if(n.type==='Facility'){add('Capacity','capacity_tonnes_per_year',' t/yr');add('Location','location');add('Status','operational_status');}
+  if(n.type==='Waste_Stream'){add('Volume','volume_tonnes_per_year',' t/yr');add('Collection','collection_frequency');add('Diversion rate','diversion_rate');add('Participation','participation_rate');}
+  if(n.type==='Waste_Type'){add('Organic content','organic_content','%');add('Moisture content','moisture_content','%');add('C:N ratio','c_n_ratio');}
+  return rows.length?`<h3>Conversion metrics</h3><table><tbody>${rows.join('')}</tbody></table><p class="muted small">Values are the sample's own properties for this node — nothing here is estimated.</p>`:'';
 }
 function showNode(id){
-  kgSelected=id; const n=kgData.nodes.find(x=>x.id===id); if(!n) return;
+  kgSelected=id; const n=kgNode(id); if(!n) return;
   const out=kgData.edges.filter(e=>e.from===id), inn=kgData.edges.filter(e=>e.to===id);
-  const name=i=>esc((kgData.nodes.find(x=>x.id===i)||{name:i}).name);
-  $('#kgDetail').innerHTML=`<h2>${esc(n.name)}</h2><p><span class="pill">${esc(n.type)}</span></p><p>${esc(n.desc)}</p>`
-    +(Object.keys(n.detail||{}).length?`<p class="small">${Object.entries(n.detail).map(([k,v])=>`<strong>${esc(k)}:</strong> ${esc(v)}`).join(' · ')}</p>`:'')
-    +`<h3>Goes to (${out.length})</h3><ul class="list">${out.map(e=>`<li>${esc(e.type.replaceAll('_',' '))} → <a href="#" data-jump="${e.to}">${name(e.to)}</a></li>`).join('')||'<li>—</li>'}</ul>`
-    +`<h3>Comes from (${inn.length})</h3><ul class="list">${inn.map(e=>`<li><a href="#" data-jump="${e.from}">${name(e.from)}</a> → ${esc(e.type.replaceAll('_',' '))}</li>`).join('')||'<li>—</li>'}</ul>`;
+  $('#kgDetail').innerHTML=`<h2>${esc(n.name)}</h2><p><span class="pill">${esc(n.type)}</span></p><p>${esc(n.desc)}</p>${conversionBlock(n)}`
+    +(Object.keys(n.detail||{}).length?`<h3>All recorded properties</h3><p class="small">${Object.entries(n.detail).map(([k,v])=>`<strong>${esc(k.replaceAll('_',' '))}:</strong> ${esc(fmtVal(v))}`).join(' · ')}</p>`:'')
+    +`<h3>Goes to (${out.length})</h3><ul class="list">${out.map(e=>`<li>${esc(e.type.replaceAll('_',' '))} → <a href="#" data-jump="${e.to}">${esc(kgName(e.to))}</a>${e.props&&Object.keys(e.props).length?` <span class="muted small">(${esc(fmtProps(e.props))})</span>`:''}</li>`).join('')||'<li>—</li>'}</ul>`
+    +`<h3>Comes from (${inn.length})</h3><ul class="list">${inn.map(e=>`<li><a href="#" data-jump="${e.from}">${esc(kgName(e.from))}</a> → ${esc(e.type.replaceAll('_',' '))}${e.props&&Object.keys(e.props).length?` <span class="muted small">(${esc(fmtProps(e.props))})</span>`:''}</li>`).join('')||'<li>—</li>'}</ul>`;
   $$('#kgDetail [data-jump]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showNode(a.dataset.jump);drawGraph();}));
   drawGraph();
 }
-$('#kgSearch')?.addEventListener('input',drawGraph); $('#kgType')?.addEventListener('change',drawGraph);
-$('#kgAskBtn')?.addEventListener('click',()=>{const id=$('#kgAsk').value; const paths=[];
-  kgData.edges.filter(e=>e.from===id&&e.type==='WASTECANBEPROCESSEDBY').forEach(e=>{
-    const res=kgData.edges.filter(x=>x.from===e.to&&x.type==='PROCESSPRODUCESRESOURCE').map(x=>kgData.nodes.find(n=>n.id===x.to)?.name||x.to);
-    paths.push(`${kgData.nodes.find(n=>n.id===e.to)?.name||e.to} → ${res.join(', ')||'no resource edge in sample'}`);});
-  showNode(id); const d=$('#kgDetail'); d.innerHTML+=`<h3>What it can become</h3><ul class="list">${paths.map(p=>`<li>${esc(p)}</li>`).join('')||'<li>No processing edge in this sample.</li>'}</ul>`;});
+$('#kgSearch')?.addEventListener('input',drawGraph);
+$('#kgType')?.addEventListener('change',()=>{syncRing();drawGraph();});
+$('#kgAskBtn')?.addEventListener('click',()=>{
+  const id=$('#kgAsk').value; const paths=[];
+  const wasteTypes=kgNode(id)?.type==='Waste_Stream'?kgData.edges.filter(e=>e.from===id&&e.type==='WASTESTREAMHASWASTETYPE').map(e=>e.to):[id];
+  wasteTypes.forEach(wt=>kgData.edges.filter(e=>e.from===wt&&e.type==='WASTECANBEPROCESSEDBY').forEach(e=>{
+    const res=kgData.edges.filter(x=>x.from===e.to&&x.type==='PROCESSPRODUCESRESOURCE').map(x=>{
+      const rn=kgNode(x.to), pn=kgNode(e.to);
+      return `${rn?.name||x.to} (yield ${fmtProps(x.props)}; process ${pn?.detail?.efficiency??'—'}% efficient)`;
+    });
+    paths.push(`${kgName(e.to)} — suitability ${e.props?.suitability||'—'}, diversion ${e.props?.typical_diversion_rate!=null?Math.round(e.props.typical_diversion_rate*100)+'%':'—'} → ${res.join(', ')||'no resource edge in sample'}`);}));
+  showNode(id); const d=$('#kgDetail'); d.innerHTML+=`<h3>What it can become</h3><ul class="list">${paths.map(p=>`<li>${esc(p)}</li>`).join('')||'<li>No processing edge in this sample.</li>'}</ul>`;
+  // carry the first real pathway into the animated flow
+  const first=kgData.edges.find(e=>wasteTypes.includes(e.from)&&e.type==='WASTECANBEPROCESSEDBY');
+  if(first){$('#flowWaste').value=id; populateFlowProcesses(first.to); const fres=kgData.edges.find(x=>x.from===first.to&&x.type==='PROCESSPRODUCESRESOURCE'); if(fres){populateFlowResources(fres.to);} renderFlow();}
+});
+/* ---------- animated circular flow ---------- */
+let flowPlaying=false;
+function processesFor(wasteId){
+  const n=kgNode(wasteId); if(!n) return [];
+  if(n.type==='Waste_Stream'){const types=kgData.edges.filter(e=>e.from===wasteId&&e.type==='WASTESTREAMHASWASTETYPE').map(e=>e.to);
+    return [...new Set(kgData.edges.filter(e=>types.includes(e.from)&&e.type==='WASTECANBEPROCESSEDBY').map(e=>e.to))];}
+  return kgData.edges.filter(e=>e.from===wasteId&&e.type==='WASTECANBEPROCESSEDBY').map(e=>e.to);
+}
+function fillSelect(el,ids,keep){el.innerHTML=''; ids.forEach(id=>{const o=document.createElement('option');o.value=id;o.textContent=kgName(id);el.appendChild(o);}); if(keep&&ids.includes(keep)) el.value=keep;}
+function populateFlowProcesses(keep){fillSelect($('#flowProcess'),processesFor($('#flowWaste').value),keep); populateFlowResources();}
+function populateFlowResources(keep){const p=$('#flowProcess').value; fillSelect($('#flowResource'),kgData.edges.filter(e=>e.from===p&&e.type==='PROCESSPRODUCESRESOURCE').map(e=>e.to),keep);}
+$('#flowWaste')?.addEventListener('change',()=>{populateFlowProcesses();renderFlow();});
+$('#flowProcess')?.addEventListener('change',()=>{populateFlowResources();renderFlow();});
+$('#flowResource')?.addEventListener('change',renderFlow);
+$('#flowTonnes')?.addEventListener('input',renderFlow);
+$('#flowSpeed')?.addEventListener('change',renderFlow);
+$('#flowPlayBtn')?.addEventListener('click',()=>{flowPlaying=!flowPlaying; $('#flowPlayBtn').textContent=flowPlaying?'⏸ Pause flow':'▶ Play flow'; renderFlow();});
+$('#flowShowBtn')?.addEventListener('click',()=>{
+  const w=$('#flowWaste').value,p=$('#flowProcess').value,r=$('#flowResource').value;
+  kgTracePath=[w,p,r].filter(Boolean);
+  const dem=kgData.edges.find(e=>e.from===r&&e.type==='RESOURCEDEMANDEDBY_ACTOR'); if(dem) kgTracePath.push(dem.to);
+  $('#kgType').value=''; $('#kgSearch').value=''; syncRing(); drawGraph();
+  document.querySelector('.kg-graph-card')?.scrollIntoView({behavior:'smooth',block:'center'});
+});
+function yieldOf(edgeProps){
+  if(edgeProps.yield_tonnes_per_tonne_waste!=null) return {qty:edgeProps.yield_tonnes_per_tonne_waste,unit:'t'};
+  if(edgeProps.yield_m3_per_tonne_waste!=null) return {qty:edgeProps.yield_m3_per_tonne_waste,unit:'m³'};
+  if(edgeProps.yield_kg_per_tonne_waste!=null) return {qty:edgeProps.yield_kg_per_tonne_waste,unit:'kg'};
+  if(edgeProps.yield_percent!=null) return {qty:edgeProps.yield_percent/100,unit:'t'};
+  return null;
+}
+function renderFlow(){
+  if(!kgData||!$('#flowWaste').value) return;
+  const w=kgNode($('#flowWaste').value), p=kgNode($('#flowProcess').value), r=kgNode($('#flowResource').value);
+  const T=Math.max(0.1,+$('#flowTonnes').value||1);
+  const wp=kgData.edges.find(e=>e.from===w.id&&e.type==='WASTECANBEPROCESSEDBY'&&e.to===p.id)
+    ||kgData.edges.find(e=>e.from===w.id&&e.type==='WASTESTREAMHASWASTETYPE'&&processesFor(w.id).includes(p.id)&&kgData.edges.some(x=>x.from===e.to&&x.to===p.id&&x.type==='WASTECANBEPROCESSEDBY'));
+  const wpEdge=kgData.edges.find(e=>e.to===p.id&&e.type==='WASTECANBEPROCESSEDBY'&&(e.from===w.id||(w.type==='Waste_Stream'&&kgData.edges.some(s=>s.from===w.id&&s.to===e.from))));
+  const pr=kgData.edges.find(e=>e.from===p.id&&e.to===r.id&&e.type==='PROCESSPRODUCESRESOURCE');
+  const dem=kgData.edges.find(e=>e.from===r.id&&e.type==='RESOURCEDEMANDEDBY_ACTOR');
+  const actor=dem?kgNode(dem.to):null;
+  const facEdge=actor?kgData.edges.find(e=>e.from===actor.id&&e.type==='ACTOROPERATESFACILITY'):null;
+  const fac=facEdge?kgNode(facEdge.to):null;
+  const back=fac?kgData.edges.find(e=>e.from===fac.id&&e.type==='FACILITYACCEPTSWASTE'&&(e.to===w.id||true)):null;
+  const dur=$('#flowSpeed').value;
+  const cx=260, cy=170, R=110;
+  const arc=(a0,a1)=>{const p0=[cx+R*Math.cos(a0),cy+R*Math.sin(a0)], p1=[cx+R*Math.cos(a1),cy+R*Math.sin(a1)]; return `M ${p0[0]} ${p0[1]} A ${R} ${R} 0 0 1 ${p1[0]} ${p1[1]}`;};
+  const labels=[['WASTE',w?.name||'',-93],['PROCESS',p?.name||'',1],['RESOURCE',r?.name||'',96],['DEMAND',actor?.name||'Demand',-175]];
+  $('#flowSvg').innerHTML=`<defs><linearGradient id="flowGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1d7a4f"/><stop offset="55%" stop-color="#2a9d8f"/><stop offset="100%" stop-color="#b7791f"/></linearGradient></defs>
+  <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#e6ede7" stroke-width="22"/>
+  <path d="${arc(-2.4,-0.85)}" fill="none" stroke="#1d7a4f" stroke-width="20" stroke-linecap="round"/>
+  <path d="${arc(-0.75,0.8)}" fill="none" stroke="#7c5cbf" stroke-width="20" stroke-linecap="round"/>
+  <path d="${arc(0.9,2.45)}" fill="none" stroke="#b7791f" stroke-width="20" stroke-linecap="round"/>
+  <path d="${arc(2.55,3.9)}" fill="none" stroke="#2a9d8f" stroke-width="20" stroke-linecap="round"/>
+  ${labels.map(([k,name,deg])=>{const a=deg*Math.PI/180, LR=R+42; return `<text x="${cx+LR*Math.cos(a)}" y="${cy+LR*Math.sin(a)-6}" text-anchor="middle" font-size="11" font-weight="700">${k}</text><text x="${cx+LR*Math.cos(a)}" y="${cy+LR*Math.sin(a)+10}" text-anchor="middle" font-size="10">${esc((name||'').length>20?name.slice(0,19)+'…':name||'')}</text>`;}).join('')}
+  <text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="15" font-weight="700">The loop</text><text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="11" fill="#5a6a5f">${fmt(T)} t in</text>
+  ${flowPlaying?`<circle r="8" fill="#0f5132" stroke="#fff" stroke-width="2"><animateMotion dur="${dur}s" repeatCount="indefinite" path="M ${cx},${cy-R} a ${R},${R} 0 1,1 -0.1,0"/></circle>`:''}`;
+  const yld=pr?yieldOf(pr.props):null;
+  const outQty=yld?yld.qty*T:null;
+  let valueTxt='—';
+  if(yld&&outQty!=null){
+    if(yld.unit==='t'&&r.detail?.economic_value_per_tonne!=null) valueTxt=`$${fmt(outQty*r.detail.economic_value_per_tonne)} (at $${r.detail.economic_value_per_tonne}/t of resource)`;
+    else if(yld.unit==='kg'&&r.detail?.economic_value_per_tonne!=null) valueTxt=`$${fmt(outQty/1000*r.detail.economic_value_per_tonne)} (from ${fmt(outQty)} kg at $${r.detail.economic_value_per_tonne}/t)`;
+    else if(yld.unit==='m³'&&dem?.props?.willing_to_pay_per_m3!=null) valueTxt=`$${fmt(outQty*dem.props.willing_to_pay_per_m3)} (at $${dem.props.willing_to_pay_per_m3}/m³ demanded)`;
+    else valueTxt='Not directly computable from the sample units — see note below.';
+  }
+  const div=wpEdge?.props?.typical_diversion_rate;
+  $('#flowSteps').innerHTML=`
+    <div class="flow-step"><strong>1 · Waste</strong><p>${esc(w?.name||'—')}</p><p class="muted small">${esc(w?.desc||'')}</p></div>
+    <div class="flow-step"><strong>2 · Process</strong><p>${esc(p?.name||'—')}</p><p class="muted small">Suitability ${esc(wpEdge?.props?.suitability||'—')} · diversion ${div!=null?Math.round(div*100)+'%':'—'} · ${p?.detail?.efficiency??'—'}% efficient · ${p?.detail?.processing_time_hours??'—'} h · ${p?.detail?.energy_requirement_kwh_per_tonne??'—'} kWh/t · ${p?.detail?.carbon_footprint_kg_co2_per_tonne??'—'} kg CO₂/t</p></div>
+    <div class="flow-step"><strong>3 · Resource</strong><p>${esc(r?.name||'—')}</p><p class="muted small">Yield ${yld?fmt(yld.qty)+' '+yld.unit+' per tonne of waste':'—'} · quality ${esc(pr?.props?.quality||r?.detail?.quality_grade||'—')} · market demand ${esc(r?.detail?.market_demand||'—')}</p></div>
+    <div class="flow-step"><strong>4 · Demand → loop closes</strong><p>${actor?esc(actor.name):'No demand edge for this resource in the sample'}</p><p class="muted small">${dem?`Annual demand ${fmt(dem.props.annual_demand_tonnes||dem.props.annual_demand_m3)} ${dem.props.annual_demand_m3?'m³':'t'} · ${esc(dem.props.demand_frequency||'')}`:''}${fac?` · ${esc(actor.name)} operates ${esc(fac.name)}, which accepts waste${back?` (tipping fee $${back.props?.tipping_fee_per_tonne??'—'}/t, contamination limit ${back.props?.contamination_limit_percent??'—'}%)`:''} — so demand feeds the next collection, not an endpoint.`:''}</p></div>`;
+  $('#flowMetrics').innerHTML=`<div class="kpis"><div><b>${fmt(T)} t</b><span>Input waste</span></div><div><b>${div!=null?fmt(T*div)+' t':'—'}</b><span>Diverted (at sample diversion rate)</span></div><div><b>${outQty!=null?fmt(outQty)+' '+(yld.unit):'—'}</b><span>Resource output</span></div><div><b>${valueTxt}</b><span>Indicative value, sample prices only</span></div></div>
+  <p class="muted small">Units are kept separate on purpose: biogas is priced per m³ demanded, compost and feed per tonne of resource. Where the sample gives no matching price, the value is left as “—” rather than guessed. Preprocessing for this step: ${esc((wpEdge?.props?.preprocessing_required||[]).join(', ')||'none listed')}.</p>`;
+}
+
 
 /* ---------- contamination ---------- */
 const STREAMS={recycling:new Set(['Plastic','Metal','Glass','Paper']),organics:new Set([]),landfill:new Set(['Other'])};
