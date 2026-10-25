@@ -65,8 +65,6 @@ function haversine(a,b){const R=6371,dLa=(b.lat-a.lat)*Math.PI/180,dLo=(b.lon-a.
 const SAMPLE_TONNAGE=[{month:'2026 / 09',borough:'Manhattan',refuse:48210,paper:5120,mgp:2980,organics:1420},{month:'2026 / 09',borough:'Brooklyn',refuse:52140,paper:4980,mgp:3120,organics:1180},{month:'2026 / 09',borough:'Queens',refuse:49880,paper:4610,mgp:2890,organics:960},{month:'2026 / 09',borough:'Bronx',refuse:38920,paper:3210,mgp:1980,organics:740},{month:'2026 / 09',borough:'Staten Island',refuse:17450,paper:1680,mgp:1040,organics:410}];
 async function loadDashboard(){
   const urgent=fleet.filter(b=>b.fill>=80);
-  const avg=fleet.reduce((s,b)=>s+b.fill,0)/fleet.length;
-  $('#kpis').innerHTML=`<div><b>${fleet.length}</b><span>Demo bins in fleet</span></div><div><b>${urgent.length}</b><span>Bins at ≥ 80% fill</span></div><div><b>${fmt(avg)}%</b><span>Average fill (demo fleet)</span></div><div><b>31 / 55</b><span>Knowledge-graph nodes / edges</span></div>`;
   $('#urgentCount').textContent=urgent.length+' urgent';
   $('#urgentList').innerHTML=urgent.length?urgent.map(b=>`<li><a href="#forecast?bin=${b.id}">${esc(b.id)}</a> — ${esc(b.site)}, ${esc(b.borough)} · <strong>${b.fill}%</strong></li>`).join(''):'<li>No bin is at 80% or above right now.</li>';
   // Live tonnage, aggregated by borough for the latest month in the feed
@@ -84,6 +82,7 @@ async function loadDashboard(){
   $('#liveBadge').textContent=live?('Live · '+agg.month):'Sample fallback · live feed unreachable';
   $('#liveBadge').className='pill'+(live?'':' warn');
   $('#dashTonnage tbody').innerHTML=agg.map(r=>`<tr><td>${esc(agg.month)}</td><td>${esc(r.borough)}</td><td>${fmt(r.refuse)}</td><td>${fmt(r.paper)}</td><td>${fmt(r.mgp)}</td><td>${fmt(r.organics)}</td></tr>`).join('');
+  try{dashRender(agg, live);}catch(e){console.warn('Dashboard grid failed, table still available:',e);}
 }
 
 /* ---------- live data ---------- */
@@ -744,6 +743,71 @@ async function wiDoRepair(action){
   }catch(e){out.textContent='Repair failed: '+e.message;}
 }
 $('#wiDiagBtn')?.addEventListener('click',wiRunDiagnostics);
+
+
+/* ---------- dashboard grid + interactive city grid (2D, no 3D, no phased loop) ---------- */
+function dashXY(b){const x=20+((b.lon+74.25)/( -73.70+74.25))*560, y=320-((b.lat-40.50)/(40.90-40.50))*300; return [Math.max(15,Math.min(585,x)),Math.max(15,Math.min(325,y))];}
+function dashStatusColor(f){return f>=80?'#ec4899':f>=60?'#f59e0b':'#22c55e';}
+function dashRender(agg, live){
+  const urgent=fleet.filter(b=>b.fill>=80);
+  const avg=fleet.length?fleet.reduce((s,b)=>s+b.fill,0)/fleet.length:0;
+  const byBorough={};
+  fleet.forEach(b=>{const x=byBorough[b.borough]||={borough:b.borough,n:0,sum:0}; x.n++; x.sum+=b.fill;});
+  const boroughs=Object.values(byBorough).sort((a,b)=>b.sum/b.n-a.sum/a.n);
+  $('#dashBoroughBars').innerHTML=boroughs.map(x=>{const a=x.sum/x.n; return `<div class="dash-row"><span>${esc(x.borough)}</span><span class="bar"><i style="width:${a}%" class="${a>=80?'high':a>=60?'mid':''}"></i></span><span>${a.toFixed(0)}% · ${x.n}</span></div>`;}).join('');
+  const totals={refuse:0,paper:0,mgp:0,organics:0};
+  agg.forEach(r=>{totals.refuse+=r.refuse; totals.paper+=r.paper; totals.mgp+=r.mgp; totals.organics+=r.organics;});
+  const totalT=totals.refuse+totals.paper+totals.mgp+totals.organics;
+  $('#dashWaveTotal').textContent=fmt(totalT)+' t';
+  $('#dashWaveBadge').textContent=live?('LIVE · '+agg.month):'SAMPLE · live feed unreachable';
+  $('#dashWaveNote').textContent=live?`Latest month in the DSNY feed (${agg.month}), all boroughs combined. Bars are borough totals.`:'Live feed unreachable — this is the labelled sample, not live tonnage.';
+  const maxB=Math.max(...agg.map(r=>r.refuse+r.paper+r.mgp+r.organics),1);
+  $('#dashWaveBars').innerHTML=agg.map(r=>{const t=r.refuse+r.paper+r.mgp+r.organics; return `<i style="--h:${Math.max(12,Math.round(t/maxB*100))}%;height:${Math.max(12,Math.round(t/maxB*100))}%" title="${esc(r.borough)}: ${fmt(t)} t"></i>`;}).join('');
+  const streams=[['Refuse',totals.refuse,'#64748b'],['Paper',totals.paper,'#2dd4bf'],['MGP',totals.mgp,'#f59e0b'],['Organics',totals.organics,'#22c55e']];
+  let off=0; const C=2*Math.PI*80;
+  $('#dashDonutSvg').innerHTML=streams.map(([name,v,color])=>{const frac=totalT?v/totalT:0, dash=frac*C, gap=C-dash; const el=`<circle cx="100" cy="100" r="80" fill="none" stroke="${color}" stroke-width="26" stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}"/>`; off+=dash; return el;}).join('');
+  $('#dashDonutCentre').innerHTML=`${fmt(totalT)} t<br><span style="font-size:.8rem;font-weight:400;color:#94a3b8">total tonnage</span>`;
+  $('#dashDonutLegend').innerHTML='<div class="dash-legend">'+streams.map(([name,v,color])=>`<div><span style="background:${color}"></span>${name}: ${fmt(v)} t (${totalT?Math.round(v/totalT*100):0}%)</div>`).join('')+'</div>';
+  $('#dashHeatDots').innerHTML=fleet.map(b=>`<button style="background:${dashStatusColor(b.fill)}" title="${esc(b.id)} — ${esc(b.site)}, ${esc(b.borough)} · ${b.fill}%" aria-label="${esc(b.id)} ${b.fill} percent" data-bin="${b.id}"></button>`).join('');
+  $$('#dashHeatDots [data-bin]').forEach(btn=>btn.addEventListener('click',()=>{location.hash='#forecast?bin='+btn.dataset.bin;}));
+  const healthy=fleet.length?Math.round(fleet.filter(b=>b.fill<80).length/fleet.length*100):0;
+  const organicsShare=totalT?Math.round(totals.organics/totalT*100):0;
+  const rings=[['Healthy bins',healthy,'#22c55e'],['Live feed',live?100:0,'#2dd4bf'],['Organics share',organicsShare,'#f59e0b']];
+  $('#dashRings').innerHTML=rings.map(([name,v,color])=>{const circ=2*Math.PI*34; return `<div class="dash-ring"><svg viewBox="0 0 90 90"><circle cx="45" cy="45" r="34" fill="none" stroke="#334155" stroke-width="9"/><circle cx="45" cy="45" r="34" fill="none" stroke="${color}" stroke-width="9" stroke-dasharray="${(v/100*circ).toFixed(1)} ${circ.toFixed(1)}" stroke-linecap="round"/></svg><b>${v}%</b><span>${name}</span></div>`;}).join('');
+  $('#dashRingsNote').textContent='Healthy = bins below 80% fill. Live feed = DSNY tonnage reachable on this load. Organics share = organics tonnes ÷ total tonnes.';
+  $('#dashTonnageBars').innerHTML=agg.map(r=>{const t=r.refuse+r.paper+r.mgp+r.organics; return `<div><i style="height:${Math.max(10,Math.round(t/maxB*110))}px"></i><span>${fmt(t)} t<br>${esc(r.borough)}</span></div>`;}).join('');
+  const top=urgent.length?[...urgent].sort((a,b)=>b.fill-a.fill)[0]:fleet[0];
+  if(top){
+    const pts=historyFor(top), maxF=100, minF=0;
+    const X=(i)=>20+i/(pts.length-1)*480, Y=(v)=>160-(v-minF)/(maxF-minF)*140;
+    const line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.fill).toFixed(1)}`).join(' ');
+    $('#dashForecastSvg').innerHTML=`<path d="${line} L${X(pts.length-1).toFixed(1)},160 L20,160 Z" fill="rgba(34,197,94,.18)" stroke="none"/><path d="${line}" fill="none" stroke="#22c55e" stroke-width="2.5"/>`;
+    $('#dashForecastNote').innerHTML=`<strong>${esc(top.id)}</strong> — ${esc(top.site)}, ${esc(top.borough)} · now ${top.fill}%. History is the demo fill series used by Forecasting. <a href="#forecast?bin=${top.id}">Open full forecast →</a>`;
+  }
+  $('#dashSideLive').textContent=live?('LIVE · '+agg.month):'SAMPLE · feed unreachable';
+  $('#dashSideUrgent').textContent=urgent.length?`${urgent.length} urgent bin${urgent.length===1?'':'s'}`:'No urgent bins';
+  $('#dashBellCount').textContent=urgent.length;
+  $('#dashGridBadge').textContent=live?'demo fleet · live tonnage':'demo fleet · sample tonnage';
+  dashGrid();
+}
+function dashGrid(){
+  const svg=$('#dashGridSvg'); if(!svg) return;
+  const showFleet=$('#dashLayerFleet')?.checked!==false, showRoute=$('#dashLayerRoute')?.checked!==false, showHeat=$('#dashLayerHeat')?.checked!==false, showLabels=$('#dashLayerLabels')?.checked!==false;
+  let streets='';
+  for(let x=60;x<600;x+=60) streets+=`<line x1="${x}" y1="10" x2="${x}" y2="330" class="dash-grid-street"/>`;
+  for(let y=50;y<340;y+=50) streets+=`<line x1="10" y1="${y}" x2="590" y2="${y}" class="dash-grid-street"/>`;
+  const labels=showLabels?`<g fill="#94a3b8" font-size="12"><text x="90" y="40">Manhattan</text><text x="330" y="120">Brooklyn</text><text x="380" y="60">Queens</text><text x="330" y="210">Bronx</text><text x="90" y="290">Staten Island</text></g>`:'';
+  const urgent=[...fleet.filter(b=>b.fill>=80)].sort((a,b)=>b.fill-a.fill);
+  const routePath=showRoute&&urgent.length>1?`<path class="dash-grid-route" d="${urgent.map((b,i)=>`${i?'L':'M'}${dashXY(b).join(',')}`).join(' ')}"/>`:'';
+  const dots=showFleet?fleet.map(b=>{const [x,y]=dashXY(b); const r=showHeat?4+b.fill/14:6; return `<g><circle class="dash-grid-pulse" cx="${x}" cy="${y}" r="6" style="${b.fill>=80?'':'display:none'}"/><circle class="dash-grid-dot" cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="${dashStatusColor(b.fill)}" data-bin="${b.id}"><title>${esc(b.id)} — ${esc(b.site)} · ${b.fill}%</title></circle></g>`;}).join(''):'';
+  svg.innerHTML=streets+labels+routePath+dots;
+  $$('#dashGridSvg .dash-grid-dot').forEach(c=>c.addEventListener('click',()=>{location.hash='#forecast?bin='+c.dataset.bin;}));
+  const top=urgent[0];
+  $('#dashGridNote').innerHTML=top?`Urgent route: ${urgent.map(b=>esc(b.id)).join(' → ')}. Tap any dot for its forecast.`:'No urgent bins right now — the route layer appears when a bin reaches 80%.';
+}
+['dashLayerFleet','dashLayerRoute','dashLayerHeat','dashLayerLabels'].forEach(id=>$('#'+id)?.addEventListener('change',dashGrid));
+$('#dashPulseBtn')?.addEventListener('click',()=>{const hero=$('#view-dashboard .dash-hero'); hero.classList.toggle('paused'); $('#dashPulseBtn').textContent=hero.classList.contains('paused')?'▶ Resume pulses':'⏸ Pause pulses';});
+$('#dashSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter'){const v=$('#dashSearch').value.trim(); const inp=$('#binSearch'); if(inp){inp.value=v; inp.dispatchEvent(new Event('input'));} location.hash='#bins';}});
 
 
 /* ---------- boot ---------- */

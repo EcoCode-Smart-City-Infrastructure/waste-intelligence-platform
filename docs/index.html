@@ -28,39 +28,73 @@
 </header>
 
 <main>
-<!-- DASHBOARD -->
+<!-- DASHBOARD — dark operations layout (sidebar + card grid, waste data only) -->
 <section id="view-dashboard" class="view">
-  <h1>NYC waste, in one operations view</h1>
-  <p class="lede">Live city data where it exists, a working demo fleet where the backend is not running, and every number labelled with its source. No API key, no server needed — this page runs entirely in your browser, and signing in (optional, top right) keeps your session in this browser.</p>
-  <div class="kpis" id="kpis"></div>
-  <div class="card flow-strip">
-    <h2>The loop, in one example <span class="pill">live from the knowledge graph</span></h2>
-    <div class="flow-strip-track" aria-hidden="true"><span>♻</span><span class="flow-dot"></span><span class="flow-dot d2"></span><span class="flow-dot d3"></span></div>
-    <p><strong>Food Scraps → Anaerobic Digestion → Biogas → Waste Processor</strong> — then the processor's facility takes waste again. Real sample metrics: 90% process efficiency, 90% diversion, 150 m³ biogas per tonne of waste, 30,000,000 m³/year of demand. <a href="#graph">Open the circular flow →</a></p>
-  </div>
-  <div class="grid2">
-    <div class="card">
-      <h2>Urgent bins <span class="pill warn" id="urgentCount"></span></h2>
-      <p class="muted">Fill ≥ 80% or forecast to fill within 12 hours. Click a bin to open it in Forecasting.</p>
-      <ul id="urgentList" class="list"></ul>
-      <a class="btn" href="#bins">Manage all bins →</a>
+  <div class="dash-shell">
+    <aside class="dash-side" aria-label="Dashboard sections">
+      <div class="dash-side-brand"><span aria-hidden="true">♻</span><div><strong>Waste Intelligence</strong><span>NYC operations</span></div></div>
+      <p class="dash-side-group">Operations</p>
+      <nav class="dash-side-nav">
+        <a href="#dashboard" class="active">Dashboard</a>
+        <a href="#live">Live NYC Data</a>
+        <a href="#bins">Bins &amp; Routes</a>
+        <a href="#forecast">Forecasting</a>
+      </nav>
+      <p class="dash-side-group">Intelligence</p>
+      <nav class="dash-side-nav">
+        <a href="#graph">Knowledge Graph</a>
+        <a href="#contamination">Contamination</a>
+        <a href="#assistant">Assistant</a>
+        <a href="kepler.html">Kepler Map</a>
+        <a href="#connect">Connect</a>
+      </nav>
+      <p class="dash-side-group">Account</p>
+      <nav class="dash-side-nav"><a href="login.html">Sign in</a></nav>
+      <div class="dash-side-status"><span class="pill" id="dashSideLive">checking…</span><span class="muted small" id="dashSideUrgent"></span></div>
+    </aside>
+    <div class="dash-main">
+      <div class="dash-top">
+        <div><h1>NYC waste, in one operations view</h1><p class="dash-sub">Live city data where it exists, a working demo fleet where the backend is not running, and every number labelled with its source. No API key, no server needed.</p></div>
+        <div class="dash-top-actions">
+          <label class="dash-search">🔍 <input id="dashSearch" placeholder="Search bins or sites… (Enter)"></label>
+          <a class="dash-icon" href="#bins" title="Urgent bins">🔔 <span id="dashBellCount">0</span></a>
+          <a class="dash-icon" href="#connect" title="Connect backends">⚙</a>
+          <a class="dash-icon" href="login.html" title="Sign in">👤</a>
+        </div>
+      </div>
+
+      <section class="dash-card dash-hero" aria-label="City grid">
+        <div class="dash-card-head"><h2>City grid — live operations</h2><span class="pill" id="dashGridBadge">demo fleet · live tonnage where available</span></div>
+        <p class="muted small">A 2D interactive grid — not a 3D rendering and not a phased loop. Pulses travel the urgent route; tap a bin dot to open it in Forecasting. Toggle layers to change what the grid shows.</p>
+        <div class="dash-grid-controls">
+          <label><input type="checkbox" id="dashLayerFleet" checked> Fleet</label>
+          <label><input type="checkbox" id="dashLayerRoute" checked> Urgent route</label>
+          <label><input type="checkbox" id="dashLayerHeat" checked> Fill heat</label>
+          <label><input type="checkbox" id="dashLayerLabels" checked> Borough labels</label>
+          <button class="btn" id="dashPulseBtn">⏸ Pause pulses</button>
+        </div>
+        <svg id="dashGridSvg" viewBox="0 0 600 340" role="img" aria-label="Interactive NYC bin grid"></svg>
+        <p class="muted small" id="dashGridNote"></p>
+      </section>
+
+      <div class="dash-grid">
+        <section class="dash-card dash-span6"><div class="dash-card-head"><h2>Fleet fill by borough</h2></div><div id="dashBoroughBars"></div><p class="muted small">Average fill of the demo fleet, by borough. Bars are demo data, never live sensor readings.</p></section>
+        <section class="dash-card dash-span6"><div class="dash-card-head"><h2>Live tonnage</h2><span class="pill" id="dashWaveBadge">—</span></div><div class="dash-big" id="dashWaveTotal">—</div><div class="dash-wave" id="dashWaveBars"></div><p class="muted small" id="dashWaveNote"></p></section>
+        <section class="dash-card dash-span4"><div class="dash-card-head"><h2>Tonnage mix</h2></div><div class="dash-donut-wrap"><svg id="dashDonutSvg" viewBox="0 0 200 200"></svg><div class="dash-donut-centre" id="dashDonutCentre">—</div></div><div id="dashDonutLegend"></div></section>
+        <section class="dash-card dash-span4"><div class="dash-card-head"><h2>Fill heatmap</h2></div><div class="dash-heat" id="dashHeatDots"></div><p class="muted small">One dot per demo bin, coloured by fill. Tap a dot for its forecast.</p></section>
+        <section class="dash-card dash-span4"><div class="dash-card-head"><h2>At a glance</h2></div><div class="dash-rings" id="dashRings"></div><p class="muted small" id="dashRingsNote"></p></section>
+        <section class="dash-card dash-span6"><div class="dash-card-head"><h2>Urgent bins</h2><span class="pill warn" id="urgentCount"></span></div><p class="muted small">Fill ≥ 80% or forecast to fill within 12 hours. Click a bin to open it in Forecasting.</p><ul id="urgentList" class="list"></ul><a class="btn" href="#bins">Manage all bins →</a></section>
+        <section class="dash-card dash-span6"><div class="dash-card-head"><h2>Tonnage by borough</h2></div><div class="dash-bars-v" id="dashTonnageBars"></div><p class="muted small">Total tonnes (refuse + paper + MGP + organics) for the latest month in the live feed, or the labelled sample if the feed is down.</p></section>
+        <section class="dash-card dash-span6"><div class="dash-card-head"><h2>Forecast trend — most urgent bin</h2></div><svg id="dashForecastSvg" viewBox="0 0 520 180"></svg><p class="muted small" id="dashForecastNote"></p></section>
+        <section class="dash-card dash-span6"><div class="dash-card-head"><h2>The loop, in one example <span class="pill">live from the knowledge graph</span></h2></div><div class="flow-strip-track" aria-hidden="true"><span>♻</span><span class="flow-dot"></span><span class="flow-dot d2"></span><span class="flow-dot d3"></span></div><p><strong>Food Scraps → Anaerobic Digestion → Biogas → Waste Processor</strong> — then the processor's facility takes waste again. Real sample metrics: 90% process efficiency, 90% diversion, 150 m³ biogas per tonne of waste, 30,000,000 m³/year of demand. <a href="#graph">Open the circular flow →</a></p></section>
+      </div>
+
+      <section class="dash-card">
+        <div class="dash-card-head"><h2>Latest live tonnage</h2><span class="pill" id="liveBadge">checking…</span></div>
+        <div class="tablewrap"><table id="dashTonnage"><thead><tr><th>Month</th><th>Borough</th><th>Refuse (t)</th><th>Paper (t)</th><th>MGP (t)</th><th>Organics (t)</th></tr></thead><tbody></tbody></table></div>
+        <p class="muted small">Source: DSNY Monthly Tonnage Data, dataset <code>ebb7-mvp5</code> on data.cityofnewyork.us. If live data cannot be reached, this table shows the labelled sample and the badge says so.</p>
+      </section>
     </div>
-    <div class="card">
-      <h2>What each view does</h2>
-      <ul class="list">
-        <li><strong>Live NYC Data</strong> — pulls DSNY tonnage, organics, diversion and facility data straight from NYC Open Data (Socrata). Falls back to a labelled sample only if the network call fails.</li>
-        <li><strong>Bins &amp; Routes</strong> — add, update and collect demo bins, then build a nearest-neighbour collection route.</li>
-        <li><strong>Forecasting</strong> — ports the platform's real algorithm: current fill cycle, least-squares trend, R², time-to-full, and z-score anomaly check.</li>
-        <li><strong>Knowledge Graph</strong> — the repo's real 31-node / 55-edge W2RKG sample, searchable and clickable.</li>
-        <li><strong>Contamination</strong> — the backend's exact stream-acceptance map, with manual material tagging (the YOLOv11 model itself needs the backend service).</li>
-        <li><strong>Kepler 3D Map</strong> — real Kepler.gl geospatial operations: demo fleet, 3D fill-density grid, urgent collection route arcs, live tonnage by borough, and 48-hour fill tracking, with Kepler's own layer / filter / time controls. Opens on <a href="kepler.html">kepler.html</a>.</li>
-      </ul>
-    </div>
-  </div>
-  <div class="card">
-    <h2>Latest live tonnage <span class="pill" id="liveBadge">checking…</span></h2>
-    <div class="tablewrap"><table id="dashTonnage"><thead><tr><th>Month</th><th>Borough</th><th>Refuse (t)</th><th>Paper (t)</th><th>MGP (t)</th><th>Organics (t)</th></tr></thead><tbody></tbody></table></div>
-    <p class="muted small">Source: DSNY Monthly Tonnage Data, dataset <code>ebb7-mvp5</code> on data.cityofnewyork.us. If live data cannot be reached, this table shows the labelled sample and the badge says so.</p>
   </div>
 </section>
 
