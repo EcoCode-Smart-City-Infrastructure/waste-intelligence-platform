@@ -181,6 +181,13 @@ services:
       - "8004:8004"
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      # Groq ("for now" provider): set GROQ_API in .env to the same value as
+      # the GROQ_API repo secret in Etienne0101-lab/OpenForge-Workbench-.
+      # When set, copilot_service uses Groq (llama-3.3-70b-versatile) and
+      # OpenRouter becomes the fallback. GROQ_API_KEY is accepted as an alias.
+      - GROQ_API=${GROQ_API:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
       - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openai/gpt-4o-mini}
       - WASTE_INTEL_API_URL=http://waste-intel-api:8001

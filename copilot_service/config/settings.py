@@ -29,6 +29,18 @@ class Settings(BaseSettings):
     openrouter_base_url: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
     openrouter_default_model: str = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
     openrouter_timeout: int = int(os.getenv("OPENROUTER_TIMEOUT", "60"))
+
+    # Groq Configuration — "for now" provider (see utils/groq_client.py).
+    # Env name GROQ_API matches the GROQ_API repo secret in
+    # Etienne0101-lab/OpenForge-Workbench-; GROQ_API_KEY is accepted too.
+    # When a Groq key is set, api/app.py uses Groq and OpenRouter is fallback.
+    # A repo secret alone does NOT run this service: the key must be present
+    # as an environment variable where the service actually runs (Docker
+    # compose passes GROQ_API / GROQ_API_KEY through from .env).
+    groq_api_key: str = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_API") or ""
+    groq_base_url: str = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+    groq_default_model: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    groq_timeout: int = int(os.getenv("GROQ_TIMEOUT", "60"))
     
     # Service URLs
     waste_intel_api_url: str = os.getenv("WASTE_INTEL_API_URL", "http://waste-intel-api:8001")

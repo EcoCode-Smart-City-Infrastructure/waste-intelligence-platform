@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from ..config.settings import get_settings, Settings
 from ..utils.openrouter_client import get_openrouter_client, OpenRouterClient
+from ..utils.groq_client import get_groq_client, GroqClient
 from ..utils.audit_logger import get_audit_logger, AuditLogger
 from ..core.context_manager import get_context_manager, ContextManager, Context
 from ..core.tool_router import get_tool_router, ToolRouter, ToolCall, ToolResult
@@ -43,6 +44,17 @@ def get_app_settings() -> Settings:
 
 # Dependency to get OpenRouter client
 async def get_router_client() -> OpenRouterClient:
+    return get_openrouter_client()
+
+
+# Dependency to get the LLM client for a query — Groq wins when a Groq key
+# is configured (env GROQ_API / GROQ_API_KEY), otherwise OpenRouter.
+# Groq and OpenRouter share the OpenAI chat-completions message format,
+# so the same prompt messages work for both clients.
+async def get_llm_client():
+    settings = get_settings()
+    if settings.groq_api_key:
+        return get_groq_client()
     return get_openrouter_client()
 
 
@@ -225,7 +237,7 @@ async def query_copilot(
     context_manager: ContextManager = Depends(get_context_mgr),
     tool_router: ToolRouter = Depends(get_tool_router_dep),
     prompt_builder: PromptBuilder = Depends(get_prompt_builder_dep),
-    openrouter_client: OpenRouterClient = Depends(get_router_client)
+    llm_client = Depends(get_llm_client)
 ):
     """
     Main endpoint for copilot queries.
@@ -234,7 +246,7 @@ async def query_copilot(
     1. Validating the query with guardrails
     2. Building context from available data sources
     3. Routing to appropriate tools
-    4. Generating a response with OpenRouter
+    4. Generating a response with Groq (when GROQ_API is set) or OpenRouter
     5. Logging the interaction
     """
     start_time = time.time()
@@ -563,5 +575,5 @@ from typing import Optional
 async def log_startup():
     logger.info("AI Copilot Service API started")
     settings = get_settings()
-    logger.info(f"OpenRouter model: {settings.openrouter_default_model}")
+    logger.info(f"LLM provider: {"Groq" if settings.groq_api_key else "OpenRouter"} model: {settings.groq_default_model if settings.groq_api_key else settings.openrouter_default_model}")
     logger.info(f"Service port: {settings.copilot_port}")

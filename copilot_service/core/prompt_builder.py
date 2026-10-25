@@ -27,6 +27,10 @@ class Prompt:
     temperature: float = 0.7
     max_tokens: Optional[int] = None
     
+    def to_groq_format(self) -> List[Dict[str, Any]]:
+        """Groq uses the same OpenAI chat-completions format as OpenRouter."""
+        return self.to_openrouter_format()
+
     def to_openrouter_format(self) -> List[Dict[str, Any]]:
         """Convert to OpenRouter chat completion format."""
         messages = [
