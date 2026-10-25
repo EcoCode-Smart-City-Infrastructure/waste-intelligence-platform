@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waste Intelligence — Kepler.gl Geospatial Operations</title>
+<meta name="description" content="Kepler.gl 3D geospatial operations view for the EcoCode Waste Intelligence Platform: demo bin fleet, urgent collection routes, live DSNY tonnage, and 48-hour fill tracking over NYC.">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="https://unpkg.com/mapbox-gl@2.15.0/dist/mapbox-gl.css">
+<style>
+  html,body{height:100%}
+  body.kepler-page{display:flex;flex-direction:column}
+  .kepler-page main{max-width:none;width:100%;margin:0;padding:0 1rem 1rem;flex:1;display:flex;flex-direction:column}
+  .kepler-page .top{position:static}
+  .ops{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;padding:.8rem 0}
+  .ops .btn{font-size:.85rem;padding:.45rem .8rem}
+  .ops label{font-size:.85rem;font-weight:600;display:flex;flex-direction:column;gap:.2rem}
+  .ops input{padding:.5rem .65rem;border:1px solid #c8d3c9;border-radius:9px;min-width:230px;background:#fff}
+  .kpis.compact{margin:.2rem 0 .6rem}
+  .kpis.compact>div{padding:.6rem .9rem}
+  .kpis.compact b{font-size:1.2rem}
+  #kepler-wrap{flex:1;min-height:560px;border:1px solid #dbe3dc;border-radius:14px;overflow:hidden;background:#0f1a13;position:relative}
+  #kepler-root{width:100%;height:100%}
+  #kepler-status{position:absolute;left:1rem;right:1rem;bottom:1rem;z-index:5;background:rgba(255,255,255,.95);border:1px solid #dbe3dc;border-radius:10px;padding:.6rem .9rem;font-size:.85rem;max-width:72ch}
+  #kepler-status.hidden{display:none!important}
+  .lede.compact{margin:.2rem 0}
+  @media(max-width:760px){#kepler-wrap{min-height:480px}.ops input{min-width:160px}}
+</style>
+</head>
+<body class="kepler-page">
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true">♻</span>
+    <div><strong>Waste Intelligence · Kepler.gl</strong><span>NYC geospatial operations · EcoCode Smart City</span></div>
+  </div>
+  <nav aria-label="Sections">
+    <a href="index.html#dashboard">Dashboard</a>
+    <a href="index.html#live">Live NYC Data</a>
+    <a href="index.html#bins">Bins &amp; Routes</a>
+    <a href="index.html#forecast">Forecasting</a>
+    <a href="index.html#graph">Knowledge Graph</a>
+    <a href="index.html#contamination">Contamination</a>
+    <a href="kepler.html" class="active">Kepler 3D Map</a>
+  </nav>
+</header>
+
+<main>
+  <h1 style="padding:.8rem 0 0">NYC waste operations, in 3D</h1>
+  <p class="lede compact">Real Kepler.gl — not a screenshot of it. The side panel inside the map is the operational UI: switch layers, change layer types (point / 3D grid / hexbin / arc), filter by borough, fill or time, drag in your own CSV or GeoJSON, split the map, and export the map config or an image. The datasets below are the same ones the main app uses: the demo fleet from Bins &amp; Routes (same seeded bins, same localStorage edits), the urgent-bin route, live DSNY tonnage, and 48 hours of fill history per bin.</p>
+
+  <div class="kpis compact" id="keplerKpis">
+    <div><b>…</b><span>Loading fleet…</span></div>
+    <div><b>…</b><span>Urgent bins</span></div>
+    <div><b>…</b><span>Live tonnage (latest month)</span></div>
+    <div><b>…</b><span>Route</span></div>
+  </div>
+
+  <div class="ops">
+    <button class="btn primary" id="presetFleet">Fleet 3D</button>
+    <button class="btn" id="presetRoutes">Routes</button>
+    <button class="btn" id="presetTonnage">Tonnage</button>
+    <button class="btn" id="presetTracking">Tracking · 48 h</button>
+    <button class="btn" id="exportConfig">Export map config</button>
+    <button class="btn" id="reloadKepler">Reload data</button>
+    <label>Mapbox token (optional)
+      <input id="mapboxToken" placeholder="pk.… — only needed for Mapbox styles" autocomplete="off">
+    </label>
+    <button class="btn" id="saveToken">Save token &amp; reload</button>
+    <span class="pill" id="liveBadge">checking…</span>
+  </div>
+  <p class="muted small" style="margin:0 0 .6rem">Basemap: CARTO Dark (no token needed) is the default style in the map config; pick CARTO Light in Kepler's base-map control, or paste a Mapbox token to unlock Mapbox styles. A pasted token is stored only in this browser's localStorage and is sent only to Mapbox when a Mapbox style is chosen — never to the repo or any EcoCode server. Demo bin positions are the app's seeded demo fleet, labelled as such; they are not live sensor locations. No picture was attached to the request, so this page replicates the existing app's dashboard facets (fleet, routes, tonnage, forecasting, knowledge graph) — send the screenshot if a specific layout was meant and it will be matched.</p>
+
+  <div id="kepler-wrap">
+    <div id="kepler-root"></div>
+    <div id="kepler-status">Loading Kepler.gl…</div>
+  </div>
+
+  <div class="card">
+    <h2>What is on the map</h2>
+    <ul class="list">
+      <li><strong>Bins — fill &amp; status</strong> (point): every demo bin, coloured and sized by fill %. Click one for bin, site, borough, status, forecast time-to-full and 24-hour forecast fill.</li>
+      <li><strong>Fill density — 3D grid</strong> (grid, off by default): the same bins aggregated into 3D columns whose height and colour follow average fill — press “Fleet 3D” to turn it on and tilt the view.</li>
+      <li><strong>Urgent collection route</strong> (arc): the nearest-neighbour route through urgent bins (≥ 80%), exactly as built in Bins &amp; Routes, with leg distance per arc.</li>
+      <li><strong>Live tonnage by borough</strong> (point): latest-month DSNY tonnage from Socrata dataset <code>ebb7-mvp5</code>, aggregated by borough and centred on each borough — sized by refuse tonnage. Falls back to the labelled sample only if the live call fails.</li>
+      <li><strong>Bin fill tracking — 48 h</strong> (point, off by default): one point per bin per hour of fill history, with a time-range filter — press “Tracking · 48 h” to animate fill evolution over time. History uses the same seeded series and the same forecasting math as the Forecasting view (current-cycle cut on a drop &gt; 30 points).</li>
+      <li><strong>Knowledge graph</strong> is not plotted as geography: its nodes have no coordinates, and inventing locations for real facilities would be fabrication. It stays in its own view, linked from the header.</li>
+    </ul>
+    <p class="muted small">Kepler.gl 3.0.0 is loaded from unpkg (React / ReactDOM / Redux / React-Redux / styled-components are its documented externals). If the CDN is unreachable, this page says so plainly instead of showing an empty map — the main app keeps working without it.</p>
+  </div>
+</main>
+
+<footer><p>Waste Intelligence web app · Kepler.gl geospatial view · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and route are labelled as such in each view.</p></footer>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/redux@4.2.1/dist/redux.min.js"></script>
+<script src="https://unpkg.com/react-redux@8.1.3/dist/react-redux.min.js"></script>
+<script src="https://unpkg.com/styled-components@5.3.11/dist/styled-components.min.js"></script>
+<script src="https://unpkg.com/kepler.gl@3.0.0/umd/keplergl.min.js"></script>
+<script src="kepler.js"></script>
+</body>
+</html>
