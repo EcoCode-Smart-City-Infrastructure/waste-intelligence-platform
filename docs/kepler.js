@@ -159,17 +159,16 @@ function buildConfig() {
       },
       mapState: { latitude: 40.73, longitude: -73.94, zoom: 10.2, pitch: 45, bearing: 0, dragRotate: true, isSplit: false },
       mapStyle: {
-        // Built-in 'dark' (Kepler 3's MapLibre default, no token) rather than
-        // a custom style id: the custom 'carto_dark' id did not produce
-        // visible tiles in live verification (plain light canvas), while the
-        // CARTO styles stay selectable from Kepler's own base-map control.
-        styleType: 'dark',
+        // Kepler's built-in 'dark-matter' (CARTO Dark Matter, no token).
+        // Do NOT use 'dark'/'light'/'muted' here: those are mapbox:// styles
+        // that render a blank canvas without a Mapbox token (verified live
+        // twice). Custom mapStyles dict entries were also removed: a custom
+        // id did not produce tiles either, and offering it in the picker
+        // would only offer another blank choice.
+        styleType: 'dark-matter',
         topLayerGroups: {}, visibleLayerGroups: { label: true, road: true, border: true, building: true, water: true, land: true, '3d building': false },
         threeDBuildingColor: [9, 17, 24],
-        mapStyles: {
-          carto_dark: { id: 'carto_dark', label: 'CARTO Dark (no token)', url: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json' },
-          carto_light: { id: 'carto_light', label: 'CARTO Light (no token)', url: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json' }
-        }
+        mapStyles: {}
       }
     }
   };
