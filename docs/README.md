@@ -12,6 +12,19 @@ Zero-build static web app for the EcoCode Waste Intelligence Platform, published
 - **Connect** — probes a locally running hub / forecasting / contamination service at `/health`.
 - **Kepler 3D Map** (`kepler.html`, real Kepler.gl 3.0.0 loaded from unpkg, no build step) — geospatial operations view over the same data: demo fleet points coloured/sized by fill, a 3D fill-density grid, urgent-route arcs, live tonnage-by-borough points, and 48-hour fill tracking with a time-range filter. Kepler's own side panel provides layer switching, filters, split maps, drag-and-drop CSV/GeoJSON, and config/image export. Presets (Fleet 3D / Routes / Tonnage / Tracking) move the camera and switch layers through Kepler actions. Default basemap is CARTO Dark Matter (supplied to Kepler as a custom style, no token). Kepler's Dark/Light/Muted/Satellite styles are mapbox:// URLs and show a blank canvas without a token; a Mapbox token can be pasted on the page (stored in that browser's localStorage only) to unlock them. The knowledge graph is deliberately not geo-plotted — its nodes have no coordinates.
 
+## Knowledge Graph loops — every element, plus the assistant protocol
+
+- **Demonstration loop for every element**: the Knowledge Graph view has a gallery of all 31 nodes. Each element's loop is a staged journey Waste → Process → Resource → Demand (Actor) → Facility → back to Waste, built from real sample edges where they exist.
+- **Honest cycle note**: no node in the 31-node sample sits on a directed cycle, because the sample's demand actors (Urban Farm, Waste Processor, NYC Urban Agriculture) do not operate facilities. Every loop therefore has four real steps plus one dashed, labelled bridge (demand → facility, or facility → next load). Bridges are system steps, never presented as sample edges. Constraints (Local Law 146, Odor Control, Heavy Metal Limits) do not form loops on their own; they are shown as gates on the loop of the element they apply to.
+- **Ask for a loop (in the page)**: the “Ask for a loop” field parses plain language against the sample. Two matched elements with a directed sample path animate that path; one matched element plays its loop; nothing matched produces a plain “not in the sample” result plus a Loop Studio draft — never an invented pathway.
+- **Loop Studio (in the page)**: build a loop from existing nodes, save it in that browser's localStorage, export it as JSON, or import pasted JSON. Saved loops appear under “Your loops” and play in the same loop player.
+- **Curated loops (`loops.json`)**: the app loads `docs/loops.json` if present and lists those loops under “Your loops” with a “curated” badge. Format, one object per loop:
+  ```json
+  {"name": "Brooklyn Residential Organics Loop", "desc": "...", "source": "curated-sample", "stages": ["ResidentialOrganicsBrooklyn", "AerobicComposting", "CompostAmendment", "UrbanFarm", "FACILITY-BK-COMPOST-01"]}
+  ```
+  Stages are node IDs from `kg.json`, in Waste → Process → Resource → Actor → Facility order. Transitions between consecutive stages are computed from `kg.json` edges at render time; a missing edge is rendered as a labelled bridge.
+- **Ask Muse in chat (the AI research step)**: the static Pages app runs no AI model. To get a researched loop, tell Muse in chat, for example: “Add a W2RKG loop to the waste web app (branch web-app, docs/loops.json): coffee grounds to animal feed.” Muse should use the sample first, then research real conversion data with labelled sources, never invent metrics, add the loop to `loops.json`, and push it — it then appears in “Your loops” on the next visit. The in-app “Copy request for Muse” button copies exactly that request template with your words filled in.
+
 ## Run locally
 ```bash
 python3 -m http.server 8000   # then open http://localhost:8000/

@@ -176,7 +176,7 @@ function fmtProps(p){return Object.entries(p||{}).map(([k,v])=>`${k.replaceAll('
 async function loadKG(){try{const r=await fetch('kg.json'); kgData=await r.json();}catch(e){kgData={nodes:[],edges:[]};}
   const wastes=kgData.nodes.filter(n=>n.type==='Waste_Type'||n.type==='Waste_Stream');
   [['#kgAsk'],['#flowWaste']].forEach(([sel])=>{const el=$(sel); wastes.forEach(n=>{const o=document.createElement('option');o.value=n.id;o.textContent=n.name;el.appendChild(o);});});
-  buildRing(); populateFlowProcesses(); populateFlowResources(); renderFlow(); drawGraph();}
+  buildRing(); populateFlowProcesses(); populateFlowResources(); renderFlow(); try{buildLoopGallery(); populateStudio(); loadCuratedLoops();}catch(e){console.warn('Loop gallery failed, graph still available:',e);} drawGraph();}
 function buildRing(){
   const ring=$('#kgRing'); if(!ring) return;
   ring.innerHTML=`<div class="kg-ring-hub" id="kgRingHub"></div>`+RING.map((s,i)=>{const a=(-90+i*360/RING.length)*Math.PI/180, x=50+42*Math.cos(a), y=50+42*Math.sin(a);
@@ -322,6 +322,214 @@ function renderFlow(){
   $('#flowMetrics').innerHTML=`<div class="kpis"><div><b>${fmt(T)} t</b><span>Input waste</span></div><div><b>${div!=null?fmt(T*div)+' t':'—'}</b><span>Diverted (at sample diversion rate)</span></div><div><b>${outQty!=null?fmt(outQty)+' '+(yld.unit):'—'}</b><span>Resource output</span></div><div><b>${valueTxt}</b><span>Indicative value, sample prices only</span></div></div>
   <p class="muted small">Units are kept separate on purpose: biogas is priced per m³ demanded, compost and feed per tonne of resource. Where the sample gives no matching price, the value is left as “—” rather than guessed. Preprocessing for this step: ${esc((wpEdge?.props?.preprocessing_required||[]).join(', ')||'none listed')}.</p>`;
 }
+
+
+/* ---------- demonstration loops for every element + Ask / Studio ---------- */
+const STAGES=['Waste','Process','Resource','Actor','Facility'];
+const stageOfNode=n=>n.type==='Waste_Type'||n.type==='Waste_Stream'?'Waste':n.type;
+const edgeBetween=(a,b)=>kgData.edges.find(e=>e.from===a&&e.to===b)||null;
+const firstOut=(from,type)=>kgData.edges.find(e=>e.from===from&&e.type===type)||null;
+function wasteToProcess(wasteId,prefer){
+  const n=kgNode(wasteId); if(!n) return null;
+  if(n.type==='Waste_Stream'){
+    for(const c of kgData.edges.filter(e=>e.from===wasteId&&e.type==='WASTESTREAMHASWASTETYPE')){
+      const p=kgData.edges.find(e=>e.from===c.to&&e.type==='WASTECANBEPROCESSEDBY');
+      if(p) return {id:p.to,edge:p,via:c.to};
+    }
+    return null;
+  }
+  if(prefer){const p=kgData.edges.find(e=>e.from===wasteId&&e.to===prefer&&e.type==='WASTECANBEPROCESSEDBY'); if(p) return {id:prefer,edge:p};}
+  const p=firstOut(wasteId,'WASTECANBEPROCESSEDBY'); return p?{id:p.to,edge:p}:null;
+}
+function processToResource(procId,prefer){
+  if(prefer){const p=kgData.edges.find(e=>e.from===procId&&e.to===prefer&&e.type==='PROCESSPRODUCESRESOURCE'); if(p) return {id:prefer,edge:p};}
+  const p=firstOut(procId,'PROCESSPRODUCESRESOURCE'); return p?{id:p.to,edge:p}:null;
+}
+function actorToFacility(actorId,ctx){
+  const op=firstOut(actorId,'ACTOROPERATESFACILITY'); if(op) return {id:op.to,edge:op,real:true};
+  // demand actor with no operate edge: go via the resource it demands -> process -> facility
+  const dem=kgData.edges.find(e=>e.to===actorId&&e.type==='RESOURCEDEMANDEDBY_ACTOR');
+  if(dem){const pr=processForResource(dem.from); if(pr){const f=kgData.edges.find(x=>x.to===pr&&x.type==='FACILITYSUPPORTSPROCESS'); if(f) return {id:f.from,edge:null,real:false,note:'System bridge: this actor does not operate a facility in the sample, so the loop uses the facility that runs the process making the resource it demands.'};}}
+  if(ctx.processId){const f=kgData.edges.find(x=>x.to===ctx.processId&&x.type==='FACILITYSUPPORTSPROCESS'); if(f) return {id:f.from,edge:null,real:false,note:'System bridge: this actor does not operate a facility in the sample, so the loop uses the facility that runs this process.'};}
+  if(ctx.resourceId){const pr=kgData.edges.find(e=>e.to===ctx.resourceId&&e.type==='PROCESSPRODUCESRESOURCE'); if(pr){const f=firstOut(pr.from,'FACILITYSUPPORTSPROCESS'); if(f) return {id:f.from,edge:null,real:false,note:'System bridge: this actor does not operate a facility in the sample, so the loop uses the facility that runs the process making this resource.'};}}
+  if(ctx.wasteId){const f=kgData.edges.find(e=>e.to===ctx.wasteId&&e.type==='FACILITYACCEPTSWASTE'); if(f) return {id:f.from,edge:null,real:false,note:'System bridge: this actor does not operate a facility in the sample, so the loop uses a facility that accepts this waste.'};}
+  const f=kgData.nodes.find(n=>n.type==='Facility'); return f?{id:f.id,edge:null,real:false,note:'System bridge: no facility link for this actor in the sample.'}:null;
+}
+function facilityToWaste(facId,prefer){
+  if(prefer){const p=kgData.edges.find(e=>e.from===facId&&e.to===prefer&&e.type==='FACILITYACCEPTSWASTE'); if(p) return {id:prefer,edge:p};}
+  const p=firstOut(facId,'FACILITYACCEPTSWASTE'); return p?{id:p.to,edge:p}:null;
+}
+function processForResource(resId){const e=kgData.edges.find(x=>x.to===resId&&x.type==='PROCESSPRODUCESRESOURCE'); return e?e.from:null;}
+function processForFacility(facId){const e=kgData.edges.find(x=>x.from===facId&&x.type==='FACILITYSUPPORTSPROCESS'); return e?e.to:null;}
+function buildElementLoop(elementId){
+  const el=kgNode(elementId); if(!el) return null;
+  if(el.type==='Constraint'){
+    const tgt=firstOut(elementId,'CONSTRAINTAPPLIESTO'); if(!tgt) return null;
+    const loop=buildElementLoop(tgt.to); if(loop){loop.gate=el; loop.elementId=elementId; loop.title=`${el.name} — gates ${kgName(tgt.to)}`;} return loop;
+  }
+  const startStage=stageOfNode(el), startIdx=STAGES.indexOf(startStage);
+  const byStage={}; byStage[startStage]=elementId;
+  // preferred targets that would close the loop nicely
+  const preferProcess = startStage==='Resource'?processForResource(elementId):startStage==='Facility'?processForFacility(elementId):null;
+  const preferResource = null;
+  for(let k=1;k<5;k++){
+    const curStage=STAGES[(startIdx+k-1)%5], nextStage=STAGES[(startIdx+k)%5], curId=byStage[curStage];
+    let pick=null;
+    if(curStage==='Waste'&&nextStage==='Process') pick=wasteToProcess(curId, preferProcess|| (startStage==='Process'?elementId:null));
+    else if(curStage==='Process'&&nextStage==='Resource') pick=processToResource(curId, startStage==='Resource'?elementId:null);
+    else if(curStage==='Resource'&&nextStage==='Actor') {const e=firstOut(curId,'RESOURCEDEMANDEDBY_ACTOR'); pick=e?{id:e.to,edge:e}:null;}
+    else if(curStage==='Actor'&&nextStage==='Facility') pick=actorToFacility(curId,{processId:byStage.Process,resourceId:byStage.Resource,wasteId:byStage.Waste});
+    else if(curStage==='Facility'&&nextStage==='Waste') pick=facilityToWaste(curId, startStage==='Waste'?elementId:null);
+    if(pick) byStage[nextStage]=pick.id;
+    else { // fall back to any node of the next stage so the loop still plays, marked as a bridge
+      const cand=kgData.nodes.find(n=>stageOfNode(n)===nextStage); if(cand) byStage[nextStage]=cand.id;
+    }
+  }
+  const order=[]; for(let k=0;k<5;k++) order.push(byStage[STAGES[(startIdx+k)%5]]);
+  return stagesToLoop(order, `${el.name} loop`, 'sample', elementId, null);
+}
+function stagesToLoop(stageIds, title, source, elementId, gate){
+  const stages=stageIds.map(id=>{const n=kgNode(id); return n||{id,name:id,type:'Proposed',desc:'Proposed — not in the sample',detail:{}};});
+  const transitions=[];
+  for(let i=0;i<stages.length;i++){
+    const from=stages[i], to=stages[(i+1)%stages.length], isClosure=i===stages.length-1;
+    const edge=edgeBetween(from.id,to.id);
+    transitions.push({from:from.id,to:to.id,edge,real:!!edge,isClosure,
+      note:edge?'':isClosure?'Loop closes — next load / new waste arises (system step, not a sample edge).':'System bridge — no direct sample edge between these stages; the step is labelled, not invented as data.'});
+  }
+  return {title,source,elementId,gate,stages,transitions};
+}
+let loopPlaying=false, currentLoop=null;
+function loopDiagramSvg(loop,playing,dur){
+  const n=loop.stages.length, cx=260, cy=170, R=110;
+  const cols={Waste:'#1d7a4f',Process:'#7c5cbf',Resource:'#b7791f',Actor:'#64748b',Facility:'#2563eb',Proposed:'#94a3b8',Gate:'#b42318'};
+  const arc=(a0,a1)=>{const p0=[cx+R*Math.cos(a0),cy+R*Math.sin(a0)], p1=[cx+R*Math.cos(a1),cy+R*Math.sin(a1)]; return `M ${p0[0]} ${p0[1]} A ${R} ${R} 0 0 1 ${p1[0]} ${p1[1]}`;};
+  let arcs='', labels='';
+  loop.stages.forEach((s,i)=>{
+    const a0=-Math.PI/2+i*(2*Math.PI/n)+0.12, a1=-Math.PI/2+(i+1)*(2*Math.PI/n)-0.12, mid=(a0+a1)/2, col=cols[stageOfNode(s)]||'#333';
+    const tr=loop.transitions[i];
+    arcs+=`<path d="${arc(a0,a1)}" fill="none" stroke="${col}" stroke-width="20" stroke-linecap="round" stroke-dasharray="${tr.real?'':'6 6'}" opacity="${tr.real?1:0.85}"/>`;
+    const LR=R+42;
+    labels+=`<text x="${cx+LR*Math.cos(mid)}" y="${cy+LR*Math.sin(mid)-6}" text-anchor="middle" font-size="11" font-weight="700">${esc(stageOfNode(s).toUpperCase())}</text><text x="${cx+LR*Math.cos(mid)}" y="${cy+LR*Math.sin(mid)+10}" text-anchor="middle" font-size="10">${esc((s.name||'').length>20?s.name.slice(0,19)+'…':s.name||'')}</text>`;
+  });
+  return `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#e6ede7" stroke-width="22"/>${arcs}${labels}
+  <text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="14" font-weight="700">${esc(loop.title.length>28?loop.title.slice(0,27)+'…':loop.title)}</text><text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="11" fill="#5a6a5f">${loop.stages.length} stages · ${loop.transitions.filter(t=>t.real).length} real · ${loop.transitions.filter(t=>!t.real).length} bridge</text>
+  ${playing?`<circle r="8" fill="#0f5132" stroke="#fff" stroke-width="2"><animateMotion dur="${dur}s" repeatCount="indefinite" path="M ${cx},${cy-R} a ${R},${R} 0 1,1 -0.1,0"/></circle>`:''}`;
+}
+function renderLoopPlayer(loop){
+  currentLoop=loop; if(!loop) return;
+  const dur=$('#loopSpeed')?.value||'7';
+  $('#loopSvg').innerHTML=loopDiagramSvg(loop,loopPlaying,dur);
+  $('#loopSteps').innerHTML=loop.stages.map((s,i)=>{
+    const tr=loop.transitions[i];
+    const metric = s.type==='Process'?`${s.detail?.efficiency??'—'}% efficient · ${s.detail?.processing_time_hours??'—'} h · ${s.detail?.energy_requirement_kwh_per_tonne??'—'} kWh/t · ${s.detail?.carbon_footprint_kg_co2_per_tonne??'—'} kg CO₂/t`
+      : s.type==='Resource'?`Value $${s.detail?.economic_value_per_tonne??'—'}/t · demand ${esc(s.detail?.market_demand||'—')}`
+      : s.type==='Facility'?`Capacity ${fmt(s.detail?.capacity_tonnes_per_year)} t/yr`
+      : s.type==='Waste_Stream'?`${fmt(s.detail?.volume_tonnes_per_year)} t/yr`
+      : esc(s.desc||'');
+    return `<div class="flow-step"><strong>${i+1} · ${esc(stageOfNode(s))}</strong><p><a href="#" data-loopjump="${s.id}">${esc(s.name)}</a> ${s.type==='Proposed'?'<span class="pill warn">PROPOSED</span>':''}</p><p class="muted small">${metric}</p><p class="muted small">${tr.real?`→ ${esc(tr.edge.type.replaceAll('_',' '))} ${esc(fmtProps(tr.edge.props))}`:`→ <strong>Bridge:</strong> ${esc(tr.note)}`}</p></div>`;
+  }).join('');
+  $$('#loopSteps [data-loopjump]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault(); if(kgNode(a.dataset.loopjump)) showNode(a.dataset.loopjump);}));
+  // metrics: process + resource + demand + facility from this loop
+  const proc=loop.stages.find(s=>s.type==='Process'), res=loop.stages.find(s=>s.type==='Resource'), fac=loop.stages.find(s=>s.type==='Facility');
+  const prEdge=proc&&res?edgeBetween(proc.id,res.id):null, demEdge=res?kgData.edges.find(e=>e.from===res.id&&e.type==='RESOURCEDEMANDEDBY_ACTOR'):null;
+  const yld=prEdge?yieldOf(prEdge.props):null;
+  $('#loopMetrics').innerHTML=`<div class="kpis"><div><b>${proc?proc.detail?.efficiency??'—': '—'}%</b><span>Process efficiency</span></div><div><b>${yld?fmt(yld.qty)+' '+yld.unit:'—'}</b><span>Yield per tonne of waste</span></div><div><b>${demEdge?fmt(demEdge.props.annual_demand_tonnes||demEdge.props.annual_demand_m3):'—'}</b><span>Annual demand (sample units)</span></div><div><b>${fac?fmt(fac.detail?.capacity_tonnes_per_year):'—'}</b><span>Facility capacity t/yr</span></div></div>
+  ${loop.gate?`<p><span class="pill bad">Gate: ${esc(loop.gate.name)}</span> — this constraint applies to a stage in this loop; it does not create a cycle on its own. ${esc(fmtProps(kgData.edges.find(e=>e.from===loop.gate.id)||{}.props||{}))}</p>`:''}
+  <p class="muted small">Source: ${esc(loop.source)} · Real transitions use sample edges with their props; bridges are dashed in the diagram and labelled in the steps. No metric is invented for a proposed stage.</p>`;
+}
+function buildLoopGallery(){
+  const g=$('#loopGallery'); if(!g||!kgData) return;
+  g.innerHTML=TYPE_ORDER.map(t=>{
+    const nodes=kgData.nodes.filter(n=>n.type===t);
+    return `<div class="loop-group"><strong>${esc(t)}</strong><div>${nodes.map(n=>`<button class="btn loop-btn" data-loop="${n.id}">${esc(n.name)}</button>`).join('')}</div></div>`;
+  }).join('');
+  $$('#loopGallery .loop-btn').forEach(b=>b.addEventListener('click',()=>{const loop=buildElementLoop(b.dataset.loop); $('#loopElement').value=b.dataset.loop; renderLoopPlayer(loop);}));
+  const sel=$('#loopElement'); if(sel&&!sel.options.length){kgData.nodes.forEach(n=>{const o=document.createElement('option');o.value=n.id;o.textContent=`${n.name} (${n.type})`;sel.appendChild(o);});}
+  if(!currentLoop){const first=buildElementLoop('FoodScraps'); renderLoopPlayer(first);}
+}
+$('#loopElement')?.addEventListener('change',()=>renderLoopPlayer(buildElementLoop($('#loopElement').value)));
+$('#loopSpeed')?.addEventListener('change',()=>{if(currentLoop) renderLoopPlayer(currentLoop);});
+$('#loopPlayBtn')?.addEventListener('click',()=>{loopPlaying=!loopPlaying; $('#loopPlayBtn').textContent=loopPlaying?'⏸ Pause loop':'▶ Play loop'; if(currentLoop) renderLoopPlayer(currentLoop);});
+$('#loopShowBtn')?.addEventListener('click',()=>{
+  if(!currentLoop) return;
+  kgTracePath=currentLoop.stages.map(s=>s.id); $('#kgType').value=''; $('#kgSearch').value=''; syncRing(); drawGraph();
+  document.querySelector('.kg-graph-card')?.scrollIntoView({behavior:'smooth',block:'center'});
+});
+/* ---------- custom loops: curated file + browser storage ---------- */
+let curatedLoops=[];
+async function loadCuratedLoops(){try{const r=await fetch('loops.json'); if(!r.ok) return; const arr=await r.json(); curatedLoops=Array.isArray(arr)?arr:[];}catch(e){curatedLoops=[];} renderYourLoops();}
+function customLoopsLocal(){try{return JSON.parse(localStorage.getItem('wip_custom_loops')||'[]');}catch(e){return [];}}
+function saveCustomLoops(arr){try{localStorage.setItem('wip_custom_loops',JSON.stringify(arr));}catch(e){}}
+function renderYourLoops(){
+  const box=$('#yourLoops'); if(!box) return;
+  const all=[
+    ...curatedLoops.map(l=>({...l,source:'curated (loops.json)'})),
+    ...customLoopsLocal().map(l=>({...l,source:'saved in this browser'}))
+  ];
+  if(!all.length){box.innerHTML='<p class="muted small">No saved loops yet. Save one in Loop Studio above, or ask Muse in chat to add one to <code>loops.json</code> — it will appear here on the next visit.</p>'; return;}
+  box.innerHTML='<h3>Your loops</h3>'+all.map((l,i)=>`<div class="flow-step"><strong>${esc(l.name)}</strong> <span class="pill">${esc(l.source)}</span><p class="muted small">${(l.stages||[]).map(s=>esc(kgName(s))).join(' → ')}</p><p class="muted small">${esc(l.desc||'')}</p><button class="btn" data-playloop="${i}">Play this loop</button>${l.source.includes('browser')?` <button class="btn" data-delloop="${l.name}">Delete</button>`:''}</div>`).join('');
+  $$('#yourLoops [data-playloop]').forEach(b=>b.addEventListener('click',()=>{const l=all[+b.dataset.playloop]; renderLoopPlayer(stagesToLoop(l.stages,l.name,l.source,null,null)); $('#loopElement').value='';}));
+  $$('#yourLoops [data-delloop]').forEach(b=>b.addEventListener('click',()=>{saveCustomLoops(customLoopsLocal().filter(x=>x.name!==b.dataset.delloop)); renderYourLoops();}));
+}
+function populateStudio(){
+  const fill=(id,types)=>{const el=$(id); if(!el||el.options.length) return; const o0=document.createElement('option');o0.value='';o0.textContent='— Proposed / leave blank —';el.appendChild(o0); kgData.nodes.filter(n=>types.includes(n.type)).forEach(n=>{const o=document.createElement('option');o.value=n.id;o.textContent=n.name;el.appendChild(o);});};
+  fill('#studioWaste',['Waste_Type','Waste_Stream']); fill('#studioProcess',['Process']); fill('#studioResource',['Resource']); fill('#studioActor',['Actor']); fill('#studioFacility',['Facility']);
+}
+$('#studioSaveBtn')?.addEventListener('click',()=>{
+  const name=$('#studioName').value.trim(); if(!name){alert('Give the loop a name first.');return;}
+  const stages=[$('#studioWaste').value,$('#studioProcess').value,$('#studioResource').value,$('#studioActor').value,$('#studioFacility').value].filter(Boolean);
+  if(stages.length<2){alert('Pick at least two stages.');return;}
+  const arr=customLoopsLocal(); arr.push({name,desc:'Saved in Loop Studio (this browser).',stages,source:'user'}); saveCustomLoops(arr); renderYourLoops(); alert('Saved: '+name);
+});
+$('#studioExportBtn')?.addEventListener('click',()=>{
+  const data=JSON.stringify(customLoopsLocal(),null,2); const blob=new Blob([data],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='loops.json'; a.click();
+  navigator.clipboard?.writeText(data).catch(()=>{});
+});
+$('#studioImportBtn')?.addEventListener('click',()=>{
+  try{const arr=JSON.parse($('#studioImport').value); if(!Array.isArray(arr)) throw new Error('not an array');
+    const good=arr.filter(x=>x&&x.name&&Array.isArray(x.stages)); if(!good.length) throw new Error('no valid loops');
+    const merged=[...customLoopsLocal(),...good.map(x=>({...x,source:'user'}))]; saveCustomLoops(merged); renderYourLoops(); $('#studioImport').value=''; alert(`Imported ${good.length} loop(s).`);}
+  catch(e){alert('Could not import: '+e.message);}
+});
+/* ---------- Ask for a loop: plain-language parsing against the sample ---------- */
+const ALIASES={'dsny':'DSNY','sanitation':'DSNY','coffee':'CoffeeGrounds','yard':'YardWaste','food':'FoodScraps','spent grain':'SpentGrain','brewery':'SpentGrain','grease':'FatsOilsGrease','fog':'FatsOilsGrease','biogas':'Biogas','compost':'CompostAmendment','biochar':'Biochar','syngas':'Syngas','animal feed':'AnimalFeed','frass':'Frass','digestate':'DigestateFertilizer','brooklyn':'FACILITY-BK-COMPOST-01','queens':'AD_PLANT-QUEENS-02','bronx':'BSFL_FARM-BRONX-01','staten island':'BIOCHAR_PLANT-SI-01','anaerobic':'AnaerobicDigestion','aerobic':'AerobicComposting','vermi':'Vermicomposting','bsfl':'BlackSoldierFlyLarvae','larvae':'BlackSoldierFlyLarvae','urban farm':'UrbanFarm','waste processor':'Waste_Processor','hauler':'PrivateHauler','law 146':'NYCRegulationOrganicWaste','odor':'OdorControlRequirement','heavy metal':'HeavyMetal_Limit','restaurant':'RestaurantFoodWaste_Downtown','residential':'ResidentialOrganicsBrooklyn'};
+function matchNodes(text){
+  const low=' '+text.toLowerCase().replace(/[^a-z0-9 ]/g,' ')+' '; const hits=[];
+  kgData.nodes.forEach(n=>{const nm=n.name.toLowerCase(); const idx=low.indexOf(nm); if(idx>=0) hits.push({id:n.id,idx});});
+  Object.entries(ALIASES).forEach(([k,id])=>{const idx=low.indexOf(' '+k+' '); if(idx>=0&&!hits.some(h=>h.id===id)) hits.push({id,idx});});
+  // single distinctive words
+  kgData.nodes.forEach(n=>{n.name.toLowerCase().split(/[^a-z]+/).filter(w=>w.length>=5).forEach(w=>{const idx=low.indexOf(' '+w+' '); if(idx>=0&&!hits.some(h=>h.id===n.id)) hits.push({id:n.id,idx});});});
+  return hits.sort((a,b)=>a.idx-b.idx).map(h=>h.id).filter((v,i,a)=>a.indexOf(v)===i);
+}
+function findPath(from,to,max=7){
+  const adj={}; kgData.edges.forEach(e=>{(adj[e.from]||(adj[e.from]=[])).push(e.to);});
+  const q=[[from]], seen=new Set([from]);
+  while(q.length){const p=q.shift(); const cur=p[p.length-1]; if(cur===to&&p.length>1) return p; if(p.length>max) continue;
+    (adj[cur]||[]).forEach(n=>{if(!seen.has(n)){seen.add(n); q.push([...p,n]);}});}
+  return null;
+}
+$('#askBtn')?.addEventListener('click',()=>{
+  const text=$('#askInput').value.trim(); const out=$('#askOutput');
+  if(!text){out.innerHTML='<p class="muted">Type a request first — for example, “coffee grounds to animal feed”.</p>'; return;}
+  if(/every|all (elements|nodes|loops)/i.test(text)){out.innerHTML='<p>Showing every element’s loop below — tap any element in the gallery to play its loop.</p>'; document.querySelector('.kg-loops-card')?.scrollIntoView({behavior:'smooth'}); return;}
+  const matched=matchNodes(text);
+  if(matched.length>=2){
+    const path=findPath(matched[0],matched[1]);
+    if(path){const loop=stagesToLoop(path,`Path: ${kgName(path[0])} → ${kgName(path[path.length-1])}`,'sample path',path[0],null); renderLoopPlayer(loop);
+      out.innerHTML=`<p>Found a real sample path: <strong>${path.map(kgName).join(' → ')}</strong>. It is playing in the loop player above (the final step back to the start is a dashed closure, not a sample edge, unless that edge exists).</p>`; return;}
+    const loop=buildElementLoop(matched[0]); renderLoopPlayer(loop);
+    out.innerHTML=`<p>I found <strong>${esc(kgName(matched[0]))}</strong> and <strong>${esc(kgName(matched[1]))}</strong>, but there is <strong>no directed sample path</strong> from the first to the second in the 31-node sample — so I have not invented one. Playing the first element’s loop instead; use Loop Studio below to propose a bridge, or copy the request for Muse to research a real one.</p>`; return;
+  }
+  if(matched.length===1){const loop=buildElementLoop(matched[0]); renderLoopPlayer(loop);
+    out.innerHTML=`<p>Playing the loop for <strong>${esc(kgName(matched[0]))}</strong> in the loop player above.</p>`; return;}
+  out.innerHTML=`<p><strong>Not in the sample.</strong> Nothing in “${esc(text)}” matches a node in the 31-node sample, so I have not guessed a pathway. Try a sample element (Food Scraps, Coffee Grounds, Biogas, Brooklyn, Anaerobic Digestion…), build a proposed loop in Loop Studio below, or copy the request for Muse — Muse can research whether a real pathway exists and add it to <code>loops.json</code> with labelled sources.</p>`;
+});
+$('#copyAskBtn')?.addEventListener('click',()=>{
+  const text=$('#askInput').value.trim()||'[your loop request]';
+  const msg=`Add a W2RKG loop to the waste web app (branch web-app, docs/loops.json): ${text}. Use the sample first (31 nodes / 55 edges in docs/kg.json); if the pathway is not in the sample, research real conversion data, label every source, and do not invent metrics. The loop format is {"name":"...","desc":"...","stages":["<node id>",...]} with stages in Waste → Process → Resource → Actor → Facility order. After pushing, the loop should appear in the app's Your loops gallery.`;
+  navigator.clipboard?.writeText(msg).then(()=>{alert('Request copied — paste it into Muse chat.');}).catch(()=>{prompt('Copy this request for Muse:',msg);});
+});
 
 
 /* ---------- contamination ---------- */

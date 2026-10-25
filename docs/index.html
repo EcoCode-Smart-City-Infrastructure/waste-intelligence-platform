@@ -184,6 +184,47 @@
     </div>
     <div id="flowMetrics"></div>
   </div>
+  <div class="card kg-loops-card">
+    <h2>Demonstration loops for every element <span class="pill">all 31 nodes</span></h2>
+    <p class="muted small">Tap any element below and its own loop plays. A loop is a staged journey — Waste → Process → Resource → Demand → Facility → back to Waste — built from the sample's real edges wherever they exist. One honest caveat, shown in the player itself: <strong>no node in the 31-node sample sits on a directed cycle</strong>, because the demand actors in the sample (Urban Farm, Waste Processor, NYC Urban Agriculture) do not operate facilities. So every loop has four real steps plus one dashed, labelled bridge (demand → facility, or facility → next load). The bridge is a system step, never presented as a sample edge.</p>
+    <div id="loopGallery" class="loop-gallery"></div>
+    <div class="controls">
+      <label>Loop for <select id="loopElement"></select></label>
+      <label>Speed <select id="loopSpeed"><option value="12">Slow (12s)</option><option selected value="7">Normal (7s)</option><option value="4">Fast (4s)</option></select></label>
+      <button class="btn primary" id="loopPlayBtn">▶ Play loop</button>
+      <button class="btn" id="loopShowBtn">Highlight this loop on the graph</button>
+    </div>
+    <div class="kg-flow-wrap">
+      <svg id="loopSvg" viewBox="0 0 520 340" role="img" aria-label="Element demonstration loop diagram"></svg>
+      <div id="loopSteps"></div>
+    </div>
+    <div id="loopMetrics"></div>
+  </div>
+  <div class="card kg-ask-card">
+    <h2>Ask for a loop — here, or in chat with Muse <span class="pill">assistant capacity</span></h2>
+    <p class="muted small">Type what you want, in plain words — “coffee grounds to animal feed”, “yard waste in Staten Island”, “show me the Brooklyn organics loop”. This page parses it against the real sample: if it finds a path, it animates it; if it finds one element, it plays that element's loop; if it finds nothing in the sample, it says so plainly and offers to draft a <em>proposed</em> loop (labelled, with no invented metrics) that you can save, export, or send to Muse to research properly.</p>
+    <div class="controls">
+      <label style="flex:1">Your request <input id="askInput" placeholder="e.g. coffee grounds to animal feed" style="min-width:260px"></label>
+      <button class="btn primary" id="askBtn">Build my loop</button>
+      <button class="btn" id="copyAskBtn">Copy request for Muse</button>
+    </div>
+    <div id="askOutput"></div>
+    <h3>Loop Studio — build and save your own loop</h3>
+    <p class="muted small">Pick one node per stage (or leave a stage as “Proposed” and type its name below). Loops you save live in this browser only, under “Your loops”, until you export them or ask Muse to add them to <code>loops.json</code> on the branch — then they load for everyone on the next visit. The static page itself runs no AI model; the AI research step happens in chat with Muse, and this page is where the result lands.</p>
+    <div class="controls">
+      <label>Loop name <input id="studioName" placeholder="e.g. My coffee loop"></label>
+      <label>Waste <select id="studioWaste"></select></label>
+      <label>Process <select id="studioProcess"></select></label>
+      <label>Resource <select id="studioResource"></select></label>
+      <label>Demand (Actor) <select id="studioActor"></select></label>
+      <label>Facility <select id="studioFacility"></select></label>
+      <button class="btn primary" id="studioSaveBtn">Save loop in this browser</button>
+      <button class="btn" id="studioExportBtn">Export your loops (JSON)</button>
+    </div>
+    <label>Import loops (paste JSON) <textarea id="studioImport" rows="3" placeholder='[{"name":"...","stages":["FoodScraps","AnaerobicDigestion","Biogas","Waste_Processor","AD_PLANT-QUEENS-02"]}]'></textarea></label>
+    <button class="btn" id="studioImportBtn">Import pasted loops</button>
+    <div id="yourLoops"></div>
+  </div>
   <div class="grid2">
     <div class="card kg-graph-card"><svg id="kgSvg" viewBox="0 0 900 520" role="img" aria-label="Knowledge graph diagram"></svg>
     <p class="muted small">Node colours group by type. Edges are now soft biomorphic curves, not straight lines — they are the graph's real edges, only drawn the way a flow looks. Click a node to highlight its neighbours; a traced path animates along its curves.</p></div>
