@@ -186,9 +186,18 @@ function resolveKeplerGlobals() {
 
 function createStore() {
   const reducers = window.Redux.combineReducers({ keplerGl: KG.keplerGlReducer });
-  const mw = KG.enhanceReduxMiddleware ? KG.enhanceReduxMiddleware([]) : null;
-  store = mw ? window.Redux.createStore(reducers, {}, window.Redux.applyMiddleware(mw))
-             : window.Redux.createStore(reducers, {});
+  // Kepler's enhanceReduxMiddleware changed shape across versions (a single
+  // middleware in some, an array of middlewares in others). Passing an array
+  // to applyMiddleware as if it were one middleware throws inside Redux, so
+  // accept either shape here instead of assuming one.
+  let enhancer = null;
+  if (KG.enhanceReduxMiddleware) {
+    const res = KG.enhanceReduxMiddleware([]);
+    if (Array.isArray(res)) enhancer = window.Redux.applyMiddleware(...res);
+    else if (typeof res === 'function') enhancer = window.Redux.applyMiddleware(res);
+  }
+  store = enhancer ? window.Redux.createStore(reducers, {}, enhancer)
+                   : window.Redux.createStore(reducers, {});
 }
 
 function mountKepler() {
@@ -308,7 +317,9 @@ $('#exportConfig')?.addEventListener('click', () => {
   if (missing.length) { setStatus('Kepler could not start — these CDN scripts did not load: ' + missing.join(', ') + '. Check your connection and reload; the main app is unaffected.'); return; }
   const err = resolveKeplerGlobals();
   if (err) { setStatus('Kepler could not start — ' + esc(err)); return; }
-  try { createStore(); mountKepler(); }
-  catch (e) { setStatus('Kepler failed to mount: ' + esc(e.message)); return; }
+  try { createStore(); }
+  catch (e) { setStatus('Kepler failed at store setup: ' + esc(e.message)); return; }
+  try { mountKepler(); }
+  catch (e) { setStatus('Kepler failed at mount: ' + esc(e.message)); return; }
   loadDataIntoKepler(0);
 })();
