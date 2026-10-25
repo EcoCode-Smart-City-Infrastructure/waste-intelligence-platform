@@ -303,6 +303,7 @@ $('#exportConfig')?.addEventListener('click', () => {
   if (!window.ReactDOM) missing.push('ReactDOM');
   if (!window.Redux) missing.push('Redux');
   if (!window.ReactRedux) missing.push('React-Redux');
+  if (!window.ReactIs) missing.push('react-is');
   if (!window.styled) missing.push('styled-components');
   if (missing.length) { setStatus('Kepler could not start — these CDN scripts did not load: ' + missing.join(', ') + '. Check your connection and reload; the main app is unaffected.'); return; }
   const err = resolveKeplerGlobals();

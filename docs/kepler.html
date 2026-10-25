@@ -85,7 +85,7 @@
       <li><strong>Bin fill tracking — 48 h</strong> (point, off by default): one point per bin per hour of fill history, with a time-range filter — press “Tracking · 48 h” to animate fill evolution over time. History uses the same seeded series and the same forecasting math as the Forecasting view (current-cycle cut on a drop &gt; 30 points).</li>
       <li><strong>Knowledge graph</strong> is not plotted as geography: its nodes have no coordinates, and inventing locations for real facilities would be fabrication. It stays in its own view, linked from the header.</li>
     </ul>
-    <p class="muted small">Kepler.gl 3.0.0 is loaded from unpkg (React / ReactDOM / Redux / React-Redux / styled-components are its documented externals). If the CDN is unreachable, this page says so plainly instead of showing an empty map — the main app keeps working without it.</p>
+    <p class="muted small">Kepler.gl 3.0.0 is loaded from unpkg (React / ReactDOM / Redux / React-Redux / styled-components are its documented externals, plus react-is, which styled-components itself needs to start). If the CDN is unreachable, this page says so plainly instead of showing an empty map — the main app keeps working without it.</p>
   </div>
 </main>
 
@@ -95,6 +95,7 @@
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/redux@4.2.1/dist/redux.min.js"></script>
 <script src="https://unpkg.com/react-redux@8.1.3/dist/react-redux.min.js"></script>
+<script src="https://unpkg.com/react-is@18.3.1/umd/react-is.production.min.js"></script>
 <script src="https://unpkg.com/styled-components@5.3.11/dist/styled-components.min.js"></script>
 <script src="https://unpkg.com/kepler.gl@3.0.0/umd/keplergl.min.js"></script>
 <script src="kepler.js"></script>
