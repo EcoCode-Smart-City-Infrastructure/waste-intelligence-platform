@@ -156,7 +156,7 @@ async function toggleAR(){
 function wiInitTwin(){
   if(twinReady) return; twinReady=true;
   // Demo fleet first: fleet is defined by app.js (DEFAULT_BINS / saved fleet).
-  try{ twinBins=(window.fleet||[]).map(b=>({id:b.id, site:b.site, lat:b.lat, lon:b.lon, fill:b.fill})); }catch(e){ twinBins=[]; }
+  try{ twinBins=((typeof window.wipFleet==='function'?window.wipFleet():[])||[]).map(b=>({id:b.id, site:b.site, lat:b.lat, lon:b.lon, fill:b.fill})); }catch(e){ twinBins=[]; }
   renderBinList(); setBadge();
   const saved=(()=>{try{return localStorage.getItem('wi_twin_feed_url')||'';}catch(e){return '';}})();
   const urlInput=$('twinFeedUrl'); if(urlInput&&saved) urlInput.value=saved;
@@ -187,7 +187,7 @@ function wiInitTwin(){
     }
   });
   $('twinFeedDisconnect')?.addEventListener('click',()=>{
-    try{ twinBins=(window.fleet||[]).map(b=>({id:b.id, site:b.site, lat:b.lat, lon:b.lon, fill:b.fill})); }catch(e){ twinBins=[]; }
+    try{ twinBins=((typeof window.wipFleet==='function'?window.wipFleet():[])||[]).map(b=>({id:b.id, site:b.site, lat:b.lat, lon:b.lon, fill:b.fill})); }catch(e){ twinBins=[]; }
     feedLive=false; feedUrl='';
     try{localStorage.removeItem('wi_twin_feed_url');}catch(e){}
     if(urlInput) urlInput.value='';

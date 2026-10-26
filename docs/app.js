@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul7 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul8 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -39,6 +39,9 @@ const DEFAULT_BINS=[];
   i++;}));}
 let fleet;
 try{fleet=JSON.parse(localStorage.getItem('wip_fleet')||'null')||structuredClone(DEFAULT_BINS);}catch(e){fleet=structuredClone(DEFAULT_BINS);}
+// Twin view reads the fleet through this getter: a top-level `let` in a
+// classic script does NOT become window.fleet, which left the twin empty.
+window.wipFleet=function(){return fleet;};
 function saveFleet(){try{localStorage.setItem('wip_fleet',JSON.stringify(fleet));}catch(e){}}
 function statusOf(f){return f>=80?'urgent':f>=60?'watch':'ok';}
 function historyFor(bin){
