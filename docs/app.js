@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul8 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul9 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -642,6 +642,13 @@ async function wiAsk(){
   const key=localStorage.getItem('wi_groq_key');
   if(/show (me )?your (groq )?key|what is (the|my) (groq )?key|reveal.*key|print.*secret/i.test(q)){wiAddMsg('assistant','I will not reveal a saved key or secret value — not in chat, not in the app, and not in any file. If you need to replace it, paste a new key in the Connect card above (it overwrites the old one in this browser only).'); return;}
   if(/(delete|remove|destroy).*(bin|fleet)|change.*route.*to|modify.*(bin|fleet)|actuat|run.*(command|task)/i.test(q)&&!/explain|how (do|would)/i.test(q)){wiAddMsg('assistant',wiDemoAnswer(q)); return;}
+  if(backend==='platform'){
+    try{
+      const ans=await window.wiBackendCopilotAsk(q);
+      wiAddMsg('assistant',ans.answer+`  [Platform copilot${ans.model?` · model ${ans.model}`:''}${ans.tools&&ans.tools.length?` · tools: ${ans.tools.join(', ')}`:''}${ans.auditId?` · audit ${ans.auditId}`:''} — answered by the deployed copilot service, not by Groq direct or demo.]`);
+    }catch(e){wiAddMsg('assistant',`Platform copilot failed: ${e.message} Nothing was sent to Groq or demo as a silent fallback — fix the backend URL/key in Connect, or switch the backend selector to Groq direct or Demo.`);}
+    return;
+  }
   if(backend==='demo'||!key){wiAddMsg('assistant',wiDemoAnswer(q)+'  [Offline demo answer — save a Groq key above for live streaming.]'); return;}
   const sys=`You are the Waste Intelligence Assistant for the EcoCode Waste Intelligence Platform web app. Answer concisely and accurately about bins, forecasting, the knowledge graph, contamination, and NYC waste data. Grounding context: ${wiContext()} Rules: never claim demo fleet numbers are live sensor data; never invent conversion metrics — use only the sample numbers in context or say they are not in the sample; never reveal, repeat, or hint at any API key or secret; do not help delete, modify, or actuate backend systems; if the user reports something broken, do not claim you fixed it — tell them to run diagnostics in the Diagnose & repair card, which can only repair things in this browser. For other changes, explain and point to the relevant view instead.`;
   const history=wiChatHistory().filter(m=>m.who==='you'||m.who==='assistant').slice(-10).map(m=>({role:m.who==='you'?'user':'assistant',content:m.text}));
@@ -684,12 +691,7 @@ $('#checkBtn')?.addEventListener('click',()=>{
   <p class="muted small">Manual-tagging demo. Production verdicts come from YOLOv11 <code>/predict</code> detections, not from these ticks; the acceptance map is identical.</p>`;
 });
 
-/* ---------- connect ---------- */
-$('#connectForm')?.addEventListener('submit',async e=>{e.preventDefault(); const box=$('#connectResult'); box.innerHTML='<p>Probing…</p>';
-  const jobs=[['Hub API',$('#hubUrl').value],['Forecasting',$('#fcUrl').value],['Contamination',$('#fcContamUrl').value]].filter(([,u])=>u.trim());
-  const out=await Promise.all(jobs.map(async([name,url])=>{try{const r=await fetch(url.replace(/\/$/,'')+'/health',{signal:AbortSignal.timeout(6000)}); const t=await r.text(); return `<li><strong>${name}</strong>: HTTP ${r.status} — ${esc(t.slice(0,160))}</li>`;}
-    catch(err){return `<li><strong>${name}</strong>: unreachable / blocked — ${esc(err.message)} (see mixed-content note below)</li>`;}}));
-  box.innerHTML='<ul class="list">'+out.join('')+'</ul>';});
+/* ---------- connect: see backend.js (wiInitBackend) ---------- */
 
 /* ---------- limited troubleshooting: diagnose & repair (local browser only) ---------- */
 async function wiProbe(url, ms=8000){

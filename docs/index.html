@@ -214,6 +214,12 @@
         <button class="btn hidden" id="customRouteBtn">Build route from selected bins</button>
         <button class="btn hidden" id="copyRouteBtn">Copy route as text</button>
       </div>
+      <div class="card">
+        <h2>Platform registered bins</h2>
+        <p class="muted small">Fetches <code>GET /mcp/waste/bins</code> from the Platform API saved in Connect. Registered bins are DB telemetry — a separate list from the demo fleet above, which stays until registered bins exist and you choose to use them. Hub Flask <code>/bins</code> is also shown, with its stub warning.</p>
+        <div class="controls"><button class="btn primary" id="beBinsFetch" type="button">Fetch from Platform API</button></div>
+        <div id="beBinsResult"></div>
+      </div>
     </div>
   </div>
 </section>
@@ -232,6 +238,10 @@
   <div class="card"><canvas id="fcChart" width="900" height="320" aria-label="Fill history and forecast chart"></canvas>
   <p class="muted small" id="fcNote"></p></div>
   <div class="card"><h2>Reasoning — why this forecast says what it says</h2><div id="fcReasoning"></div></div>
+  <div class="card"><h2>Backend forecast — platform forecasting service</h2>
+    <p class="muted small">Local KPIs above are the ported math on demo history. This card asks the real service (<code>POST /forecast</code> + <code>/anomaly</code>) and shows its answer beside them, source-labelled. If the service has no telemetry for this bin it answers 422/503 — that reason is shown, and the local card stays.</p>
+    <div class="controls"><button class="btn primary" id="fcBackendBtn" type="button">Ask backend for this bin</button></div>
+    <div id="fcBackendResult"></div></div>
   <div class="card">
     <h2>How to read this</h2>
     <ul class="list">
@@ -323,6 +333,10 @@
     <p class="muted small">Node colours group by type. Edges are now soft biomorphic curves, not straight lines — they are the graph's real edges, only drawn the way a flow looks. Click a node to highlight its neighbours; a traced path animates along its curves.</p></div>
     <div class="card" id="kgDetail"><h2>Pick a node</h2><p class="muted">Click any node, or use “Trace it” to follow waste → process → resource paths. Every conversion metric from the sample — efficiency, diversion, yield, energy, carbon, value, demand — is shown in full below.</p></div>
   </div>
+  <div class="card"><h2>Platform KG — ask the backend graph</h2>
+    <p class="muted small">Posts to Platform API <code>POST /mcp/waste/kg</code> (the repo's in-memory KG engine). The local sample graph above stays primary; this is a second, source-labelled answer to compare against it.</p>
+    <div class="controls"><label style="flex:1">Query <input id="beKgQuery" placeholder="e.g. FoodScraps"></label><button class="btn primary" id="beKgBtn" type="button">Ask platform KG</button></div>
+    <div id="beKgResult"></div></div>
 </section>
 
 <!-- CONTAMINATION -->
@@ -344,6 +358,8 @@
       <h2>3 · Materials you can see</h2>
       <div class="checks" id="materialChecks"></div>
       <button class="btn primary" id="checkBtn">Check contamination</button>
+      <button class="btn" id="beContamBtn" type="button">Backend YOLO check (needs photo + URL in Connect)</button>
+      <p class="muted small" id="beContamResult"></p>
     </div>
     <div class="card" id="contamResult"><h2>Verdict</h2><p class="muted">Tick materials and press Check contamination.</p>
       <p class="muted small">Acceptance map, verbatim from the backend: recycling accepts Plastic, Metal, Glass, Paper. Landfill accepts Other. Organics accepts none of the detected litter materials — any of them in an organics bin is a contaminant by that map.</p></div>
@@ -355,13 +371,29 @@
   <h1>Connect your own backend</h1>
   <p class="lede">This static app works standalone. If you are running the platform locally or on a server, point it at your services and it will probe them — no credentials are stored.</p>
   <div class="card">
+    <h2>Backend wiring — one URL per service</h2>
+    <p class="muted small">Saved in <em>this browser only</em> (localStorage). URLs go to those backends and nowhere else; keys below go only to their own service as an <code>X-API-Key</code> header, never to GitHub Pages, never into the repo. With no URLs saved, every view keeps its labelled local/demo result — wiring never silently replaces data with a failed call.</p>
     <form id="connectForm" class="form">
-      <label>Hub API base URL <input id="hubUrl" placeholder="http://localhost:5000"></label>
-      <label>Forecasting service base URL <input id="fcUrl" placeholder="http://localhost:8002"></label>
-      <label>Contamination service base URL <input id="fcContamUrl" placeholder="http://localhost:8005"></label>
-      <button class="btn primary" type="submit">Probe /health endpoints</button>
+      <label>Platform API base URL (src FastAPI, :8001) <input id="bePlatform" placeholder="https://api.example.com"></label>
+      <label>Hub Flask API base URL (:5000, legacy) <input id="beHub" placeholder="http://localhost:5000"></label>
+      <label>Forecasting service base URL (:8002) <input id="beForecasting" placeholder="http://localhost:8002"></label>
+      <label>Copilot service base URL (:8004) <input id="beCopilot" placeholder="http://localhost:8004"></label>
+      <label>Contamination service base URL (:8005) <input id="beContamination" placeholder="http://localhost:8005"></label>
+      <label>Platform API key (optional, only if REQUIRE_API_KEY) <input type="password" id="bePlatformKey" placeholder="Saved in this browser only"></label>
+      <label>Copilot API key (optional, only if REQUIRE_API_KEY) <input type="password" id="beCopilotKey" placeholder="Saved in this browser only"></label>
+      <div class="controls"><button class="btn primary" type="button" id="beSave">Save in this browser</button><button class="btn" type="button" id="beProbe">Probe /health endpoints</button></div>
     </form>
+    <p class="muted small" id="beSaveStatus"></p>
     <div id="connectResult"></div>
+    <details><summary>Deploy the backend so this HTTPS page can reach it — read before you paste a URL</summary>
+    <ol class="list">
+      <li><strong>Run the stack on a server you control:</strong> <code>docker compose up</code> from the platform repo root. That starts the Platform API (:8001), forecasting (:8002), copilot (:8004), contamination (:8005), Postgres, Redis, MQTT and Grafana on that host — it does <em>not</em> publish them to the internet.</li>
+      <li><strong>Put one HTTPS reverse proxy in front (Caddy or nginx) with TLS:</strong> Pages is HTTPS, and browsers block plain-HTTP backend calls (mixed content). Map one domain, e.g. <code>https://api.example.com/platform/</code> → :8001, <code>/forecast/</code> → :8002, <code>/copilot/</code> → :8004, <code>/contam/</code> → :8005, and paste those proxied URLs above (one proxy also fixes CORS in step 3).</li>
+      <li><strong>CORS:</strong> Platform API defaults to <code>CORS_ORIGINS=*</code> (works). Copilot defaults to localhost/grafana only — set <code>CORS_ORIGINS</code> to include <code>https://ecocode-smart-city-infrastructure.github.io</code>. Forecasting and contamination ship <em>no</em> CORS middleware at all, so a direct browser call from Pages will be blocked even over HTTPS — they must sit behind the step-2 proxy with CORS headers added there, or gain the same FastAPI CORSMiddleware the other two services have.</li>
+      <li><strong>Keys:</strong> if a service runs with <code>REQUIRE_API_KEY=true</code>, paste its key in the matching field above (browser only). Never put a key in a URL, a repo file, or chat.</li>
+      <li><strong>Known gaps in the repo today (not hidden):</strong> Hub Flask <code>/bins</code>, <code>/facilities</code> and <code>/analytics/summary</code> return hardcoded empty/zero stubs in code; <code>docker-compose.yml</code> references a <code>kg-service:8003</code> that has no service definition — the KG that exists is the in-memory engine behind Platform API <code>POST /mcp/waste/kg</code>, which is what this app calls. Platform <code>/bins</code> returns whatever bin telemetry is in Postgres — an empty database means an empty list, which the Bins card reports as such instead of replacing the demo fleet.</li>
+      <li><strong>Local testing without a server:</strong> run this page locally (<code>python3 -m http.server</code> in <code>docs/</code>) and paste <code>http://localhost:…</code> URLs — mixed-content blocking does not apply to a local page.</li>
+    </ol></details>
     <p class="muted small">Run the stack with <code>docker compose up</code> from the repo root, then use the ports above. Browsers block plain-HTTP calls from an HTTPS Pages site — if a probe is blocked, that is mixed-content protection, not a backend failure; run this page locally (same folder, <code>python3 -m http.server</code>) for local backends.</p>
   </div>
   <div class="card">
@@ -384,7 +416,7 @@
     <div class="controls">
       <label>Groq API key <input type="password" id="wiGroqKey" placeholder="Paste your Groq key here"></label>
       <label>Model <select id="wiGroqModel"><option>llama-3.3-70b-versatile</option><option>llama-3.1-8b-instant</option></select></label>
-      <label>Backend <select id="wiChatBackend"><option value="groq">Groq direct (live, needs key)</option><option value="demo">Demo (offline, no key)</option></select></label>
+      <label>Backend <select id="wiChatBackend"><option value="platform">Platform copilot (needs backend URL in Connect)</option><option value="groq">Groq direct (live, needs key)</option><option value="demo">Demo (offline, no key)</option></select></label>
       <button class="btn primary" id="wiSaveKeyBtn">Save key in this browser</button>
       <button class="btn" id="wiRemoveKeyBtn">Remove saved key</button>
       <button class="btn" id="wiTestKeyBtn">Test key (models only)</button>
@@ -480,11 +512,12 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 </main>
 
 <footer>
-    <p class="muted small" id="jsBuild">HTML overhaul8 loaded — waiting for app.js…</p><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
+    <p class="muted small" id="jsBuild">HTML overhaul9 loaded — waiting for app.js…</p><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul8"></script>
+<script src="app.js?v=overhaul9"></script>
 <script src="twin.js?v=twin2"></script>
+<script src="backend.js?v=backend1"></script>
 </body>
 </html>
