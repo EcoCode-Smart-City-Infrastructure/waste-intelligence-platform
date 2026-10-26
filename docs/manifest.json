@@ -1,0 +1,13 @@
+{
+  "name": "Waste Intelligence — NYC Operations",
+  "short_name": "Waste Intelligence",
+  "description": "NYC waste operations: live tonnage, demo fleet, forecasting, knowledge graph, and assistant. Works offline with the cached app shell and labelled sample data when live feeds are unreachable.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f3e9",
+  "theme_color": "#1d7a4f",
+  "icons": [
+    {"src": "icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any"}
+  ]
+}

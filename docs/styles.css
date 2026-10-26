@@ -116,3 +116,14 @@ body{background:linear-gradient(180deg,#eef4ec 0%,#f4f6f3 22%,#fdf8ec 100%)}
 #dashWaveBars{min-height:60px}
 #dashDonutSvg{min-height:180px}
 @media(prefers-reduced-motion:reduce){.radiant-band,.view.view-in{animation:none}}
+
+/* --- Round 2 overhaul: Cmd-K, annotations, replay/what-if --- */
+.cmdk{position:fixed;inset:0;background:rgba(22,33,26,.55);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding-top:12vh}
+.cmdk.hidden{display:none}
+.cmdk-box{background:#fff;border:1px solid #cbd3c6;border-radius:16px;width:min(640px,92vw);padding:1rem;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.cmdk-box input{width:100%;padding:.7rem .9rem;border:1px solid #cbd3c6;border-radius:10px;font-size:1rem}
+#cmdkResults{list-style:none;padding:0;margin:.8rem 0 0;max-height:50vh;overflow:auto}
+#cmdkResults li{padding:.6rem .7rem;border-radius:10px;cursor:pointer}
+#cmdkResults li.sel{background:#e6ebe0;outline:2px solid #b7791f}
+.whatif{background:#f2f1e7;border:1px dashed #b7791f;border-radius:12px;padding:.7rem .9rem;margin-top:.8rem}
+#dashReplay{vertical-align:middle}

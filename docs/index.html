@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Waste Intelligence — NYC Operations Web App</title>
+<meta name="theme-color" content="#1d7a4f">
+<link rel="manifest" href="manifest.json">
 <meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
-<link rel="stylesheet" href="styles.css?v=overhaul2">
+<link rel="stylesheet" href="styles.css?v=overhaul3">
 </head>
 <body>
 <header class="top">
@@ -24,6 +26,7 @@
     <a href="kepler.html">Kepler 3D Map</a>
     <a href="login.html" id="authNavLink">Sign in</a>
     <a href="#" id="authSignOut" hidden>Sign out</a>
+  <button class="btn" id="cmdkBtn" type="button" aria-label="Open command palette">⌘K</button>
   </nav>
 </header>
 
@@ -82,6 +85,16 @@
         <h2>Ops brief — in one narrative</h2>
         <div id="opsBriefBody"><p class="muted">Loading the brief from live tonnage and the demo fleet…</p></div>
       </section>
+      <section class="card" aria-label="Annotations">
+        <h2>Annotations — shared notes, local for now</h2>
+        <p class="muted small">Honest limit: this static Pages app has no server, so annotations live in <em>this browser only</em> (localStorage) and are <strong>not</strong> shared with other users or devices, and there is no live presence or live cursor. True multi-user sync needs a backend. What you get here is the annotation object itself — pinned to a view or a bin, with author, time, and delete — ready to sync when a backend exists. Never put citizen addresses or personal data in a note.</p>
+        <div class="controls">
+          <label>Pin to <select id="annoTarget"></select></label>
+          <label style="flex:1">Note <input id="annoText" placeholder="e.g. Route 12 blocked at 07:20 — crew reassigned"></label>
+          <button class="btn primary" id="annoAddBtn" type="button">Add note</button>
+        </div>
+        <ul id="annoList"></ul>
+      </section>
 
       <section class="dash-card dash-hero" aria-label="City grid">
         <div class="dash-card-head"><h2>City grid — live operations</h2><span class="pill" id="dashGridBadge">demo fleet · live tonnage where available</span></div>
@@ -92,9 +105,15 @@
           <label><input type="checkbox" id="dashLayerHeat" checked> Fill heat</label>
           <label><input type="checkbox" id="dashLayerLabels" checked> Borough labels</label>
           <button class="btn" id="dashPulseBtn">⏸ Pause pulses</button>
+          <label>Replay <input type="range" id="dashReplay" min="0" max="47" value="47" aria-label="Replay the last 48 hours of demo fill history"> <span id="dashReplayLabel">now</span></label>
         </div>
         <svg id="dashGridSvg" viewBox="0 0 600 340" role="img" aria-label="Interactive NYC bin grid"></svg>
         <p class="muted small" id="dashGridNote"></p>
+        <div class="whatif"><span class="pill warn">Simulated</span>
+          <label>Add vehicles <select id="whatifVehicles"><option>1</option><option>2</option><option>3</option></select></label>
+          <button class="btn" id="whatifBtn" type="button">Simulate 4 hours</button>
+          <p class="muted small" id="whatifOut">Assumption: 1 vehicle clears 1 urgent bin per 30 minutes, starting now. This is an illustrative simulation, not a live forecast — live state is unchanged.</p>
+        </div>
       </section>
 
       <div class="dash-grid">
@@ -389,11 +408,19 @@
     <p class="muted small">History: last 50 messages kept in this browser, last 10 sent to Groq as context. Streaming via Groq's OpenAI-compatible SSE endpoint. If you ask for a key or secret value, the assistant will refuse — it never echoes a saved key.</p>
   </div>
 </section>
+<div id="cmdk" class="cmdk hidden" role="dialog" aria-modal="true" aria-label="Command palette">
+  <div class="cmdk-box">
+    <input id="cmdkInput" placeholder="Type a view, bin, or action…" aria-label="Command palette search">
+    <ul id="cmdkResults"></ul>
+    <p class="muted small">↑ ↓ to move, Enter to open, Esc to close. Results are views, demo bins, and staged actions — nothing is executed without the approval queue.</p>
+  </div>
+</div>
 </main>
 
 <footer><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
-<script src="app.js?v=overhaul2"></script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
+<script src="app.js?v=overhaul3"></script>
 </body>
 </html>

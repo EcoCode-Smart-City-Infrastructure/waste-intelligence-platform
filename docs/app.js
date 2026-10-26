@@ -793,6 +793,12 @@ function dashRender(agg, live){
   $('#dashGridBadge').textContent=live?'demo fleet · live tonnage':'demo fleet · sample tonnage';
   dashGrid();
 }
+let dashReplayHour=47;
+function dashFill(b){
+  if(dashReplayHour>=47) return b.fill;
+  const pts=historyFor(b); const pt=pts[Math.min(dashReplayHour, pts.length-1)];
+  return pt?pt.fill:b.fill;
+}
 function dashGrid(){
   const svg=$('#dashGridSvg'); if(!svg) return;
   const showFleet=$('#dashLayerFleet')?.checked!==false, showRoute=$('#dashLayerRoute')?.checked!==false, showHeat=$('#dashLayerHeat')?.checked!==false, showLabels=$('#dashLayerLabels')?.checked!==false;
@@ -800,16 +806,22 @@ function dashGrid(){
   for(let x=60;x<600;x+=60) streets+=`<line x1="${x}" y1="10" x2="${x}" y2="330" class="dash-grid-street"/>`;
   for(let y=50;y<340;y+=50) streets+=`<line x1="10" y1="${y}" x2="590" y2="${y}" class="dash-grid-street"/>`;
   const labels=showLabels?`<g fill="#94a3b8" font-size="12"><text x="90" y="40">Manhattan</text><text x="330" y="120">Brooklyn</text><text x="380" y="60">Queens</text><text x="330" y="210">Bronx</text><text x="90" y="290">Staten Island</text></g>`:'';
-  const urgent=[...fleet.filter(b=>b.fill>=80)].sort((a,b)=>b.fill-a.fill);
+  const urgent=[...fleet].map(b=>({...b,fill:dashFill(b)})).filter(b=>b.fill>=80).sort((a,b)=>b.fill-a.fill);
   const routePath=showRoute&&urgent.length>1?`<path class="dash-grid-route" d="${urgent.map((b,i)=>`${i?'L':'M'}${dashXY(b).join(',')}`).join(' ')}"/>`:'';
-  const dots=showFleet?fleet.map(b=>{const [x,y]=dashXY(b); const r=showHeat?4+b.fill/14:6; return `<g><circle class="dash-grid-pulse" cx="${x}" cy="${y}" r="6" style="${b.fill>=80?'':'display:none'}"/><circle class="dash-grid-dot" cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="${dashStatusColor(b.fill)}" data-bin="${b.id}"><title>${esc(b.id)} — ${esc(b.site)} · ${b.fill}%</title></circle></g>`;}).join(''):'';
+  const dots=showFleet?fleet.map(b=>{const f=dashFill(b); const [x,y]=dashXY(b); const r=showHeat?4+f/14:6; return `<g><circle class="dash-grid-pulse" cx="${x}" cy="${y}" r="6" style="${f>=80?'':'display:none'}"/><circle class="dash-grid-dot" cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="${dashStatusColor(f)}" data-bin="${b.id}"><title>${esc(b.id)} — ${esc(b.site)} · ${f}%</title></circle></g>`;}).join(''):'';
   svg.innerHTML=streets+labels+routePath+dots;
   $$('#dashGridSvg .dash-grid-dot').forEach(c=>c.addEventListener('click',()=>{location.hash='#forecast?bin='+c.dataset.bin;}));
   const top=urgent[0];
-  $('#dashGridNote').innerHTML=top?`Urgent route: ${urgent.map(b=>esc(b.id)).join(' → ')}. Tap any dot for its forecast.`:'No urgent bins right now — the route layer appears when a bin reaches 80%.';
+  $('#dashGridNote').innerHTML=dashReplayHour<47?`Replay: hour ${dashReplayHour} of the last 48 (demo history, not live now). Urgent at that hour: ${urgent.length?urgent.map(b=>esc(b.id)).join(', '):'none'}. Move the slider to 47 for now.`:(top?`Urgent route: ${urgent.map(b=>esc(b.id)).join(' → ')}. Tap any dot for its forecast.`:'No urgent bins right now — the route layer appears when a bin reaches 80%.');
 }
 ['dashLayerFleet','dashLayerRoute','dashLayerHeat','dashLayerLabels'].forEach(id=>$('#'+id)?.addEventListener('change',dashGrid));
 $('#dashPulseBtn')?.addEventListener('click',()=>{const hero=$('#view-dashboard .dash-hero'); hero.classList.toggle('paused'); $('#dashPulseBtn').textContent=hero.classList.contains('paused')?'▶ Resume pulses':'⏸ Pause pulses';});
+$('#dashReplay')?.addEventListener('input',e=>{dashReplayHour=+e.target.value; const lab=$('#dashReplayLabel'); if(lab) lab.textContent=dashReplayHour>=47?'now':`hour ${dashReplayHour} / 47`; dashGrid();});
+$('#whatifBtn')?.addEventListener('click',()=>{
+  const v=+($('#whatifVehicles')?.value||1); const urgent=fleet.filter(b=>b.fill>=80).length;
+  const cleared=Math.min(urgent, v*8); const left=urgent-cleared;
+  const out=$('#whatifOut'); if(out) out.innerHTML=`<strong>Simulated, 4 hours, +${v} vehicle${v===1?'':'s'}:</strong> urgent bins ${urgent} → ${left} (clears ${cleared}). Assumption: 1 vehicle clears 1 urgent bin per 30 minutes, starting now. <strong>This is not a live forecast and changes nothing live</strong> — approve a real re-route in Bins & Routes, or stage it in the Assistant, to act on it.`;
+});
 $('#dashSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter'){const v=$('#dashSearch').value.trim(); const inp=$('#binSearch'); if(inp){inp.value=v; inp.dispatchEvent(new Event('input'));} location.hash='#bins';}});
 
 
@@ -903,5 +915,73 @@ function wiStageFromChat(q){
   return false;
 }
 
+
+/* ---------- Round 2 overhaul: Cmd-K, annotations, (PWA shell in sw.js/manifest.json) ---------- */
+function cmdkItems(){
+  const views=[['Dashboard','#dashboard'],['Live NYC Data','#live'],['Bins & Routes','#bins'],['Forecasting','#forecast'],['Knowledge Graph','#graph'],['Contamination','#contamination'],['Connect','#connect'],['Assistant','#assistant']];
+  const items=views.map(([label,hash])=>({label,hint:'View',run:hash}));
+  fleet.forEach(b=>items.push({label:`${b.id} — ${b.site}, ${b.borough} · ${b.fill}%`,hint:'Bin forecast',run:`#forecast?bin=${b.id}`}));
+  items.push({label:'Stage export of urgent bins',hint:'Staged action (approval queue)',run:'stage:export'});
+  items.push({label:'Stage saving this view',hint:'Staged action (approval queue)',run:'stage:save'});
+  items.push({label:'Diagnose the app',hint:'Assistant',run:'#assistant'});
+  return items;
+}
+let cmdkList=[], cmdkSel=0, cmdkLastFocus=null;
+function cmdkRender(){
+  const q=($('#cmdkInput')?.value||'').toLowerCase().trim();
+  const words=q?q.split(/\s+/):[];
+  cmdkList=cmdkItems().filter(it=>words.every(w=>it.label.toLowerCase().includes(w))).slice(0,12);
+  cmdkSel=0;
+  const ul=$('#cmdkResults'); if(!ul) return;
+  ul.innerHTML=cmdkList.length?cmdkList.map((it,i)=>`<li class="${i===cmdkSel?'sel':''}" data-i="${i}"><strong>${esc(it.label)}</strong> <span class="muted small">${esc(it.hint)}</span></li>`).join(''):'<li class="muted small">No matches. Try a view name, a bin id, or "stage".</li>';
+  $$('#cmdkResults li[data-i]').forEach(li=>li.addEventListener('click',()=>cmdkActivate(+li.dataset.i)));
+}
+function cmdkOpen(){const d=$('#cmdk'); if(!d) return; cmdkLastFocus=document.activeElement; d.classList.remove('hidden'); cmdkRender(); const inp=$('#cmdkInput'); if(inp) inp.focus();}
+function cmdkClose(){const d=$('#cmdk'); if(!d) return; d.classList.add('hidden'); if(cmdkLastFocus&&cmdkLastFocus.focus) cmdkLastFocus.focus();}
+function cmdkActivate(i){
+  const it=cmdkList[i]; if(!it) return;
+  cmdkClose();
+  if(it.run==='stage:export'){location.hash='#assistant'; setTimeout(()=>{wiStageAction('Export urgent bins as JSON','Source: demo fleet, bins at 80% or above right now. Approve to download urgent-bins.json in this browser.','export-urgent');},50); return;}
+  if(it.run==='stage:save'){location.hash='#assistant'; setTimeout(()=>{wiStageAction('Save this view','Saves the current view + role preset to Saved views in this browser. Approve, then name it.','save-view');},50); return;}
+  location.hash=it.run;
+}
+function wiInitCmdK(){
+  $('#cmdkBtn')?.addEventListener('click',cmdkOpen);
+  $('#cmdkInput')?.addEventListener('input',cmdkRender);
+  $('#cmdkInput')?.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'){e.preventDefault(); cmdkSel=Math.min(cmdkSel+1, Math.max(0,cmdkList.length-1)); $$('#cmdkResults li').forEach((li,j)=>li.classList.toggle('sel',j===cmdkSel));}
+    else if(e.key==='ArrowUp'){e.preventDefault(); cmdkSel=Math.max(0,cmdkSel-1); $$('#cmdkResults li').forEach((li,j)=>li.classList.toggle('sel',j===cmdkSel));}
+    else if(e.key==='Enter'){e.preventDefault(); cmdkActivate(cmdkSel);}
+    else if(e.key==='Escape'){cmdkClose();}
+  });
+  $('#cmdk')?.addEventListener('click',e=>{if(e.target.id==='cmdk') cmdkClose();});
+  document.addEventListener('keydown',e=>{
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault(); const d=$('#cmdk'); if(d&&!d.classList.contains('hidden')) cmdkClose(); else cmdkOpen();}
+    else if(e.key==='Escape'){const d=$('#cmdk'); if(d&&!d.classList.contains('hidden')) cmdkClose();}
+  });
+}
+function wiAnnoLoad(){try{return JSON.parse(localStorage.getItem('wip_annotations')||'[]');}catch(e){return [];}}
+function wiAnnoRender(){
+  const sel=$('#annoTarget'); if(sel&&!sel.options.length){
+    const opts=[['Dashboard','#dashboard'],...VIEWS.filter(v=>v!=='dashboard').map(v=>[v.charAt(0).toUpperCase()+v.slice(1),'#'+v]),...fleet.map(b=>[`${b.id} — ${b.site}`,'#forecast?bin='+b.id])];
+    sel.innerHTML=opts.map(([label,hash])=>`<option value="${hash}">${esc(label)}</option>`).join('');
+  }
+  const ul=$('#annoList'); if(!ul) return;
+  const items=wiAnnoLoad().slice().reverse();
+  ul.innerHTML=items.length?items.map((a,i)=>{const idx=wiAnnoLoad().length-1-i; return `<li class="staged-item"><strong>${esc(a.targetLabel)}</strong> <span class="muted small">${esc(new Date(a.time).toLocaleString())} · You (this browser)</span><p>${esc(a.text)}</p><div class="controls"><a class="btn" href="${esc(a.target)}">Open pinned view →</a><button class="btn" data-del="${idx}">Delete</button></div></li>`;}).join(''):'<li class="muted small">No annotations yet in this browser.</li>';
+  $$('#annoList [data-del]').forEach(b=>b.addEventListener('click',()=>{const all=wiAnnoLoad(); all.splice(+b.dataset.del,1); try{localStorage.setItem('wip_annotations',JSON.stringify(all));}catch(e){} wiAnnoRender();}));
+}
+function wiInitAnno(){
+  $('#annoAddBtn')?.addEventListener('click',()=>{
+    const text=($('#annoText')?.value||'').trim(); if(!text) return;
+    const sel=$('#annoTarget'); const target=sel?sel.value:'#dashboard'; const targetLabel=sel?sel.options[sel.selectedIndex]?.text||target:target;
+    const all=wiAnnoLoad(); all.push({text,target,targetLabel,time:new Date().toISOString()});
+    try{localStorage.setItem('wip_annotations',JSON.stringify(all));}catch(e){}
+    const inp=$('#annoText'); if(inp) inp.value='';
+    wiAnnoRender();
+  });
+  wiAnnoRender();
+}
+
 /* ---------- boot ---------- */
-renderBins(); loadDashboard(); loadLive(); loadKG(); route(); wiInitRoles();
+renderBins(); loadDashboard(); loadLive(); loadKG(); route(); wiInitRoles(); wiInitCmdK(); wiInitAnno();
