@@ -15,6 +15,7 @@ function route(){
   const v=(location.hash||'#dashboard').slice(1).split('?')[0];
   const view=VIEWS.includes(v)?v:'dashboard';
   VIEWS.forEach(x=>{const el=$('#view-'+x); if(el) el.classList.toggle('hidden',x!==view);});
+  const activeEl=$('#view-'+view); if(activeEl){activeEl.classList.remove('view-in'); void activeEl.offsetWidth; activeEl.classList.add('view-in');}
   $$('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.nav===view));
   if(view==='forecast') drawForecast();
   if(view==='graph' && kgData) drawGraph();
@@ -620,6 +621,7 @@ async function wiAsk(){
     wiAddMsg('assistant',`Diagnostics run (${d?d.total:'?'} checks). ${f}${w} Repairs are in the Diagnose & repair card above — click the repair you want; destructive repairs confirm first. I have not applied any repair from this message. If a feed or backend is failing, the card's repair is retry/reload/re-probe; if a server, deployment, secret, or workflow is the problem, the card gives the exact next step instead.`);
     return;
   }
+  if(wiStageFromChat(q)){wiAddMsg('assistant','Staged, not executed: see the Staged actions card above. Approve it to run it, or discard it. Nothing has changed yet.'); return;}
   const backend=$('#wiChatBackend').value; const model=$('#wiGroqModel').value; localStorage.setItem('wi_chat_backend',backend); localStorage.setItem('wi_groq_model',model);
   const key=localStorage.getItem('wi_groq_key');
   if(/show (me )?your (groq )?key|what is (the|my) (groq )?key|reveal.*key|print.*secret/i.test(q)){wiAddMsg('assistant','I will not reveal a saved key or secret value — not in chat, not in the app, and not in any file. If you need to replace it, paste a new key in the Connect card above (it overwrites the old one in this browser only).'); return;}
@@ -786,6 +788,7 @@ function dashRender(agg, live){
   }
   $('#dashSideLive').textContent=live?('LIVE · '+agg.month):'SAMPLE · feed unreachable';
   $('#dashSideUrgent').textContent=urgent.length?`${urgent.length} urgent bin${urgent.length===1?'':'s'}`:'No urgent bins';
+  try{wiOpsBrief(agg, live);}catch(e){}
   $('#dashBellCount').textContent=urgent.length;
   $('#dashGridBadge').textContent=live?'demo fleet · live tonnage':'demo fleet · sample tonnage';
   dashGrid();
@@ -810,5 +813,85 @@ $('#dashPulseBtn')?.addEventListener('click',()=>{const hero=$('#view-dashboard 
 $('#dashSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter'){const v=$('#dashSearch').value.trim(); const inp=$('#binSearch'); if(inp){inp.value=v; inp.dispatchEvent(new Event('input'));} location.hash='#bins';}});
 
 
+
+/* ---------- Round 1 overhaul: roles, saved views, Ops Brief, staged actions ---------- */
+const ROLES={
+ dispatcher:{brief:'Dispatcher: exceptions first — urgent bins, the city grid, and the route layer.',order:['Urgent bins','Fleet fill by borough','Live tonnage','Tonnage by borough','Forecast trend','Tonnage mix','Fill heatmap','At a glance','The loop']},
+ depot:{brief:'Depot manager: capacity first — fleet fill, live tonnage, and tonnage by borough.',order:['Fleet fill by borough','Live tonnage','Tonnage by borough','Urgent bins','Forecast trend','Fill heatmap','At a glance','Tonnage mix','The loop']},
+ analyst:{brief:'Analyst: evidence first — forecast trend, tonnage mix, and the loop.',order:['Forecast trend','Tonnage mix','Live tonnage','Tonnage by borough','Fleet fill by borough','Urgent bins','Fill heatmap','At a glance','The loop']},
+ executive:{brief:'Executive: the city in one screen — live tonnage, tonnage by borough, and the brief above.',order:['Live tonnage','Tonnage by borough','Tonnage mix','Urgent bins','Fleet fill by borough','Forecast trend','Fill heatmap','At a glance','The loop']},
+ crew:{brief:'Field crew: your bins first — urgent bins and the fill heatmap, nothing else in the way.',order:['Urgent bins','Fill heatmap','Fleet fill by borough','Live tonnage','Forecast trend','Tonnage by borough','Tonnage mix','At a glance','The loop']},
+};
+function wiRole(){try{return localStorage.getItem('wip_role')||'dispatcher';}catch(e){return 'dispatcher';}}
+function wiApplyRole(role){
+  try{localStorage.setItem('wip_role',role);}catch(e){}
+  const r=ROLES[role]||ROLES.dispatcher;
+  const brief=$('#roleBrief'); if(brief) brief.textContent=r.brief;
+  $$('.role-bar [data-role]').forEach(b=>b.classList.toggle('active',b.dataset.role===role));
+  $$('.dash-grid .dash-card').forEach(card=>{
+    const h=card.querySelector('h2')?.textContent||'';
+    const idx=r.order.findIndex(o=>h.startsWith(o));
+    card.style.order=idx>=0?idx:99;
+    card.classList.toggle('role-focus', idx===0);
+  });
+}
+function wiSavedViews(){try{return JSON.parse(localStorage.getItem('wip_saved_views')||'[]');}catch(e){return [];}}
+function wiRenderSavedViews(){
+  const el=$('#savedViews'); if(!el) return;
+  const views=wiSavedViews();
+  el.innerHTML=views.length?views.map((v,i)=>`<button type="button" data-saved="${i}">${esc(v.name)}</button>`).join(''):'<span class="muted small">none yet</span>';
+  $$('#savedViews [data-saved]').forEach(b=>b.addEventListener('click',()=>{
+    const v=wiSavedViews()[+b.dataset.saved]; if(!v) return;
+    if(v.role) wiApplyRole(v.role);
+    if(v.hash) location.hash=v.hash;
+  }));
+}
+function wiInitRoles(){
+  $$('.role-bar [data-role]').forEach(b=>b.addEventListener('click',()=>wiApplyRole(b.dataset.role)));
+  $('#wiSaveViewBtn')?.addEventListener('click',()=>{
+    const name=prompt('Name for this saved view? (role + current view are saved with it)');
+    if(!name) return;
+    const views=wiSavedViews(); views.push({name:name.trim(),role:wiRole(),hash:location.hash||'#dashboard'});
+    try{localStorage.setItem('wip_saved_views',JSON.stringify(views));}catch(e){}
+    wiRenderSavedViews();
+  });
+  wiApplyRole(wiRole()); wiRenderSavedViews();
+}
+function wiOpsBrief(agg, live){
+  const el=$('#opsBriefBody'); if(!el) return;
+  const urgent=fleet.filter(b=>b.fill>=80).sort((a,b)=>b.fill-a.fill);
+  const avg=fleet.length?fleet.reduce((s,b)=>s+b.fill,0)/fleet.length:0;
+  const total=agg.reduce((s,r)=>s+r.refuse+r.paper+r.mgp+r.organics,0);
+  const organics=agg.reduce((s,r)=>s+r.organics,0);
+  const top=urgent[0];
+  let fc='';
+  if(top){const a=analyse(historyFor(top)); fc=a.toFull!==Infinity?` <span class="forecast">Forecast: ${esc(top.id)} reaches full in about ${Math.round(a.toFull)} hours (slope ${a.slope.toFixed(2)}/h, R² ${a.r2.toFixed(2)})</span> — a forecast, not a measurement.`:' <span class="forecast">Forecast: no rising trend detected for the most urgent bin.</span>';}
+  el.innerHTML=`<p><span class="measured">Measured now: ${fleet.length} demo bins, ${avg.toFixed(0)}% average fill, ${urgent.length} urgent bin${urgent.length===1?'':'s'}.</span> <span class="measured">Latest live tonnage (${esc(agg.month)}): ${fmt(total)} t, organics ${total?Math.round(organics/total*100):0}%.</span>${fc}</p><p><strong>Next action:</strong> ${top?`<a href="#forecast?bin=${top.id}">open ${esc(top.id)} (${esc(top.site)}) in Forecasting</a>`: 'no bin needs urgent action right now.'} — and the source for every number here is labelled in its card below: ${live?'live DSNY tonnage':'labelled sample tonnage (live feed unreachable)'} plus the demo fleet.</p>`;
+}
+function wiStageAction(title, detail, actionKey){
+  const ul=$('#wiStaged'); if(!ul) return;
+  const li=document.createElement('li'); li.className='staged-item';
+  li.innerHTML=`<strong>${esc(title)}</strong><p class="muted small">${esc(detail)}</p><div class="controls"><button class="btn primary" data-approve>Approve</button><button class="btn" data-discard>Discard</button></div>`;
+  li.querySelector('[data-approve]').addEventListener('click',()=>{
+    if(actionKey==='open-urgent'){const inp=$('#binSearch'); if(inp){inp.value=''; inp.dispatchEvent(new Event('input'));} location.hash='#bins';}
+    else if(actionKey==='nav-bins'){location.hash='#bins';}
+    else if(actionKey==='save-view'){const name=prompt('Name for this saved view?'); if(name){const views=wiSavedViews(); views.push({name:name.trim(),role:wiRole(),hash:location.hash||'#dashboard'}); try{localStorage.setItem('wip_saved_views',JSON.stringify(views));}catch(e){} wiRenderSavedViews();}}
+    else if(actionKey==='export-urgent'){const data=JSON.stringify(fleet.filter(b=>b.fill>=80),null,2); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'application/json'})); a.download='urgent-bins.json'; a.click(); URL.revokeObjectURL(a.href);}
+    li.remove(); wiStagedNote();
+  });
+  li.querySelector('[data-discard]').addEventListener('click',()=>{li.remove(); wiStagedNote();});
+  ul.appendChild(li); wiStagedNote();
+  const note=$('#wiStagedNote'); if(note) note.textContent='Staged actions wait for your Approve click. Nothing here has been executed yet.';
+}
+function wiStagedNote(){const ul=$('#wiStaged'); const note=$('#wiStagedNote'); if(ul&&note&&!ul.children.length) note.textContent='No staged actions yet. Try in chat: "stage an export of the urgent bins", "stage saving this view", or "stage a route change".';}
+function wiStageFromChat(q){
+  const l=q.toLowerCase();
+  if(/export.*urgent|urgent.*export/.test(l)){wiStageAction('Export urgent bins as JSON','Source: demo fleet, bins at 80% or above right now. Approve to download urgent-bins.json in this browser.','export-urgent'); return true;}
+  if(/save.*view|stage.*view/.test(l)){wiStageAction('Save this view','Saves the current view + role preset to Saved views in this browser. Approve, then name it.','save-view'); return true;}
+  if(/open.*urgent|show.*urgent/.test(l)){wiStageAction('Open urgent bins','Navigates to Bins & Routes. No bin is changed by this action.','open-urgent'); return true;}
+  if(/delete|remove.*bin|reassign|change.*route|actuat/.test(l)){wiStageAction('High-risk change — NOT executed by the assistant','You asked for a bin/route change. The assistant will never delete bins, reassign a fleet, or change a route from chat. Approving this only opens the Bins view, where you make the change yourself, with the full fleet in front of you.','nav-bins'); return true;}
+  return false;
+}
+
 /* ---------- boot ---------- */
-renderBins(); loadDashboard(); loadLive(); loadKG(); route();
+renderBins(); loadDashboard(); loadLive(); loadKG(); route(); wiInitRoles();

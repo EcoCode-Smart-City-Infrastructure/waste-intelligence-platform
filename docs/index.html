@@ -28,6 +28,7 @@
 </header>
 
 <main>
+<div class="radiant-band" aria-hidden="true"></div>
 <!-- DASHBOARD — dark operations layout (sidebar + card grid, waste data only) -->
 <section id="view-dashboard" class="view">
   <div class="dash-shell">
@@ -62,6 +63,25 @@
           <a class="dash-icon" href="login.html" title="Sign in">👤</a>
         </div>
       </div>
+
+      <div class="role-bar" role="group" aria-label="Role preset">
+        <span><strong>Role:</strong></span>
+        <button type="button" data-role="dispatcher">Dispatcher</button>
+        <button type="button" data-role="depot">Depot manager</button>
+        <button type="button" data-role="analyst">Analyst</button>
+        <button type="button" data-role="executive">Executive</button>
+        <button type="button" data-role="crew">Field crew</button>
+        <span class="muted small" id="roleBrief"></span>
+      </div>
+      <div class="role-bar" role="group" aria-label="Saved views">
+        <span><strong>Saved views:</strong></span>
+        <span id="savedViews"></span>
+        <button type="button" id="wiSaveViewBtn">Save this view</button>
+      </div>
+      <section class="card ops-brief" aria-label="Ops brief">
+        <h2>Ops brief — in one narrative</h2>
+        <div id="opsBriefBody"><p class="muted">Loading the brief from live tonnage and the demo fleet…</p></div>
+      </section>
 
       <section class="dash-card dash-hero" aria-label="City grid">
         <div class="dash-card-head"><h2>City grid — live operations</h2><span class="pill" id="dashGridBadge">demo fleet · live tonnage where available</span></div>
@@ -348,6 +368,12 @@
     <div id="wiDiagResults"></div>
     <div id="wiRepairActions" class="controls"></div>
     <p class="muted small" id="wiRepairResult"></p>
+  </div>
+  <div class="card">
+    <h2>Staged actions — approval queue</h2>
+    <p class="muted small">The assistant never executes a change from chat alone. When you ask for an action, it stages a proposal here instead: you approve it, or discard it. Safe actions (open a view, save a view, export urgent bins) run only on Approve. High-risk changes (delete bins, reassign a fleet, change a route) are never executed by the assistant — approving one only opens the Bins view, where you make the change yourself. Every staged action shows its source: live tonnage, the demo fleet, or the sample graph.</p>
+    <ul id="wiStaged"></ul>
+    <p class="muted small" id="wiStagedNote">No staged actions yet. Try in chat: "stage an export of the urgent bins", "stage saving this view", or "stage a route change".</p>
   </div>
   <div class="card">
     <h2>Chat</h2>
