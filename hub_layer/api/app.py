@@ -14,6 +14,38 @@ def create_app() -> Flask:
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
+    # CORS for the browser web app (GitHub Pages origin by default,
+    # overridable with CORS_ORIGINS, comma-separated). Flask has no
+    # built-in CORS middleware, so this is done in after_request plus
+    # a preflight handler — no new dependency.
+    import os as _os
+
+    _cors_origins = [o.strip() for o in _os.getenv(
+        "CORS_ORIGINS",
+        "https://ecocode-smart-city-infrastructure.github.io,http://localhost:3000,http://localhost:8080",
+    ).split(",") if o.strip()]
+
+    @app.after_request
+    def _cors_headers(response):
+        from flask import request as _req
+
+        origin = _req.headers.get("Origin", "")
+        if "*" in _cors_origins:
+            response.headers["Access-Control-Allow-Origin"] = "*"
+        elif origin in _cors_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Vary"] = "Origin"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-API-Key"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        return response
+
+    @app.before_request
+    def _cors_preflight():
+        from flask import request as _req
+
+        if _req.method == "OPTIONS":
+            return ("", 204)
+
     @app.get("/health")
     def healthcheck():
         return jsonify({"status": "ok", "service": "hub-layer"}), 200

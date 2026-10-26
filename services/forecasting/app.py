@@ -33,6 +33,25 @@ MODEL_VERSION = "waste-forecast-v1.0"
 
 app = FastAPI(title="Waste Forecasting Service")
 
+# CORS: browsers calling this service from the GitHub Pages web app
+# (https://ecocode-smart-city-infrastructure.github.io) were blocked
+# because the service shipped no CORS middleware at all. Origins are
+# env-driven; a literal "*" disables credentials (browsers reject
+# Access-Control-Allow-Credentials with "*").
+from fastapi.middleware.cors import CORSMiddleware as _CORSMiddleware
+
+_CORS_ORIGINS = [o.strip() for o in os.getenv(
+    "CORS_ORIGINS",
+    "https://ecocode-smart-city-infrastructure.github.io,http://localhost:3000,http://localhost:8080",
+).split(",") if o.strip()]
+app.add_middleware(
+    _CORSMiddleware,
+    allow_origins=_CORS_ORIGINS,
+    allow_credentials=("*" not in _CORS_ORIGINS),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # --------------------------------------------------------------------------- #
 # DB

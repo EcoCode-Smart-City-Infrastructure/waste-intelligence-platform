@@ -14,7 +14,8 @@ class FacilityRepository:
         return fetch_all(f"SELECT * FROM {self._table} ORDER BY created_at DESC LIMIT 100;")
 
     def get_facility(self, facility_id: str) -> Optional[Dict[str, Any]]:
-        rows = fetch_all(f"SELECT * FROM {self._table} WHERE facility_id = '{facility_id}' LIMIT 1;")
+        # Parameterized: the old f-string interpolation was SQL injection.
+        rows = fetch_all(f"SELECT * FROM {self._table} WHERE facility_id = %s LIMIT 1;", (facility_id,))
         return rows[0] if rows else None
 
     def create_facility(self, data: Dict[str, Any]) -> None:

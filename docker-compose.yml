@@ -39,6 +39,7 @@ services:
       - API_KEY=${WASTE_INTEL_API_KEY:-}
       - REQUIRE_API_KEY=false
       - DEBUG=false
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://ecocode-smart-city-infrastructure.github.io,http://localhost:3000,http://localhost:8080}
     networks:
       - waste-intel-network
     depends_on:
@@ -152,6 +153,7 @@ services:
     environment:
       - MODEL_REPO=${CONTAMINATION_MODEL_REPO:-CatSat/yolov11-litter-materials}
       - CONF_THRESHOLD=${CONTAMINATION_CONF_THRESHOLD:-0.25}
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://ecocode-smart-city-infrastructure.github.io,http://localhost:3000,http://localhost:8080}
     networks:
       - waste-intel-network
 
@@ -166,6 +168,7 @@ services:
       - "8002:8002"
     environment:
       - DATABASE_URL=postgresql://timescale:${POSTGRES_PASSWORD:-password}@postgres:5432/wasteintel
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://ecocode-smart-city-infrastructure.github.io,http://localhost:3000,http://localhost:8080}
     networks:
       - waste-intel-network
     depends_on:
@@ -195,6 +198,7 @@ services:
       - KG_API_URL=http://kg-service:8003
       - ML_API_URL=http://ml-service:8002
       - COPILOT_PORT=8004
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://ecocode-smart-city-infrastructure.github.io,http://localhost:3000,http://localhost:8080}
       - COPILOT_HOST=0.0.0.0
       - COPILOT_API_KEY=${COPILOT_API_KEY:-}
       - REQUIRE_API_KEY=false
@@ -211,6 +215,43 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  # Knowledge Graph Service (W2RKG engine) — this service was
+  # referenced by KG_URL/KG_API_URL but never defined. It serves the
+  # repo's own graph engine from the NYC sample dataset.
+  kg-service:
+    build:
+      context: .
+      dockerfile: services/kg/Dockerfile
+    container_name: kg-service
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      - KG_DATA=/app/cloud_platform/analytics/kg/data/w2rkg_nyc_sample.json
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://ecocode-smart-city-infrastructure.github.io,http://localhost:3000,http://localhost:8080}
+    networks:
+      - waste-intel-network
+
+  # Hub Flask API (legacy hub layer, :5000) — previously not composed
+  # at all, which is why the web app's Hub URL had nothing to call.
+  hub-flask:
+    build:
+      context: .
+      dockerfile: hub_layer/Dockerfile
+    container_name: hub-flask
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql://timescale:${POSTGRES_PASSWORD:-password}@postgres:5432/wasteintel
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://ecocode-smart-city-infrastructure.github.io,http://localhost:3000,http://localhost:8080}
+      - COPILOT_SERVICE_URL=http://copilot-service:8004
+    networks:
+      - waste-intel-network
+    depends_on:
+      - postgres
+      - copilot-service
 
 networks:
   waste-intel-network:

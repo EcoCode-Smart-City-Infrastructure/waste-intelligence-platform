@@ -11,10 +11,13 @@ class BinRepository:
         self._table = "bins"
 
     def list_bins(self) -> List[Dict[str, Any]]:
-        return fetch_all(f"SELECT * FROM {self._table} ORDER BY updated_at DESC LIMIT 100;")
+        # Schema has created_at, not updated_at (that column does not
+        # exist, so the old ORDER BY failed on Postgres).
+        return fetch_all(f"SELECT * FROM {self._table} ORDER BY created_at DESC LIMIT 100;")
 
     def get_bin(self, bin_id: str) -> Optional[Dict[str, Any]]:
-        rows = fetch_all(f"SELECT * FROM {self._table} WHERE bin_id = '{bin_id}' LIMIT 1;")
+        # Parameterized: the old f-string interpolation was SQL injection.
+        rows = fetch_all(f"SELECT * FROM {self._table} WHERE bin_id = %s LIMIT 1;", (bin_id,))
         return rows[0] if rows else None
 
     def create_bin(self, data: Dict[str, Any]) -> None:

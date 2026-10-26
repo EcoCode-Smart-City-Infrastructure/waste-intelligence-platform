@@ -116,11 +116,17 @@ class Settings(BaseSettings):
     context_cache_ttl: int = int(os.getenv("CONTEXT_CACHE_TTL", "300"))  # seconds
     
     # CORS
+    # Env-driven (CORS_ORIGINS, comma-separated) so a deployment can add
+    # the GitHub Pages origin without editing code. The Pages origin is
+    # in the defaults because the web app calls /copilot/query from the
+    # browser; previously only localhost/grafana origins were allowed.
     cors_origins: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:8080",
-        "http://grafana:3000",
-        "http://dashboard:3000"
+        o.strip()
+        for o in os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost:3000,http://localhost:8080,http://grafana:3000,http://dashboard:3000,https://ecocode-smart-city-infrastructure.github.io",
+        ).split(",")
+        if o.strip()
     ]
     
     class Config:
