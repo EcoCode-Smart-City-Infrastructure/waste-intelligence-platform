@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://data.cityofnewyork.us">
 <meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
-<link rel="stylesheet" href="styles.css?v=overhaul6">
+<link rel="stylesheet" href="styles.css?v=overhaul7">
 </head>
 <body>
 <a class="skip-link" href="#views">Skip to content</a>
@@ -25,6 +25,7 @@
     <a href="#contamination" data-nav="contamination">Contamination</a>
     <a href="#connect" data-nav="connect">Connect</a>
     <a href="#assistant" data-nav="assistant">Assistant</a>
+    <a href="#twin" data-nav="twin">Digital Twin <span class="pill warn">preview</span></a>
     <a href="kepler.html">Kepler 3D Map</a>
     <a href="login.html" id="authNavLink">Sign in</a>
     <a href="#" id="authSignOut" hidden>Sign out</a>
@@ -97,6 +98,19 @@
           <button class="btn primary" id="annoAddBtn" type="button">Add note</button>
         </div>
         <ul id="annoList"></ul>
+      </section>
+
+      <section class="card" aria-label="Generate a layout">
+        <h2>Generate a layout — generative AI layout, approval-first</h2>
+        <p class="muted small">Type what you want the dashboard to lead with, in your own words. No AI model runs on this static page: your words are matched against a published intent registry below (intents + card orders), a layout is <strong>previewed</strong>, and nothing changes until you click Apply. It never reshuffles on its own, and Reset restores your role layout. For a future AI service: replace <code>window.WIPLayout.generate</code> with a model call returning <code>{order, reason}</code> — the preview, approval, and reset path stays exactly the same.</p>
+        <div class="controls">
+          <label style="flex:1">Goal <input id="layoutGoal" placeholder="e.g. urgent bins and routes first, tonnage last"></label>
+          <button class="btn primary" id="layoutGenerate" type="button">Generate layout</button>
+          <button class="btn" id="layoutReset" type="button">Reset to role layout</button>
+        </div>
+        <div id="layoutPreview"></div>
+        <details><summary>Intent registry — how words become an order</summary>
+        <p class="muted small" id="layoutRegistry"></p></details>
       </section>
 
       <section class="dash-card dash-hero" aria-label="City grid">
@@ -420,13 +434,57 @@
     <p class="muted small">↑ ↓ to move, Enter to open, Esc to close. Results are views, demo bins, and staged actions — nothing is executed without the approval queue.</p>
   </div>
 </div>
+<section id="view-twin" class="view hidden">
+  <h1>Digital Twin — preview, not live</h1>
+  <p class="lede">Infrastructure for a photorealistic 3D twin and AR, ready to switch to live data the day a feed exists. Right now: <strong>no live feed is connected</strong>, bin positions are the demo fleet, and building heights are illustrative, not surveyed. Nothing here is live telemetry, and nothing is claimed to be. When a feed that matches the contract below is connected, the same scene swaps demo markers for live ones with no code change.</p>
+  <div class="card controls">
+    <button class="btn" id="twinCamTop" type="button">Top view</button>
+    <button class="btn" id="twinCamStreet" type="button">Street view</button>
+    <button class="btn" id="twinCamReset" type="button">Reset camera</button>
+    <span class="pill" id="twinFeedBadge">DEMO FLEET · no live feed</span>
+  </div>
+  <div class="card">
+    <div id="twinCanvasWrap" style="min-height:420px;background:#0f1d16;border-radius:12px;overflow:hidden"><p class="muted small" style="padding:1rem;color:#cbd3c6">Loading the 3D scene… (Three.js loads only when this view opens, so the dashboard stays fast.)</p></div>
+    <p class="muted small" id="twinStatus">Drag to orbit, scroll to zoom, click a bin marker to open its forecast. Keyboard: the bin list below is the accessible equivalent.</p>
+  </div>
+  <div class="card">
+    <h2>Live feed — connect when one exists</h2>
+    <p class="muted small">Paste a feed URL. The app fetches it in <em>this browser only</em> (so the feed must allow browser access, CORS, and need no secret — never paste a URL containing a key). If it matches the contract and loads, markers switch to live and the badge says LIVE FEED; if it fails, the demo fleet stays and the error is shown. Disconnect returns to demo.</p>
+    <div class="controls">
+      <label style="flex:1">Feed URL <input id="twinFeedUrl" placeholder="https://example.com/bins.json" style="min-width:280px"></label>
+      <button class="btn primary" id="twinFeedConnect" type="button">Connect feed</button>
+      <button class="btn" id="twinFeedDisconnect" type="button">Disconnect</button>
+    </div>
+    <p class="muted small" id="twinFeedStatus"></p>
+    <details><summary>Feed contract — what a backend must return</summary>
+    <pre style="white-space:pre-wrap">One of:
+1) [{"id":"BIN-MA-101","lat":40.775,"lon":-73.976,"fill":83,"updatedAt":"2026-10-25T12:00:00Z"}]
+2) {"bins":[...same objects...]}
+3) GeoJSON FeatureCollection, each feature with properties {id, fill}
+   and geometry coordinates [lon, lat].
+Rules: id is a string, lat/lon are numbers, fill is 0–100.
+Rows missing any of these are skipped and counted, never invented.
+The scene maps lat/lon with the same math as the 2D grid, so a feed
+that renders correctly on the grid renders correctly in 3D.</pre></details>
+  </div>
+  <div class="card">
+    <h2>AR — readiness, not a promise</h2>
+    <p class="muted small" id="twinArStatus">Checking this device and browser for WebXR augmented reality…</p>
+    <div class="controls">
+      <button class="btn primary" id="twinArBtn" type="button" disabled>Enter AR</button>
+      <span class="muted small">AR needs a phone with AR support (e.g. Android + Chrome with ARCore) and the same 3D scene. On a desktop browser this button stays off with the reason shown — that is the honest state, not a failure. AR itself is not verified by the desktop browser check; a phone check is the proof.</span>
+    </div>
+  </div>
+  <div class="card"><h2>Bins in this scene</h2><ul id="twinBinList" class="list"></ul></div>
+</section>
 </main>
 
 <footer>
-    <p class="muted small" id="jsBuild">HTML overhaul6 loaded — waiting for app.js…</p><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
+    <p class="muted small" id="jsBuild">HTML overhaul7 loaded — waiting for app.js…</p><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul6"></script>
+<script src="app.js?v=overhaul7"></script>
+<script src="twin.js?v=twin1"></script>
 </body>
 </html>

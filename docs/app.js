@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul6 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul7 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -13,7 +13,7 @@ const fmt = n => (n==null||isNaN(n)?'—':Number(n).toLocaleString(undefined,{ma
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- routing ---------- */
-const VIEWS=['dashboard','live','bins','forecast','graph','contamination','connect','assistant'];
+const VIEWS=['dashboard','live','bins','forecast','graph','contamination','connect','assistant','twin'];
 function route(){
   const v=(location.hash||'#dashboard').slice(1).split('?')[0];
   const view=VIEWS.includes(v)?v:'dashboard';
@@ -23,6 +23,7 @@ function route(){
   if(view==='forecast') drawForecast();
   if(view==='graph' && kgData) drawGraph();
   if(view==='assistant') wiInitAssistant();
+  if(view==='twin' && typeof wiInitTwin==='function') wiInitTwin();
 }
 window.addEventListener('hashchange',route);
 
@@ -1014,7 +1015,76 @@ function wiInitAnno(){
   wiAnnoRender();
 }
 
+
+/* ---------- Round 4: generative AI layout (approval-first, no model on-page) ----------
+   How it works: the user's goal text is matched against LAYOUT_INTENTS
+   (a published registry of intents -> dashboard card orders). The match
+   produces a PREVIEW with a reason; nothing moves until Apply is clicked,
+   and Reset restores the role layout. A future AI service plugs in by
+   replacing window.WIPLayout.generate with a model call that returns
+   {order, reason} — preview/approval/reset are unchanged. This is the
+   deliberate opposite of opaque algorithmic reshuffling: the user asks,
+   sees the proposed order, and approves it. */
+const LAYOUT_INTENTS=[
+  {id:'urgent', label:'Urgent response', keywords:['urgent','route','response','emergency','dispatch','critical'], order:['Urgent bins','Fleet fill by borough','Live tonnage','Forecast trend','Tonnage by borough','Tonnage mix','Fill heatmap','At a glance','The loop']},
+  {id:'executive', label:'Executive summary', keywords:['executive','summary','overview','management','briefing','board'], order:['Live tonnage','Tonnage by borough','Tonnage mix','Urgent bins','Fleet fill by borough','Forecast trend','Fill heatmap','At a glance','The loop']},
+  {id:'analyst', label:'Analyst evidence', keywords:['analyst','evidence','forecast','trend','data','analysis'], order:['Forecast trend','Tonnage mix','Live tonnage','Tonnage by borough','Fleet fill by borough','Urgent bins','Fill heatmap','At a glance','The loop']},
+  {id:'crew', label:'Field crew focus', keywords:['crew','field','collection','driver','route crew','on the road'], order:['Urgent bins','Fill heatmap','Fleet fill by borough','Live tonnage','Forecast trend','Tonnage by borough','Tonnage mix','At a glance','The loop']},
+  {id:'depot', label:'Depot capacity', keywords:['depot','capacity','fleet','yard'], order:['Fleet fill by borough','Live tonnage','Tonnage by borough','Urgent bins','Forecast trend','Fill heatmap','At a glance','Tonnage mix','The loop']},
+];
+const LAYOUT_CARDS=['Urgent bins','Fleet fill by borough','Live tonnage','Tonnage by borough','Forecast trend','Tonnage mix','Fill heatmap','At a glance','The loop'];
+function wiLayoutGenerate(goal){
+  const g=(goal||'').toLowerCase();
+  let best=null, bestScore=0;
+  LAYOUT_INTENTS.forEach(it=>{
+    const score=it.keywords.filter(k=>g.includes(k)).length;
+    if(score>bestScore){bestScore=score; best=it;}
+  });
+  if(!best){
+    const roleOrder=(ROLES[wiRole()]||ROLES.dispatcher).order;
+    return {order:roleOrder.slice(), reason:'No intent keyword matched your goal, so the preview starts from your current role layout. Add a word like "urgent", "executive", "forecast", or "crew" and generate again.', intent:'(none matched)'};
+  }
+  const order=best.order.slice();
+  LAYOUT_CARDS.forEach(c=>{if(!order.includes(c)) order.push(c);});
+  return {order:order, reason:`Matched intent "${best.label}" from your words (${best.keywords.filter(k=>g.includes(k)).join(', ')}). Card order below is the proposal — nothing has moved yet.`, intent:best.label};
+}
+function wiApplyLayoutOrder(order){
+  const grid=document.querySelector('.dash-grid'); if(!grid) return;
+  const cards=$$('.dash-grid .dash-card');
+  cards.forEach(card=>{
+    const h=card.querySelector('h2')?.textContent||'';
+    const idx=order.findIndex(o=>h.startsWith(o));
+    card.style.order=idx>=0?idx:99;
+    card.classList.toggle('role-focus', idx===0);
+  });
+  const sorted=[...cards].sort((a,b)=>(+a.style.order)-(+b.style.order));
+  sorted.forEach(c=>grid.appendChild(c));
+}
+let wiPendingLayout=null;
+function wiInitLayout(){
+  const reg=$('#layoutRegistry');
+  if(reg) reg.innerHTML=LAYOUT_INTENTS.map(it=>`<strong>${esc(it.label)}</strong> — keywords: ${esc(it.keywords.join(', '))} → order: ${esc(it.order.join(' · '))}`).join('<br>');
+  $('#layoutGenerate')?.addEventListener('click',()=>{
+    const goal=$('#layoutGoal')?.value||'';
+    const gen=wiLayoutGenerate(goal); wiPendingLayout=gen.order;
+    const prev=$('#layoutPreview'); if(!prev) return;
+    prev.innerHTML=`<p><strong>Proposed layout (${esc(gen.intent)}):</strong> ${esc(gen.reason)}</p><ol>${gen.order.map(o=>`<li>${esc(o)}</li>`).join('')}</ol><div class="controls"><button class="btn primary" id="layoutApply" type="button">Apply this layout</button></div>`;
+    $('#layoutApply')?.addEventListener('click',()=>{
+      wiApplyLayoutOrder(wiPendingLayout);
+      try{localStorage.setItem('wip_custom_layout',JSON.stringify({goal:goal, order:wiPendingLayout, time:new Date().toISOString()}));}catch(e){}
+      prev.innerHTML=`<p><strong>Applied.</strong> Dashboard cards are now in the generated order, and the layout is saved in this browser. Use Reset to return to your role layout.</p>`;
+    });
+  });
+  $('#layoutReset')?.addEventListener('click',()=>{
+    try{localStorage.removeItem('wip_custom_layout');}catch(e){}
+    wiApplyRole(wiRole());
+    const prev=$('#layoutPreview'); if(prev) prev.innerHTML='<p class="muted small">Reset to your role layout.</p>';
+  });
+}
+window.WIPLayout={intents:LAYOUT_INTENTS, cards:LAYOUT_CARDS, generate:wiLayoutGenerate, apply:wiApplyLayoutOrder, reset:()=>wiApplyRole(wiRole())};
+
 /* ---------- boot ---------- */
 try{renderBins(); loadDashboard(); loadLive(); loadKG(); route(); wiInitRoles();}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · BOOT ERROR: '+e.message;}
 try{wiInitCmdK(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK ERROR: '+e.message;}
 try{wiInitAnno(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Anno bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Anno ERROR: '+e.message;}
+try{wiInitLayout(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Layout bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Layout ERROR: '+e.message;}
