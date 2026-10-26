@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#1d7a4f">
 <link rel="manifest" href="manifest.json">
 <meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
-<link rel="stylesheet" href="styles.css?v=overhaul4">
+<link rel="stylesheet" href="styles.css?v=overhaul5">
 </head>
 <body>
 <header class="top">
@@ -417,10 +417,11 @@
 </div>
 </main>
 
-<footer><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
+<footer>
+    <p class="muted small" id="jsBuild">HTML overhaul5 loaded — waiting for app.js…</p><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul4"></script>
+<script src="app.js?v=overhaul5"></script>
 </body>
 </html>

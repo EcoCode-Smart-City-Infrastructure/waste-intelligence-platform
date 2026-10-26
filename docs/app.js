@@ -1,3 +1,6 @@
+
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul5 parsed';
+window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
    the browser (seeded, deterministic) because the hub API returns no bins.
@@ -984,4 +987,6 @@ function wiInitAnno(){
 }
 
 /* ---------- boot ---------- */
-renderBins(); loadDashboard(); loadLive(); loadKG(); route(); wiInitRoles(); wiInitCmdK(); wiInitAnno();
+try{renderBins(); loadDashboard(); loadLive(); loadKG(); route(); wiInitRoles();}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · BOOT ERROR: '+e.message;}
+try{wiInitCmdK(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK ERROR: '+e.message;}
+try{wiInitAnno(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Anno bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Anno ERROR: '+e.message;}
