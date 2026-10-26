@@ -883,8 +883,11 @@ function wiStageAction(title, detail, actionKey){
     else if(actionKey==='save-view'){const name=prompt('Name for this saved view?'); if(name){const views=wiSavedViews(); views.push({name:name.trim(),role:wiRole(),hash:location.hash||'#dashboard'}); try{localStorage.setItem('wip_saved_views',JSON.stringify(views));}catch(e){} wiRenderSavedViews();}}
     else if(actionKey==='export-urgent'){const data=JSON.stringify(fleet.filter(b=>b.fill>=80),null,2); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'application/json'})); a.download='urgent-bins.json'; a.click(); URL.revokeObjectURL(a.href);}
     li.remove(); wiStagedNote();
-    if(actionKey==='export-urgent'){const n=$('#wiStagedNote'); if(n) n.textContent='Approved — urgent-bins.json downloaded in this browser.';}
-    if(actionKey==='save-view'){const n=$('#wiStagedNote'); if(n) n.textContent='Approved — view saved. Find it under Saved views on the Dashboard.';}
+    const conf=$('#wiStagedConfirm');
+    if(actionKey==='export-urgent'&&conf) conf.textContent='Approved — urgent-bins.json downloaded in this browser.';
+    if(actionKey==='save-view'&&conf) conf.textContent='Approved — view saved. Find it under Saved views on the Dashboard.';
+    if(actionKey==='open-urgent'&&conf) conf.textContent='Approved — opening Bins & Routes.';
+    if(actionKey==='nav-bins'&&conf) conf.textContent='Approved — opening Bins & Routes, where you make the change yourself. The assistant executed nothing.';
   });
   li.querySelector('[data-discard]').addEventListener('click',()=>{li.remove(); wiStagedNote();});
   ul.appendChild(li); wiStagedNote();
