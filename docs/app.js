@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul5 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul6 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -73,7 +73,7 @@ async function loadDashboard(){
   $('#urgentList').innerHTML=urgent.length?urgent.map(b=>`<li><a href="#forecast?bin=${b.id}">${esc(b.id)}</a> — ${esc(b.site)}, ${esc(b.borough)} · <strong>${b.fill}%</strong></li>`).join(''):'<li>No bin is at 80% or above right now.</li>';
   // Live tonnage, aggregated by borough for the latest month in the feed
   let rows=null, live=true;
-  try{const res=await fetch('https://data.cityofnewyork.us/resource/ebb7-mvp5.json?$limit=500&$order=month%20DESC');
+  try{const res=await fetch('https://data.cityofnewyork.us/resource/ebb7-mvp5.json?$select=month,borough,refusetonscollected,papertonscollected,mgptonscollected,resorganicstons,schoolorganictons&$limit=500&$order=month%20DESC');
     if(!res.ok) throw new Error('HTTP '+res.status); rows=await res.json(); if(!rows.length) throw new Error('empty');}
   catch(e){live=false;}
   let agg;
@@ -152,6 +152,15 @@ function drawForecast(){
   const fc=Math.min(100,Math.max(0,a.intercept+a.slope*(pts[pts.length-1].h+H)));
   $('#fcKpis').innerHTML=`<div><b>${bin.fill}%</b><span>Current fill · ${esc(bin.id)}</span></div><div><b>${a.slope>=0?'+':''}${a.slope.toFixed(2)} / h</b><span>Trend (current cycle, ${a.cycle.length} readings)</span></div><div><b>${fmt(fc)}%</b><span>Forecast in ${H} h</span></div><div><b>${isFinite(a.toFull)?Math.round(a.toFull)+' h':'—'}</b><span>Time to 100% at current trend</span></div><div><b>R² ${a.r2.toFixed(2)}</b><span>Fit quality</span></div><div><b>${a.z>2?'⚠ Anomaly':'Normal'}</b><span>z-score ${a.z.toFixed(2)} (flag &gt; 2)</span></div>`;
   $('#fcNote').textContent=pts.length<8?'Warning (backend-style 422): history is too thin for a reliable forecast — add readings below.':`Current cycle starts after the last collection drop. Mean ${a.mean.toFixed(1)}%, SD ${a.sd.toFixed(1)}%. Forecast is a straight-line extrapolation, not a guarantee.`;
+  const fcR=$('#fcReasoning');
+  if(fcR){
+    const cyc=a.cycle, first=cyc[0], last=cyc[cyc.length-1];
+    const fitWord=a.r2>=0.8?'strong':a.r2>=0.5?'moderate':'weak';
+    const changeWord=a.slope>0?'keep rising at this rate':a.slope<0?'fall — a collection may be near':'stay flat';
+    fcR.innerHTML=`<p><strong>Evidence:</strong> ${cyc.length} readings in the current cycle, from ${first?first.fill+'%':'—'} (hour ${first?first.h:'—'}) to ${last?last.fill+'%':'—'} (hour ${last?last.h:'—'}). The cycle restarts after any collection drop over 30 points, so older history does not drag this trend.</p>
+    <p><strong>Reasoning:</strong> a least-squares line through those readings gives slope ${a.slope>=0?'+':''}${a.slope.toFixed(2)} points/hour and R² ${a.r2.toFixed(2)} — a ${fitWord} fit. At that slope the bin should ${changeWord}; time to 100% is ${isFinite(a.toFull)?Math.round(a.toFull)+' hours':'not reached in this trend'}. Anomaly check: latest reading z-score ${a.z.toFixed(2)} against its own cycle (mean ${a.mean.toFixed(1)}%, SD ${a.sd.toFixed(1)}%) — ${a.z>2?'flagged, because it is more than 2 SD from the cycle mean':'normal, within 2 SD'}.</p>
+    <p><strong>What would change this:</strong> a new reading, a collection (drop &gt; 30 points restarts the cycle), or a slope change. <strong>Caveat:</strong> this is demo fleet history, not live sensor readings, and a straight-line extrapolation is a guide, not a guarantee.</p>`;
+  }
   const cv=$('#fcChart'), ctx=cv.getContext('2d'); ctx.clearRect(0,0,cv.width,cv.height);
   const all=[...pts.map(p=>p.fill),fc]; const min=Math.min(...all)-5, max=Math.max(...all)+5;
   const X=h=>40+h/(pts[pts.length-1].h+H)*(cv.width-80), Y=v=>cv.height-30-(v-min)/(max-min)*(cv.height-70);
@@ -811,15 +820,30 @@ function dashGrid(){
   const labels=showLabels?`<g fill="#94a3b8" font-size="12"><text x="90" y="40">Manhattan</text><text x="330" y="120">Brooklyn</text><text x="380" y="60">Queens</text><text x="330" y="210">Bronx</text><text x="90" y="290">Staten Island</text></g>`:'';
   const urgent=[...fleet].map(b=>({...b,fill:dashFill(b)})).filter(b=>b.fill>=80).sort((a,b)=>b.fill-a.fill);
   const routePath=showRoute&&urgent.length>1?`<path class="dash-grid-route" d="${urgent.map((b,i)=>`${i?'L':'M'}${dashXY(b).join(',')}`).join(' ')}"/>`:'';
-  const dots=showFleet?fleet.map(b=>{const f=dashFill(b); const [x,y]=dashXY(b); const r=showHeat?4+f/14:6; return `<g><circle class="dash-grid-pulse" cx="${x}" cy="${y}" r="6" style="${f>=80?'':'display:none'}"/><circle class="dash-grid-dot" cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="${dashStatusColor(f)}" data-bin="${b.id}"><title>${esc(b.id)} — ${esc(b.site)} · ${f}%</title></circle></g>`;}).join(''):'';
+  const dots=showFleet?fleet.map(b=>{const f=dashFill(b); const [x,y]=dashXY(b); const r=showHeat?4+f/14:6; return `<g><circle class="dash-grid-pulse" cx="${x}" cy="${y}" r="6" style="${f>=80?'':'display:none'}"/><circle class="dash-grid-dot" cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="${dashStatusColor(f)}" data-bin="${b.id}" tabindex="0" role="button" aria-label="${esc(b.id)} ${esc(b.site)}, ${f} percent, open forecast"><title>${esc(b.id)} — ${esc(b.site)} · ${f}%</title></circle></g>`;}).join(''):'';
   svg.innerHTML=streets+labels+routePath+dots;
   $$('#dashGridSvg .dash-grid-dot').forEach(c=>c.addEventListener('click',()=>{location.hash='#forecast?bin='+c.dataset.bin;}));
+  $$('#dashGridSvg .dash-grid-dot').forEach(c=>c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); location.hash='#forecast?bin='+c.dataset.bin;}}));
   const top=urgent[0];
   $('#dashGridNote').innerHTML=dashReplayHour<47?`Replay: hour ${dashReplayHour} of the last 48 (demo history, not live now). Urgent at that hour: ${urgent.length?urgent.map(b=>esc(b.id)).join(', '):'none'}. Move the slider to 47 for now.`:(top?`Urgent route: ${urgent.map(b=>esc(b.id)).join(' → ')}. Tap any dot for its forecast.`:'No urgent bins right now — the route layer appears when a bin reaches 80%.');
 }
 ['dashLayerFleet','dashLayerRoute','dashLayerHeat','dashLayerLabels'].forEach(id=>$('#'+id)?.addEventListener('change',dashGrid));
 $('#dashPulseBtn')?.addEventListener('click',()=>{const hero=$('#view-dashboard .dash-hero'); hero.classList.toggle('paused'); $('#dashPulseBtn').textContent=hero.classList.contains('paused')?'▶ Resume pulses':'⏸ Pause pulses';});
 $('#dashReplay')?.addEventListener('input',e=>{dashReplayHour=+e.target.value; const lab=$('#dashReplayLabel'); if(lab) lab.textContent=dashReplayHour>=47?'now':`hour ${dashReplayHour} / 47`; dashGrid();});
+let dashReplayTimer=null;
+$('#dashReplayPlay')?.addEventListener('click',()=>{
+  const btn=$('#dashReplayPlay');
+  if(dashReplayTimer){clearInterval(dashReplayTimer); dashReplayTimer=null; btn.textContent='▶ Play replay'; return;}
+  if(dashReplayHour>=47) dashReplayHour=0;
+  btn.textContent='⏸ Pause replay';
+  dashReplayTimer=setInterval(()=>{
+    dashReplayHour++;
+    const slider=$('#dashReplay'); if(slider) slider.value=dashReplayHour;
+    const lab=$('#dashReplayLabel'); if(lab) lab.textContent=dashReplayHour>=47?'now':`hour ${dashReplayHour} / 47`;
+    dashGrid();
+    if(dashReplayHour>=47){clearInterval(dashReplayTimer); dashReplayTimer=null; btn.textContent='▶ Play replay';}
+  },400);
+});
 $('#whatifBtn')?.addEventListener('click',()=>{
   const v=+($('#whatifVehicles')?.value||1); const urgent=fleet.filter(b=>b.fill>=80).length;
   const cleared=Math.min(urgent, v*8); const left=urgent-cleared;
@@ -970,8 +994,11 @@ function wiAnnoRender(){
     sel.innerHTML=opts.map(([label,hash])=>`<option value="${hash}">${esc(label)}</option>`).join('');
   }
   const ul=$('#annoList'); if(!ul) return;
-  const items=wiAnnoLoad().slice().reverse();
-  ul.innerHTML=items.length?items.map((a,i)=>{const idx=wiAnnoLoad().length-1-i; return `<li class="staged-item"><strong>${esc(a.targetLabel)}</strong> <span class="muted small">${esc(new Date(a.time).toLocaleString())} · You (this browser)</span><p>${esc(a.text)}</p><div class="controls"><a class="btn" href="${esc(a.target)}">Open pinned view →</a><button class="btn" data-del="${idx}">Delete</button></div></li>`;}).join(''):'<li class="muted small">No annotations yet in this browser.</li>';
+  const filt=$('#annoFilter')?.value||'all';
+  let items=wiAnnoLoad().map((a,i)=>({...a,_i:i})).reverse();
+  if(filt==='dashboard') items=items.filter(a=>a.target==='#dashboard');
+  if(filt==='bins') items=items.filter(a=>a.target.startsWith('#forecast?bin='));
+  ul.innerHTML=items.length?items.map((a)=>{const idx=a._i; return `<li class="staged-item"><strong>${esc(a.targetLabel)}</strong> <span class="muted small">${esc(new Date(a.time).toLocaleString())} · You (this browser)</span><p>${esc(a.text)}</p><div class="controls"><a class="btn" href="${esc(a.target)}">Open pinned view →</a><button class="btn" data-del="${idx}">Delete</button></div></li>`;}).join(''):'<li class="muted small">No annotations yet in this browser.</li>';
   $$('#annoList [data-del]').forEach(b=>b.addEventListener('click',()=>{const all=wiAnnoLoad(); all.splice(+b.dataset.del,1); try{localStorage.setItem('wip_annotations',JSON.stringify(all));}catch(e){} wiAnnoRender();}));
 }
 function wiInitAnno(){
@@ -983,6 +1010,7 @@ function wiInitAnno(){
     const inp=$('#annoText'); if(inp) inp.value='';
     wiAnnoRender();
   });
+  $('#annoFilter')?.addEventListener('change',wiAnnoRender);
   wiAnnoRender();
 }
 

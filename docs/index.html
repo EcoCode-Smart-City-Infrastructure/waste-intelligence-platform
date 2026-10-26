@@ -6,10 +6,12 @@
 <title>Waste Intelligence — NYC Operations Web App</title>
 <meta name="theme-color" content="#1d7a4f">
 <link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://data.cityofnewyork.us">
 <meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
-<link rel="stylesheet" href="styles.css?v=overhaul5">
+<link rel="stylesheet" href="styles.css?v=overhaul6">
 </head>
 <body>
+<a class="skip-link" href="#views">Skip to content</a>
 <header class="top">
   <div class="brand"><span class="logo" aria-hidden="true">♻</span>
     <div><strong>Waste Intelligence</strong><span>NYC operations · EcoCode Smart City</span></div>
@@ -81,7 +83,7 @@
         <span id="savedViews"></span>
         <button type="button" id="wiSaveViewBtn">Save this view</button>
       </div>
-      <section class="card ops-brief" aria-label="Ops brief">
+      <section class="card ops-brief" aria-label="Ops brief" aria-live="polite">
         <h2>Ops brief — in one narrative</h2>
         <div id="opsBriefBody"><p class="muted">Loading the brief from live tonnage and the demo fleet…</p></div>
       </section>
@@ -91,6 +93,7 @@
         <div class="controls">
           <label>Pin to <select id="annoTarget"></select></label>
           <label style="flex:1">Note <input id="annoText" placeholder="e.g. Route 12 blocked at 07:20 — crew reassigned"></label>
+          <label>Show <select id="annoFilter"><option value="all">All notes</option><option value="dashboard">Dashboard notes</option><option value="bins">Bin notes</option></select></label>
           <button class="btn primary" id="annoAddBtn" type="button">Add note</button>
         </div>
         <ul id="annoList"></ul>
@@ -106,6 +109,7 @@
           <label><input type="checkbox" id="dashLayerLabels" checked> Borough labels</label>
           <button class="btn" id="dashPulseBtn">⏸ Pause pulses</button>
           <label>Replay <input type="range" id="dashReplay" min="0" max="47" value="47" aria-label="Replay the last 48 hours of demo fill history"> <span id="dashReplayLabel">now</span></label>
+          <button class="btn" id="dashReplayPlay" type="button">▶ Play replay</button>
         </div>
         <svg id="dashGridSvg" viewBox="0 0 600 340" role="img" aria-label="Interactive NYC bin grid"></svg>
         <p class="muted small" id="dashGridNote"></p>
@@ -213,6 +217,7 @@
   <div class="kpis" id="fcKpis"></div>
   <div class="card"><canvas id="fcChart" width="900" height="320" aria-label="Fill history and forecast chart"></canvas>
   <p class="muted small" id="fcNote"></p></div>
+  <div class="card"><h2>Reasoning — why this forecast says what it says</h2><div id="fcReasoning"></div></div>
   <div class="card">
     <h2>How to read this</h2>
     <ul class="list">
@@ -418,10 +423,10 @@
 </main>
 
 <footer>
-    <p class="muted small" id="jsBuild">HTML overhaul5 loaded — waiting for app.js…</p><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
+    <p class="muted small" id="jsBuild">HTML overhaul6 loaded — waiting for app.js…</p><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul5"></script>
+<script src="app.js?v=overhaul6"></script>
 </body>
 </html>

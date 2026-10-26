@@ -127,3 +127,16 @@ body{background:linear-gradient(180deg,#eef4ec 0%,#f4f6f3 22%,#fdf8ec 100%)}
 #cmdkResults li.sel{background:#e6ebe0;outline:2px solid #b7791f}
 .whatif{background:#f2f1e7;border:1px dashed #b7791f;border-radius:12px;padding:.7rem .9rem;margin-top:.8rem}
 #dashReplay{vertical-align:middle}
+
+/* --- Round 3 overhaul: accessibility + mobile crew density --- */
+.skip-link{position:absolute;left:-9999px;top:0;background:#fff;color:#1d7a4f;padding:.6rem 1rem;z-index:200;border-radius:0 0 12px 0}
+.skip-link:focus{left:0}
+.dash-grid-dot:focus{outline:2px solid #b7791f;outline-offset:2px}
+@media(max-width:640px){
+  nav{display:flex;flex-wrap:wrap}
+  .role-bar{flex-wrap:wrap}
+  .dash-grid-controls{flex-wrap:wrap}
+  .btn,nav a,.role-bar button{min-height:44px;display:inline-flex;align-items:center}
+  .dash-hero svg{height:auto}
+  #cmdkResults{max-height:60vh}
+}
