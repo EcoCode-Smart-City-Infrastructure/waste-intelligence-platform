@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waste Intelligence — NYC Operations Web App</title>
+<meta name="theme-color" content="#1d7a4f">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://data.cityofnewyork.us">
+<meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
+<link rel="stylesheet" href="styles.css?v=overhaul7">
+</head>
+<body>
+<a class="skip-link" href="#views">Skip to content</a>
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true">♻</span>
+    <div><strong>Waste Intelligence</strong><span>NYC operations · EcoCode Smart City</span></div>
+  </div>
+  <nav id="nav" aria-label="Sections">
+    <a href="#dashboard" data-nav="dashboard">Dashboard</a>
+    <a href="#live" data-nav="live">Live NYC Data</a>
+    <a href="#bins" data-nav="bins">Bins &amp; Routes</a>
+    <a href="#forecast" data-nav="forecast">Forecasting</a>
+    <a href="#graph" data-nav="graph">Knowledge Graph</a>
+    <a href="#contamination" data-nav="contamination">Contamination</a>
+    <a href="#connect" data-nav="connect">Connect</a>
+    <a href="#assistant" data-nav="assistant">Assistant</a>
+    <a href="#twin" data-nav="twin">Digital Twin <span class="pill warn">preview</span></a>
+    <a href="kepler.html">Kepler 3D Map</a>
+    <a href="login.html" id="authNavLink">Sign in</a>
+    <a href="#" id="authSignOut" hidden>Sign out</a>
+  <button class="btn" id="cmdkBtn" type="button" aria-label="Open command palette">⌘K</button>
+  </nav>
+</header>
+
+<main>
+<div class="radiant-band" aria-hidden="true"></div>
+<!-- DASHBOARD — dark operations layout (sidebar + card grid, waste data only) -->
+<section id="view-dashboard" class="view">
+  <div class="dash-shell">
+    <aside class="dash-side" aria-label="Dashboard sections">
+      <div class="dash-side-brand"><span aria-hidden="true">♻</span><div><strong>Waste Intelligence</strong><span>NYC operations</span></div></div>
+      <p class="dash-side-group">Operations</p>
+      <nav class="dash-side-nav">
+        <a href="#dashboard" class="active">Dashboard</a>
+        <a href="#live">Live NYC Data</a>
+        <a href="#bins">Bins &amp; Routes</a>
+        <a href="#forecast">Forecasting</a>
+      </nav>
+      <p class="dash-side-group">Intelligence</p>
+      <nav class="dash-side-nav">
+        <a href="#graph">Knowledge Graph</a>
+        <a href="#contamination">Contamination</a>
+        <a href="#assistant">Assistant</a>
+        <a href="kepler.html">Kepler Map</a>
+        <a href="#connect">Connect</a>
+      </nav>
+      <p class="dash-side-group">Account</p>
+      <nav class="dash-side-nav"><a href="login.html">Sign in</a></nav>
+      <div class="dash-side-status"><span class="pill" id="dashSideLive">checking…</span><span class="muted small" id="dashSideUrgent"></span></div>
+    </aside>
+    <div class="dash-main">
+      <div class="dash-top">
+        <div><h1>NYC waste, in one operations view</h1><p class="dash-sub">Live city data where it exists, a working demo fleet where the backend is not running, and every number labelled with its source. No API key, no server needed.</p></div>
+        <div class="dash-top-actions">
+          <label class="dash-search">🔍 <input id="dashSearch" placeholder="Search bins or sites… (Enter)"></label>
+          <a class="dash-icon" href="#bins" title="Urgent bins">🔔 <span id="dashBellCount">0</span></a>
+          <a class="dash-icon" href="#connect" title="Connect backends">⚙</a>
+          <a class="dash-icon" href="login.html" title="Sign in">👤</a>
+        </div>
+      </div>
+
+      <div class="role-bar" role="group" aria-label="Role preset">
+        <span><strong>Role:</strong></span>
+        <button type="button" data-role="dispatcher">Dispatcher</button>
+        <button type="button" data-role="depot">Depot manager</button>
+        <button type="button" data-role="analyst">Analyst</button>
+        <button type="button" data-role="executive">Executive</button>
+        <button type="button" data-role="crew">Field crew</button>
+        <span class="muted small" id="roleBrief"></span>
+      </div>
+      <div class="role-bar" role="group" aria-label="Saved views">
+        <span><strong>Saved views:</strong></span>
+        <span id="savedViews"></span>
+        <button type="button" id="wiSaveViewBtn">Save this view</button>
+      </div>
+      <section class="card ops-brief" aria-label="Ops brief" aria-live="polite">
+        <h2>Ops brief — in one narrative</h2>
+        <div id="opsBriefBody"><p class="muted">Loading the brief from live tonnage and the demo fleet…</p></div>
+      </section>
+      <section class="card" aria-label="Annotations">
+        <h2>Annotations — shared notes, local for now</h2>
+        <p class="muted small">Honest limit: this static Pages app has no server, so annotations live in <em>this browser only</em> (localStorage) and are <strong>not</strong> shared with other users or devices, and there is no live presence or live cursor. True multi-user sync needs a backend. What you get here is the annotation object itself — pinned to a view or a bin, with author, time, and delete — ready to sync when a backend exists. Never put citizen addresses or personal data in a note.</p>
+        <div class="controls">
+          <label>Pin to <select id="annoTarget"></select></label>
+          <label style="flex:1">Note <input id="annoText" placeholder="e.g. Route 12 blocked at 07:20 — crew reassigned"></label>
+          <label>Show <select id="annoFilter"><option value="all">All notes</option><option value="dashboard">Dashboard notes</option><option value="bins">Bin notes</option></select></label>
+          <button class="btn primary" id="annoAddBtn" type="button">Add note</button>
+        </div>
+        <ul id="annoList"></ul>
+      </section>
+
+      <section class="card" aria-label="Generate a layout">
+        <h2>Generate a layout — generative AI layout, approval-first</h2>
+        <p class="muted small">Type what you want the dashboard to lead with, in your own words. No AI model runs on this static page: your words are matched against a published intent registry below (intents + card orders), a layout is <strong>previewed</strong>, and nothing changes until you click Apply. It never reshuffles on its own, and Reset restores your role layout. For a future AI service: replace <code>window.WIPLayout.generate</code> with a model call returning <code>{order, reason}</code> — the preview, approval, and reset path stays exactly the same.</p>
+        <div class="controls">
+          <label style="flex:1">Goal <input id="layoutGoal" placeholder="e.g. urgent bins and routes first, tonnage last"></label>
+          <button class="btn primary" id="layoutGenerate" type="button">Generate layout</button>
+          <button class="btn" id="layoutReset" type="button">Reset to role layout</button>
+        </div>
+        <div id="layoutPreview"></div>
+        <details><summary>Intent registry — how words become an order</summary>
+        <p class="muted small" id="layoutRegistry"></p></details>
+      </section>
+
+      <section class="dash-card dash-hero" aria-label="City grid">
+        <div class="dash-card-head"><h2>City grid — live operations</h2><span class="pill" id="dashGridBadge">demo fleet · live tonnage where available</span></div>
+        <p class="muted small">A 2D interactive grid — not a 3D rendering and not a phased loop. Pulses travel the urgent route; tap a bin dot to open it in Forecasting. Toggle layers to change what the grid shows.</p>
+        <div class="dash-grid-controls">
+          <label><input type="checkbox" id="dashLayerFleet" checked> Fleet</label>
+          <label><input type="checkbox" id="dashLayerRoute" checked> Urgent route</label>
+          <label><input type="checkbox" id="dashLayerHeat" checked> Fill heat</label>
+          <label><input type="checkbox" id="dashLayerLabels" checked> Borough labels</label>
+          <button class="btn" id="dashPulseBtn">⏸ Pause pulses</button>
+          <label>Replay <input type="range" id="dashReplay" min="0" max="47" value="47" aria-label="Replay the last 48 hours of demo fill history"> <span id="dashReplayLabel">now</span></label>
+          <button class="btn" id="dashReplayPlay" type="button">▶ Play replay</button>
+        </div>
+        <svg id="dashGridSvg" viewBox="0 0 600 340" role="img" aria-label="Interactive NYC bin grid"></svg>
+        <p class="muted small" id="dashGridNote"></p>
+        <div class="whatif"><span class="pill warn">Simulated</span>
+          <label>Add vehicles <select id="whatifVehicles"><option>1</option><option>2</option><option>3</option></select></label>
+          <button class="btn" id="whatifBtn" type="button">Simulate 4 hours</button>
+          <p class="muted small" id="whatifOut">Assumption: 1 vehicle clears 1 urgent bin per 30 minutes, starting now. This is an illustrative simulation, not a live forecast — live state is unchanged.</p>
+        </div>
+      </section>
+
+      <div class="dash-grid">
+        <section class="dash-card dash-span6"><div class="dash-card-head"><h2>Fleet fill by borough</h2></div><div id="dashBoroughBars"></div><p class="muted small">Average fill of the demo fleet, by borough. Bars are demo data, never live sensor readings.</p></section>
+        <section class="dash-card dash-span6"><div class="dash-card-head"><h2>Live tonnage</h2><span class="pill" id="dashWaveBadge">—</span></div><div class="dash-big" id="dashWaveTotal">—</div><div class="dash-wave" id="dashWaveBars"></div><p class="muted small" id="dashWaveNote"></p></section>
+        <section class="dash-card dash-span4"><div class="dash-card-head"><h2>Tonnage mix</h2></div><div class="dash-donut-wrap"><svg id="dashDonutSvg" viewBox="0 0 200 200"></svg><div class="dash-donut-centre" id="dashDonutCentre">—</div></div><div id="dashDonutLegend"></div></section>
+        <section class="dash-card dash-span4"><div class="dash-card-head"><h2>Fill heatmap</h2></div><div class="dash-heat" id="dashHeatDots"></div><p class="muted small">One dot per demo bin, coloured by fill. Tap a dot for its forecast.</p></section>
+        <section class="dash-card dash-span4"><div class="dash-card-head"><h2>At a glance</h2></div><div class="dash-rings" id="dashRings"></div><p class="muted small" id="dashRingsNote"></p></section>
+        <section class="dash-card dash-span6"><div class="dash-card-head"><h2>Urgent bins</h2><span class="pill warn" id="urgentCount"></span></div><p class="muted small">Fill ≥ 80% or forecast to fill within 12 hours. Click a bin to open it in Forecasting.</p><ul id="urgentList" class="list"></ul><a class="btn" href="#bins">Manage all bins →</a></section>
+        <section class="dash-card dash-span6"><div class="dash-card-head"><h2>Tonnage by borough</h2></div><div class="dash-bars-v" id="dashTonnageBars"></div><p class="muted small">Total tonnes (refuse + paper + MGP + organics) for the latest month in the live feed, or the labelled sample if the feed is down.</p></section>
+        <section class="dash-card dash-span6"><div class="dash-card-head"><h2>Forecast trend — most urgent bin</h2></div><svg id="dashForecastSvg" viewBox="0 0 520 180"></svg><p class="muted small" id="dashForecastNote"></p></section>
+        <section class="dash-card dash-span6"><div class="dash-card-head"><h2>The loop, in one example <span class="pill">live from the knowledge graph</span></h2></div><div class="flow-strip-track" aria-hidden="true"><span>♻</span><span class="flow-dot"></span><span class="flow-dot d2"></span><span class="flow-dot d3"></span></div><p><strong>Food Scraps → Anaerobic Digestion → Biogas → Waste Processor</strong> — then the processor's facility takes waste again. Real sample metrics: 90% process efficiency, 90% diversion, 150 m³ biogas per tonne of waste, 30,000,000 m³/year of demand. <a href="#graph">Open the circular flow →</a></p></section>
+      </div>
+
+      <section class="dash-card">
+        <div class="dash-card-head"><h2>Latest live tonnage</h2><span class="pill" id="liveBadge">checking…</span></div>
+        <div class="tablewrap"><table id="dashTonnage"><thead><tr><th>Month</th><th>Borough</th><th>Refuse (t)</th><th>Paper (t)</th><th>MGP (t)</th><th>Organics (t)</th></tr></thead><tbody></tbody></table></div>
+        <p class="muted small">Source: DSNY Monthly Tonnage Data, dataset <code>ebb7-mvp5</code> on data.cityofnewyork.us. If live data cannot be reached, this table shows the labelled sample and the badge says so.</p>
+      </section>
+    </div>
+  </div>
+</section>
+
+<!-- LIVE -->
+<section id="view-live" class="view hidden">
+  <h1>Live NYC data</h1>
+  <p class="lede">Direct Socrata queries — no proxy, no key. Use the filters, then check the source badge on each table.</p>
+  <div class="card controls">
+    <label>Dataset
+      <select id="liveDataset">
+        <option value="ebb7-mvp5">DSNY Monthly Tonnage (ebb7-mvp5)</option>
+        <option value="gaq9-z3hz">Recycling Diversion &amp; Capture Rates (gaq9-z3hz)</option>
+        <option value="6yag-pnij">Other Organics Collection Tonnages (6yag-pnij)</option>
+        <option value="6r9j-qrwz">DSNY Disposal Facilities Used by Year (6r9j-qrwz)</option>
+      </select>
+    </label>
+    <label>Borough / filter text <input id="liveFilter" placeholder="e.g. Brooklyn, Manhattan, 2025"></label>
+    <label>Rows <select id="liveLimit"><option>10</option><option selected>25</option><option>50</option></select></label>
+    <button class="btn primary" id="liveLoad">Load live data</button>
+    <span class="pill" id="liveSourceBadge">—</span>
+  </div>
+  <div class="card">
+    <div class="tablewrap"><table id="liveTable"><thead></thead><tbody></tbody></table></div>
+    <p class="muted small" id="liveNote"></p>
+    <p class="muted small">Dataset list and IDs are the ones the platform's MCP server queries in <code>src/nyc_opendata_mcp/tools/waste_datasets.py</code>. Open Data endpoints: <code>https://data.cityofnewyork.us/resource/&lt;id&gt;.json</code></p>
+  </div>
+</section>
+
+<!-- BINS -->
+<section id="view-bins" class="view hidden">
+  <h1>Bins &amp; routes</h1>
+  <p class="lede">Demo fleet — the hub API's bin list currently returns empty, so this fleet is generated in your browser and saved to localStorage. It is labelled demo everywhere, never presented as live sensor data.</p>
+  <div class="card controls">
+    <label>Borough <select id="binBorough"><option value="">All boroughs</option><option>Manhattan</option><option>Brooklyn</option><option>Queens</option><option>Bronx</option><option>Staten Island</option></select></label>
+    <label>Status <select id="binStatus"><option value="">All</option><option value="urgent">Urgent (≥80%)</option><option value="watch">Watch (60–79%)</option><option value="ok">OK (&lt;60%)</option></select></label>
+    <label>Search <input id="binSearch" placeholder="bin id or site"></label>
+    <button class="btn" id="routeBtn">Build route from urgent bins</button>
+    <button class="btn" id="resetFleet">Reset demo fleet</button>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2>Fleet <span class="pill" id="binCount"></span></h2>
+      <div class="tablewrap"><table id="binTable"><thead><tr><th>Bin</th><th>Site</th><th>Fill</th><th>Action</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Add a bin</h2>
+        <form id="addBinForm" class="form">
+          <label>Bin ID <input required id="newBinId" placeholder="BIN-MN-101"></label>
+          <label>Site <input required id="newBinSite" placeholder="e.g. Union Square"></label>
+          <label>Borough <select id="newBinBorough"><option>Manhattan</option><option>Brooklyn</option><option>Queens</option><option>Bronx</option><option>Staten Island</option></select></label>
+          <label>Fill % <input type="number" id="newBinFill" min="0" max="100" value="40"></label>
+          <button class="btn primary" type="submit">Add bin</button>
+        </form>
+      </div>
+      <div class="card" id="routeCard">
+        <h2>Collection route</h2>
+        <p class="muted" id="routeSummary">Press “Build route from urgent bins” — or select bins below by ticking them, then build a custom route.</p>
+        <ol id="routeList"></ol>
+        <button class="btn hidden" id="customRouteBtn">Build route from selected bins</button>
+        <button class="btn hidden" id="copyRouteBtn">Copy route as text</button>
+      </div>
+      <div class="card">
+        <h2>Platform registered bins</h2>
+        <p class="muted small">Fetches <code>GET /mcp/waste/bins</code> from the Platform API saved in Connect. Registered bins are DB telemetry — a separate list from the demo fleet above, which stays until registered bins exist and you choose to use them. Hub Flask <code>/bins</code> is also shown, with its stub warning.</p>
+        <div class="controls"><button class="btn primary" id="beBinsFetch" type="button">Fetch from Platform API</button></div>
+        <div id="beBinsResult"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FORECAST -->
+<section id="view-forecast" class="view hidden">
+  <h1>Forecasting &amp; anomaly detection</h1>
+  <p class="lede">Same math as <code>services/forecasting/app.py</code>: drop pre-collection history after a fill drop over 30 points, fit a least-squares line to the current cycle, report slope, R² and time-to-full. Anomaly = z-score of the latest reading against its own history.</p>
+  <div class="card controls">
+    <label>Bin <select id="fcBin"></select></label>
+    <label>Horizon <select id="fcHorizon"><option value="6">6 h</option><option value="12">12 h</option><option selected value="24">24 h</option><option value="48">48 h</option></select></label>
+    <label>Add a reading (%) <input type="number" id="fcReading" min="0" max="100" placeholder="e.g. 73"></label>
+    <button class="btn primary" id="fcAdd">Add reading &amp; refit</button>
+  </div>
+  <div class="kpis" id="fcKpis"></div>
+  <div class="card"><canvas id="fcChart" width="900" height="320" aria-label="Fill history and forecast chart"></canvas>
+  <p class="muted small" id="fcNote"></p></div>
+  <div class="card"><h2>Reasoning — why this forecast says what it says</h2><div id="fcReasoning"></div></div>
+  <div class="card"><h2>Backend forecast — platform forecasting service</h2>
+    <p class="muted small">Local KPIs above are the ported math on demo history. This card asks the real service (<code>POST /forecast</code> + <code>/anomaly</code>) and shows its answer beside them, source-labelled. If the service has no telemetry for this bin it answers 422/503 — that reason is shown, and the local card stays.</p>
+    <div class="controls"><button class="btn primary" id="fcBackendBtn" type="button">Ask backend for this bin</button></div>
+    <div id="fcBackendResult"></div></div>
+  <div class="card">
+    <h2>How to read this</h2>
+    <ul class="list">
+      <li><strong>Slope</strong> is fill points per hour from the current cycle only. A collection (drop &gt; 30 points) restarts the cycle, exactly as the backend does.</li>
+      <li><strong>R² near 1</strong> means the trend fits well; near 0 means the forecast is shaky — treat time-to-full as a guide, not a promise.</li>
+      <li><strong>Anomaly</strong> flags a latest reading more than 2 standard deviations from its cycle mean. The backend raises 422 when history is too thin; here you get the same warning in plain words.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- GRAPH -->
+<section id="view-graph" class="view hidden">
+  <div class="kg-hero">
+    <div class="kg-blob" aria-hidden="true"></div>
+    <h1>Waste-to-Resource Knowledge Graph</h1>
+    <p class="lede">The repo's real sample graph (<code>cloud_platform/analytics/kg/data/w2rkg_nyc_sample.json</code>): 31 nodes, 55 edges — now drawn as a circle, because nothing here ends at a landfill. Waste becomes a process, a process becomes a resource, demand pulls that resource back through a facility, and the facility takes waste again.</p>
+  </div>
+  <div class="card kg-ring-card">
+    <h2>Circular navigation <span class="pill">tap a segment</span></h2>
+    <p class="muted small">The ring is the menu. Each segment filters the graph to one node type; the centre shows what you are looking at. “All” restores the full graph. The search and type dropdown below still work exactly as before.</p>
+    <div class="kg-ring" id="kgRing" role="group" aria-label="Filter graph by node type"></div>
+  </div>
+  <div class="card controls">
+    <label>Search <input id="kgSearch" placeholder="e.g. Food Scraps, Biogas, Compost"></label>
+    <label>Type <select id="kgType"><option value="">All types</option><option value="Waste">Waste (types + streams)</option><option>Waste_Type</option><option>Waste_Stream</option><option>Process</option><option>Resource</option><option>Facility</option><option>Actor</option><option>Constraint</option></select></label>
+    <label>Ask: what can <select id="kgAsk"></select> become? <button class="btn" id="kgAskBtn">Trace it</button></label>
+  </div>
+  <div class="card kg-flow-card">
+    <h2>Animated resource flow <span class="pill">waste → process → resource → demand → back again</span></h2>
+    <p class="muted small">Pick a pathway and press Play. The dot travels the loop, and the steps below update with that pathway's real conversion metrics — not a generic animation. The loop-closure step is the point: demand is served by an actor who operates a facility that accepts waste, so the circle closes.</p>
+    <div class="controls">
+      <label>Waste <select id="flowWaste"></select></label>
+      <label>Process <select id="flowProcess"></select></label>
+      <label>Resource <select id="flowResource"></select></label>
+      <label>Input (tonnes) <input type="number" id="flowTonnes" min="0.1" step="0.1" value="1"></label>
+      <label>Speed <select id="flowSpeed"><option value="12">Slow (12s)</option><option selected value="7">Normal (7s)</option><option value="4">Fast (4s)</option></select></label>
+      <button class="btn primary" id="flowPlayBtn">▶ Play flow</button>
+      <button class="btn" id="flowShowBtn">Show this path on the graph</button>
+    </div>
+    <div class="kg-flow-wrap">
+      <svg id="flowSvg" viewBox="0 0 520 340" role="img" aria-label="Circular resource flow diagram"></svg>
+      <div id="flowSteps"></div>
+    </div>
+    <div id="flowMetrics"></div>
+  </div>
+  <div class="card kg-loops-card">
+    <h2>Demonstration loops for every element <span class="pill">all 31 nodes</span></h2>
+    <p class="muted small">Tap any element below and its own loop plays. A loop is a staged journey — Waste → Process → Resource → Demand → Facility → back to Waste — built from the sample's real edges wherever they exist. One honest caveat, shown in the player itself: <strong>no node in the 31-node sample sits on a directed cycle</strong>, because the demand actors in the sample (Urban Farm, Waste Processor, NYC Urban Agriculture) do not operate facilities. So every loop has four real steps plus one dashed, labelled bridge (demand → facility, or facility → next load). The bridge is a system step, never presented as a sample edge.</p>
+    <div id="loopGallery" class="loop-gallery"></div>
+    <div class="controls">
+      <label>Loop for <select id="loopElement"></select></label>
+      <label>Speed <select id="loopSpeed"><option value="12">Slow (12s)</option><option selected value="7">Normal (7s)</option><option value="4">Fast (4s)</option></select></label>
+      <button class="btn primary" id="loopPlayBtn">▶ Play loop</button>
+      <button class="btn" id="loopShowBtn">Highlight this loop on the graph</button>
+    </div>
+    <div class="kg-flow-wrap">
+      <svg id="loopSvg" viewBox="0 0 520 340" role="img" aria-label="Element demonstration loop diagram"></svg>
+      <div id="loopSteps"></div>
+    </div>
+    <div id="loopMetrics"></div>
+  </div>
+  <div class="card kg-ask-card">
+    <h2>Ask for a loop — here, or in chat with Muse <span class="pill">assistant capacity</span></h2>
+    <p class="muted small">Type what you want, in plain words — “coffee grounds to animal feed”, “yard waste in Staten Island”, “show me the Brooklyn organics loop”. This page parses it against the real sample: if it finds a path, it animates it; if it finds one element, it plays that element's loop; if it finds nothing in the sample, it says so plainly and offers to draft a <em>proposed</em> loop (labelled, with no invented metrics) that you can save, export, or send to Muse to research properly.</p>
+    <div class="controls">
+      <label style="flex:1">Your request <input id="askInput" placeholder="e.g. coffee grounds to animal feed" style="min-width:260px"></label>
+      <button class="btn primary" id="askBtn">Build my loop</button>
+      <button class="btn" id="copyAskBtn">Copy request for Muse</button>
+    </div>
+    <div id="askOutput"></div>
+    <h3>Loop Studio — build and save your own loop</h3>
+    <p class="muted small">Pick one node per stage (or leave a stage as “Proposed” and type its name below). Loops you save live in this browser only, under “Your loops”, until you export them or ask Muse to add them to <code>loops.json</code> on the branch — then they load for everyone on the next visit. The static page itself runs no AI model; the AI research step happens in chat with Muse, and this page is where the result lands.</p>
+    <div class="controls">
+      <label>Loop name <input id="studioName" placeholder="e.g. My coffee loop"></label>
+      <label>Waste <select id="studioWaste"></select></label>
+      <label>Process <select id="studioProcess"></select></label>
+      <label>Resource <select id="studioResource"></select></label>
+      <label>Demand (Actor) <select id="studioActor"></select></label>
+      <label>Facility <select id="studioFacility"></select></label>
+      <button class="btn primary" id="studioSaveBtn">Save loop in this browser</button>
+      <button class="btn" id="studioExportBtn">Export your loops (JSON)</button>
+    </div>
+    <label>Import loops (paste JSON) <textarea id="studioImport" rows="3" placeholder='[{"name":"...","stages":["FoodScraps","AnaerobicDigestion","Biogas","Waste_Processor","AD_PLANT-QUEENS-02"]}]'></textarea></label>
+    <button class="btn" id="studioImportBtn">Import pasted loops</button>
+    <div id="yourLoops"></div>
+  </div>
+  <div class="grid2">
+    <div class="card kg-graph-card"><svg id="kgSvg" viewBox="0 0 900 520" role="img" aria-label="Knowledge graph diagram"></svg>
+    <p class="muted small">Node colours group by type. Edges are now soft biomorphic curves, not straight lines — they are the graph's real edges, only drawn the way a flow looks. Click a node to highlight its neighbours; a traced path animates along its curves.</p></div>
+    <div class="card" id="kgDetail"><h2>Pick a node</h2><p class="muted">Click any node, or use “Trace it” to follow waste → process → resource paths. Every conversion metric from the sample — efficiency, diversion, yield, energy, carbon, value, demand — is shown in full below.</p></div>
+  </div>
+  <div class="card"><h2>Platform KG — ask the backend graph</h2>
+    <p class="muted small">Posts to Platform API <code>POST /mcp/waste/kg</code> (the repo's in-memory KG engine). The local sample graph above stays primary; this is a second, source-labelled answer to compare against it.</p>
+    <div class="controls"><label style="flex:1">Query <input id="beKgQuery" placeholder="e.g. FoodScraps"></label><button class="btn primary" id="beKgBtn" type="button">Ask platform KG</button></div>
+    <div id="beKgResult"></div></div>
+</section>
+
+<!-- CONTAMINATION -->
+<section id="view-contamination" class="view hidden">
+  <h1>Contamination check</h1>
+  <p class="lede">The production check is YOLOv11 (<code>CatSat/yolov11-litter-materials</code>) behind <code>POST /predict</code> in <code>services/contamination/app.py</code> — that model cannot run on GitHub Pages, so this page does the honest browser version: upload a photo to inspect it, tick the materials you can see, and the verdict uses the backend's exact acceptance map.</p>
+  <div class="grid2">
+    <div class="card">
+      <h2>1 · Photo (optional)</h2>
+      <input type="file" id="photoInput" accept="image/*">
+      <div id="photoPreview" class="photo"></div>
+      <p class="muted small">The photo never leaves your device. No model runs in this page — tagging below is manual, and the result says so.</p>
+      <h2>2 · Stream</h2>
+      <div class="radios" id="streamRadios">
+        <label><input type="radio" name="stream" value="recycling" checked> Recycling</label>
+        <label><input type="radio" name="stream" value="organics"> Organics</label>
+        <label><input type="radio" name="stream" value="landfill"> Landfill</label>
+      </div>
+      <h2>3 · Materials you can see</h2>
+      <div class="checks" id="materialChecks"></div>
+      <button class="btn primary" id="checkBtn">Check contamination</button>
+      <button class="btn" id="beContamBtn" type="button">Backend YOLO check (needs photo + URL in Connect)</button>
+      <p class="muted small" id="beContamResult"></p>
+    </div>
+    <div class="card" id="contamResult"><h2>Verdict</h2><p class="muted">Tick materials and press Check contamination.</p>
+      <p class="muted small">Acceptance map, verbatim from the backend: recycling accepts Plastic, Metal, Glass, Paper. Landfill accepts Other. Organics accepts none of the detected litter materials — any of them in an organics bin is a contaminant by that map.</p></div>
+  </div>
+</section>
+
+<!-- CONNECT -->
+<section id="view-connect" class="view hidden">
+  <h1>Connect your own backend</h1>
+  <p class="lede">This static app works standalone. If you are running the platform locally or on a server, point it at your services and it will probe them — no credentials are stored.</p>
+  <div class="card">
+    <h2>Backend wiring — one URL per service</h2>
+    <p class="muted small">Saved in <em>this browser only</em> (localStorage). URLs go to those backends and nowhere else; keys below go only to their own service as an <code>X-API-Key</code> header, never to GitHub Pages, never into the repo. With no URLs saved, every view keeps its labelled local/demo result — wiring never silently replaces data with a failed call.</p>
+    <form id="connectForm" class="form">
+      <label>Platform API base URL (src FastAPI, :8001) <input id="bePlatform" placeholder="https://api.example.com"></label>
+      <label>Hub Flask API base URL (:5000, legacy) <input id="beHub" placeholder="http://localhost:5000"></label>
+      <label>Forecasting service base URL (:8002) <input id="beForecasting" placeholder="http://localhost:8002"></label>
+      <label>Copilot service base URL (:8004) <input id="beCopilot" placeholder="http://localhost:8004"></label>
+      <label>Contamination service base URL (:8005) <input id="beContamination" placeholder="http://localhost:8005"></label>
+      <label>Platform API key (optional, only if REQUIRE_API_KEY) <input type="password" id="bePlatformKey" placeholder="Saved in this browser only"></label>
+      <label>Copilot API key (optional, only if REQUIRE_API_KEY) <input type="password" id="beCopilotKey" placeholder="Saved in this browser only"></label>
+      <div class="controls"><button class="btn primary" type="button" id="beSave">Save in this browser</button><button class="btn" type="button" id="beProbe">Probe /health endpoints</button></div>
+    </form>
+    <p class="muted small" id="beSaveStatus"></p>
+    <div id="connectResult"></div>
+    <details><summary>Deploy the backend so this HTTPS page can reach it — read before you paste a URL</summary>
+    <ol class="list">
+      <li><strong>Run the stack on a server you control:</strong> <code>docker compose up</code> from the platform repo root. That starts the Platform API (:8001), forecasting (:8002), KG service (:8003), copilot (:8004), contamination (:8005), Hub Flask (:5000), Postgres, Redis, MQTT and Grafana on that host — it does <em>not</em> publish them to the internet.</li>
+      <li><strong>Put one HTTPS reverse proxy in front (Caddy or nginx) with TLS:</strong> Pages is HTTPS, and browsers block plain-HTTP backend calls (mixed content). Map one domain, e.g. <code>https://api.example.com/platform/</code> → :8001, <code>/forecast/</code> → :8002, <code>/copilot/</code> → :8004, <code>/contam/</code> → :8005, and paste those proxied URLs above (one proxy also fixes CORS in step 3).</li>
+      <li><strong>CORS:</strong> Platform API defaults to <code>CORS_ORIGINS=*</code> (works). Copilot, forecasting, contamination, KG and Hub Flask now all ship CORS middleware whose defaults include <code>https://ecocode-smart-city-infrastructure.github.io</code> (platform repo branch <code>fix/browser-cors-kg-service-hub-db</code>, not yet merged into the default branch). Set <code>CORS_ORIGINS</code> to override. Deployments built from older code still need the step-2 proxy to add CORS headers for forecasting/contamination.</li>
+      <li><strong>Keys:</strong> if a service runs with <code>REQUIRE_API_KEY=true</code>, paste its key in the matching field above (browser only). Never put a key in a URL, a repo file, or chat.</li>
+      <li><strong>Known gaps in the repo today (not hidden):</strong> Fixed on platform branch <code>fix/browser-cors-kg-service-hub-db</code> (merge it, then redeploy): Hub Flask <code>/bins</code>/<code>/facilities</code>/<code>/analytics/summary</code> are now DB-backed via the existing repositories (503 when the database is unreachable, never fake zeros) and are composed as <code>hub-flask</code> (:5000); a real <code>kg-service</code> (:8003) now exists in compose, serving the repo's W2RKG engine (<code>GET /health</code>, <code>POST /kg</code>, <code>POST /kg/pathways</code>) — the Platform API's in-memory <code>POST /mcp/waste/kg</code>, which this app calls, is unchanged. Until that branch is merged and deployed, the old behaviour stands: hub stubs and no kg-service. Platform <code>/bins</code> returns whatever bin telemetry is in Postgres — an empty database means an empty list, which the Bins card reports as such instead of replacing the demo fleet.</li>
+      <li><strong>Local testing without a server:</strong> run this page locally (<code>python3 -m http.server</code> in <code>docs/</code>) and paste <code>http://localhost:…</code> URLs — mixed-content blocking does not apply to a local page.</li>
+    </ol></details>
+    <p class="muted small">Run the stack with <code>docker compose up</code> from the repo root, then use the ports above. Browsers block plain-HTTP calls from an HTTPS Pages site — if a probe is blocked, that is mixed-content protection, not a backend failure; run this page locally (same folder, <code>python3 -m http.server</code>) for local backends.</p>
+  </div>
+  <div class="card">
+    <h2>Repo &amp; deployment notes</h2>
+    <ul class="list">
+      <li>Source repo: <a href="https://github.com/EcoCode-Smart-City-Infrastructure/waste-intelligence-platform">EcoCode-Smart-City-Infrastructure/waste-intelligence-platform</a></li>
+      <li>This app lives on branch <code>web-app</code>, in <code>docs/</code>, published by GitHub Pages.</li>
+      <li>Backend services are <em>not</em> deployed by Pages — forecasting, contamination and the hub API still need Docker / a server. This page labels every demo number so it is never mistaken for production telemetry.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ASSISTANT -->
+<section id="view-assistant" class="view hidden">
+  <h1>Embedded AI assistant</h1>
+  <p class="lede">Mirrors the platform's own copilot service (<code>copilot_service/</code>: prompt builder, context manager, tool router, guardrails) and Project ATMA's streaming chat — adapted to this static app. The assistant is a <strong>read-only advisor</strong>: it explains, summarises, and navigates you to a view. It will not delete or modify bins, change a route, or actuate anything; those changes are yours to make in the Bins, Forecasting, and Graph views.</p>
+  <div class="card">
+    <h2>Connect — Groq key <span class="pill" id="wiKeyStatus">checking…</span></h2>
+    <p class="muted small">Most effective method for live chat on GitHub Pages: paste <em>your own</em> Groq key here. It is stored only in this browser's localStorage, sent only from this browser to <code>https://api.groq.com</code>, and never committed to the repo, never sent to GitHub Pages, and never shown back to you in full. No key = offline demo mode, which answers from the sample graph, fleet, and app data in this page. A repo secret cannot power live chat — see the briefing card below for what a repo secret <em>can</em> do.</p>
+    <div class="controls">
+      <label>Groq API key <input type="password" id="wiGroqKey" placeholder="Paste your Groq key here"></label>
+      <label>Model <select id="wiGroqModel"><option>llama-3.3-70b-versatile</option><option>llama-3.1-8b-instant</option></select></label>
+      <label>Backend <select id="wiChatBackend"><option value="platform">Platform copilot (needs backend URL in Connect)</option><option value="groq">Groq direct (live, needs key)</option><option value="demo">Demo (offline, no key)</option></select></label>
+      <button class="btn primary" id="wiSaveKeyBtn">Save key in this browser</button>
+      <button class="btn" id="wiRemoveKeyBtn">Remove saved key</button>
+      <button class="btn" id="wiTestKeyBtn">Test key (models only)</button>
+    </div>
+    <p class="muted small" id="wiKeyResult"></p>
+  </div>
+  <div class="card">
+    <h2>Latest AI briefing — from the repo secret, via Actions <span class="pill">not live chat</span></h2>
+    <p class="muted small">This is the one legitimate use of a repo-stored Groq key on a static site — and it has a hard limit: a secret in one repo cannot be read by another repo's workflow. So for now this card reads the <em>newest</em> of two briefings: one from this repo's own workflow, and one from the OpenForge repo's workflow, which runs with the <code>GROQ_API</code> secret you installed in <code>Etienne0101-lab/OpenForge-Workbench-</code> and publishes <code>docs/waste-ai-briefing.json</code> on OpenForge Pages (which allows cross-origin reads). Copy <code>github-workflows/groq-waste-briefing-openforge.yml</code> to <code>.github/workflows/groq-waste-briefing.yml</code> in the OpenForge repo (by hand — the GitHub App cannot create workflow files) and dispatch it there. The key is used inside the runner only, never printed or committed, and the browser never sees it. Until a workflow has run once, this card will say so plainly.</p>
+    <div id="wiBriefing"><p class="muted">Loading briefing…</p></div>
+  </div>
+  <div class="card">
+    <h2>Diagnose &amp; repair — limited, local-only troubleshooting</h2>
+    <p class="muted small">Say "diagnose the app" in chat, or press the button here. Diagnostics are read-only: they check live Socrata feeds, the knowledge graph and loops files, both briefing sources, saved local data, the Groq key's <em>presence</em> (never its value), and any Connect backend URLs you have entered this session. Repairs only ever change <em>this browser</em>: retry a feed, reload graph data, re-probe a backend, reset the demo fleet, or clear saved local data. A repair never runs from a chat message alone — you click the repair button, and destructive repairs ask you to confirm first. This card cannot fix a GitHub Pages deployment, a repo secret, an Actions workflow, or a server that is actually down; when that is the problem it says so and gives the exact next step instead of pretending it fixed it.</p>
+    <div class="controls">
+      <button class="btn primary" id="wiDiagBtn">Run diagnostics</button>
+      <span class="muted small" id="wiDiagStatus">Not run yet in this visit.</span>
+    </div>
+    <div id="wiDiagResults"></div>
+    <div id="wiRepairActions" class="controls"></div>
+    <p class="muted small" id="wiRepairResult"></p>
+  </div>
+  <div class="card">
+    <h2>Staged actions — approval queue</h2>
+    <p class="muted small">The assistant never executes a change from chat alone. When you ask for an action, it stages a proposal here instead: you approve it, or discard it. Safe actions (open a view, save a view, export urgent bins) run only on Approve. High-risk changes (delete bins, reassign a fleet, change a route) are never executed by the assistant — approving one only opens the Bins view, where you make the change yourself. Every staged action shows its source: live tonnage, the demo fleet, or the sample graph.</p>
+    <ul id="wiStaged"></ul>
+    <p class="muted small" id="wiStagedConfirm"></p>
+    <p class="muted small" id="wiStagedNote">No staged actions yet. Try in chat: "stage an export of the urgent bins", "stage saving this view", or "stage a route change".</p>
+  </div>
+  <div class="card">
+    <h2>Chat</h2>
+    <div id="wiChat" class="chatbox"></div>
+    <div class="controls">
+      <label style="flex:1">Message <input id="wiChatInput" placeholder="Ask about bins, forecasting, the knowledge graph, or contamination…"></label>
+      <button class="btn primary" id="wiSendBtn">Send</button>
+      <button class="btn" id="wiStopBtn">Stop</button>
+      <button class="btn" id="wiNewChatBtn">New chat</button>
+    </div>
+    <p class="muted small">Try: <button class="btn" data-quick="What can Food Scraps become?">What can Food Scraps become?</button> <button class="btn" data-quick="Explain the urgent bins">Explain the urgent bins</button> <button class="btn" data-quick="How do I check contamination?">How do I check contamination?</button> <button class="btn" data-quick="What does the loop bridge mean?">What does the loop bridge mean?</button> <button class="btn" data-quick="Diagnose the app">Diagnose the app</button></p>
+    <p class="muted small">History: last 50 messages kept in this browser, last 10 sent to Groq as context. Streaming via Groq's OpenAI-compatible SSE endpoint. If you ask for a key or secret value, the assistant will refuse — it never echoes a saved key.</p>
+  </div>
+</section>
+<div id="cmdk" class="cmdk hidden" role="dialog" aria-modal="true" aria-label="Command palette">
+  <div class="cmdk-box">
+    <input id="cmdkInput" placeholder="Type a view, bin, or action…" aria-label="Command palette search">
+    <ul id="cmdkResults"></ul>
+    <p class="muted small">↑ ↓ to move, Enter to open, Esc to close. Results are views, demo bins, and staged actions — nothing is executed without the approval queue.</p>
+  </div>
+</div>
+<section id="view-twin" class="view hidden">
+  <h1>Digital Twin — preview, not live</h1>
+  <p class="lede">Infrastructure for a photorealistic 3D twin and AR, ready to switch to live data the day a feed exists. Right now: <strong>no live feed is connected</strong>, bin positions are the demo fleet, and building heights are illustrative, not surveyed. Nothing here is live telemetry, and nothing is claimed to be. When a feed that matches the contract below is connected, the same scene swaps demo markers for live ones with no code change.</p>
+  <div class="card controls">
+    <button class="btn" id="twinCamTop" type="button">Top view</button>
+    <button class="btn" id="twinCamStreet" type="button">Street view</button>
+    <button class="btn" id="twinCamReset" type="button">Reset camera</button>
+    <span class="pill" id="twinFeedBadge">DEMO FLEET · no live feed</span>
+  </div>
+  <div class="card">
+    <div id="twinCanvasWrap" style="min-height:420px;background:#0f1d16;border-radius:12px;overflow:hidden"><p class="muted small" style="padding:1rem;color:#cbd3c6">Loading the 3D scene… (Three.js loads only when this view opens, so the dashboard stays fast.)</p></div>
+    <p class="muted small" id="twinStatus">Drag to orbit, scroll to zoom, click a bin marker to open its forecast. Keyboard: the bin list below is the accessible equivalent.</p>
+  </div>
+  <div class="card">
+    <h2>Live feed — connect when one exists</h2>
+    <p class="muted small">Paste a feed URL. The app fetches it in <em>this browser only</em> (so the feed must allow browser access, CORS, and need no secret — never paste a URL containing a key). If it matches the contract and loads, markers switch to live and the badge says LIVE FEED; if it fails, the demo fleet stays and the error is shown. Disconnect returns to demo.</p>
+    <div class="controls">
+      <label style="flex:1">Feed URL <input id="twinFeedUrl" placeholder="https://example.com/bins.json" style="min-width:280px"></label>
+      <button class="btn primary" id="twinFeedConnect" type="button">Connect feed</button>
+      <button class="btn" id="twinFeedDisconnect" type="button">Disconnect</button>
+    </div>
+    <p class="muted small" id="twinFeedStatus"></p>
+    <details><summary>Feed contract — what a backend must return</summary>
+    <pre style="white-space:pre-wrap">One of:
+1) [{"id":"BIN-MA-101","lat":40.775,"lon":-73.976,"fill":83,"updatedAt":"2026-10-25T12:00:00Z"}]
+2) {"bins":[...same objects...]}
+3) GeoJSON FeatureCollection, each feature with properties {id, fill}
+   and geometry coordinates [lon, lat].
+Rules: id is a string, lat/lon are numbers, fill is 0–100.
+Rows missing any of these are skipped and counted, never invented.
+The scene maps lat/lon with the same math as the 2D grid, so a feed
+that renders correctly on the grid renders correctly in 3D.</pre></details>
+  </div>
+  <div class="card">
+    <h2>AR — readiness, not a promise</h2>
+    <p class="muted small" id="twinArStatus">Checking this device and browser for WebXR augmented reality…</p>
+    <div class="controls">
+      <button class="btn primary" id="twinArBtn" type="button" disabled>Enter AR</button>
+      <span class="muted small">AR needs a phone with AR support (e.g. Android + Chrome with ARCore) and the same 3D scene. On a desktop browser this button stays off with the reason shown — that is the honest state, not a failure. AR itself is not verified by the desktop browser check; a phone check is the proof.</span>
+    </div>
+  </div>
+  <div class="card"><h2>Bins in this scene</h2><ul id="twinBinList" class="list"></ul></div>
+</section>
+</main>
+
+<footer>
+    <p class="muted small" id="jsBuild">HTML overhaul10 loaded — waiting for app.js…</p><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
+<script src="auth-config.js"></script>
+<script src="auth.js"></script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
+<script src="app.js?v=overhaul10"></script>
+<script src="twin.js?v=twin2"></script>
+<script src="backend.js?v=backend2"></script>
+</body>
+</html>
