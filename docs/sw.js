@@ -4,8 +4,8 @@
    the app's labelled sample data when unreachable. No personal data, no
    citizen data, and no Groq key are cached: keys live in localStorage only
    and are never in a cacheable response. Bump CACHE on every shell change. */
-const CACHE='wip-shell-overhaul3';
-const SHELL=['./index.html','./styles.css?v=overhaul3','./app.js?v=overhaul3','./kg.json','./loops.json','./manifest.json','./icon.svg'];
+const CACHE='wip-shell-overhaul4';
+const SHELL=['./index.html','./styles.css?v=overhaul4','./app.js?v=overhaul4','./kg.json','./loops.json','./manifest.json','./icon.svg'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{
@@ -15,5 +15,8 @@ self.addEventListener('fetch',e=>{
     return;
   }
   if(e.request.method!=='GET') return;
-  e.respondWith(caches.match(e.request).then(hit=>hit||fetch(e.request).then(res=>{const copy=res.clone(); caches.open(CACHE).then(c=>c.put(e.request,copy)); return res;}).catch(()=>caches.match('./index.html'))));
+  // Network-first for the app shell: a cache-first shell froze a stale
+  // app.js after a push (the exact Round 2 failure). Offline still works
+  // because a failed fetch falls back to the cache, then to index.html.
+  e.respondWith(fetch(e.request).then(res=>{const copy=res.clone(); caches.open(CACHE).then(c=>c.put(e.request,copy)); return res;}).catch(()=>caches.match(e.request).then(hit=>hit||caches.match('./index.html'))));
 });
