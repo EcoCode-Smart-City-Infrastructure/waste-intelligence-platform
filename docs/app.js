@@ -828,12 +828,17 @@ function wiApplyRole(role){
   const r=ROLES[role]||ROLES.dispatcher;
   const brief=$('#roleBrief'); if(brief) brief.textContent=r.brief;
   $$('.role-bar [data-role]').forEach(b=>b.classList.toggle('active',b.dataset.role===role));
-  $$('.dash-grid .dash-card').forEach(card=>{
+  const grid=document.querySelector('.dash-grid');
+  const cards=$$('.dash-grid .dash-card');
+  cards.forEach(card=>{
     const h=card.querySelector('h2')?.textContent||'';
     const idx=r.order.findIndex(o=>h.startsWith(o));
     card.style.order=idx>=0?idx:99;
     card.classList.toggle('role-focus', idx===0);
   });
+  // Physical DOM reorder, not CSS order alone: grid spans make a CSS-only
+  // reorder hard to see, and a screen reader follows DOM order, not CSS order.
+  if(grid){const sorted=[...cards].sort((a,b)=>(+a.style.order)-(+b.style.order)); sorted.forEach(c=>grid.appendChild(c));}
 }
 function wiSavedViews(){try{return JSON.parse(localStorage.getItem('wip_saved_views')||'[]');}catch(e){return [];}}
 function wiRenderSavedViews(){
@@ -878,6 +883,8 @@ function wiStageAction(title, detail, actionKey){
     else if(actionKey==='save-view'){const name=prompt('Name for this saved view?'); if(name){const views=wiSavedViews(); views.push({name:name.trim(),role:wiRole(),hash:location.hash||'#dashboard'}); try{localStorage.setItem('wip_saved_views',JSON.stringify(views));}catch(e){} wiRenderSavedViews();}}
     else if(actionKey==='export-urgent'){const data=JSON.stringify(fleet.filter(b=>b.fill>=80),null,2); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'application/json'})); a.download='urgent-bins.json'; a.click(); URL.revokeObjectURL(a.href);}
     li.remove(); wiStagedNote();
+    if(actionKey==='export-urgent'){const n=$('#wiStagedNote'); if(n) n.textContent='Approved — urgent-bins.json downloaded in this browser.';}
+    if(actionKey==='save-view'){const n=$('#wiStagedNote'); if(n) n.textContent='Approved — view saved. Find it under Saved views on the Dashboard.';}
   });
   li.querySelector('[data-discard]').addEventListener('click',()=>{li.remove(); wiStagedNote();});
   ul.appendChild(li); wiStagedNote();
