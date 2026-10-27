@@ -566,9 +566,15 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
       <ol id="netSeqList"></ol>
     </div>
     <div class="card">
-      <h2>Network map — hubs, nodes, generated route</h2>
-      <svg id="netMap" viewBox="0 0 900 520" role="img" aria-label="Collection network map"></svg>
-      <p class="muted small">Squares are hubs (knowledge-graph facilities); dots are collection nodes, coloured by stream. The dashed line is the generated sequence, not a DSNY route. Positions for facilities without lat/lon in kg.json use the borough centre and are flagged approximate in the hub list.</p>
+      <h2>Network map — real map, hubs, nodes, generated route</h2>
+      <div class="controls">
+        <label>Basemap <select id="netBasemap"><option value="osm">OpenStreetMap Standard</option><option value="carto-dark">CARTO Dark Matter</option><option value="carto-voyager">CARTO Voyager</option></select></label>
+        <button class="btn" id="netDropBtn" type="button">Show DSNY food-scrap drop-offs (live)</button>
+        <button class="btn" id="netTrackBtn" type="button">▶ Play modelled tracking</button>
+      </div>
+      <p class="muted small" id="netTrackNote">Map tiles: OpenStreetMap / CARTO (open, no key — the open equivalent of Google Maps). Road routes: OSRM on OpenStreetMap data. Tracking animation is a modelled vehicle on the generated route, not a live DSNY truck.</p>
+      <div id="netMap" style="height:460px;min-height:300px" role="img" aria-label="Collection network map"></div>
+      <p class="muted small">Squares are hubs (knowledge-graph facilities); dots are collection nodes, coloured by stream. The solid green line is the OSRM road route for the generated sequence (straight-line fallback if OSRM is unreachable), not a DSNY route. Positions for facilities without lat/lon in kg.json use the borough centre and are flagged approximate in the hub list.</p>
       <h2>Hubs &amp; spokes</h2><ul class="list" id="netHubs"></ul>
     </div>
   </div>
@@ -582,6 +588,9 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
         <label>Stream <select id="netNodeStream"><option value="organics">Organics</option><option value="refuse">Refuse</option><option value="recycling">Recycling</option><option value="paper">Paper</option><option value="mgp">MGP</option></select></label>
         <label>Host <select id="netNodeHost"><option>DSNY</option><option>Private hauler</option><option>Community</option><option>Public</option><option>Private</option></select></label>
         <label>Borough <select id="netNodeBorough"><option>Manhattan</option><option>Brooklyn</option><option>Queens</option><option>Bronx</option><option>Staten Island</option></select></label>
+        <label>Address (optional — geocode it) <input id="netNodeAddress" placeholder="e.g. Union Square, Manhattan"></label>
+        <button class="btn" id="netGeoBtn" type="button">Geocode address (OpenStreetMap Nominatim)</button>
+        <p class="muted small" id="netGeoNote"></p>
         <label>Latitude <input type="number" step="0.0001" id="netNodeLat" placeholder="borough centre if blank"></label>
         <label>Longitude <input type="number" step="0.0001" id="netNodeLon" placeholder="borough centre if blank"></label>
         <label>Fill % (bins only) <input type="number" id="netNodeFill" min="0" max="100" value="60"></label>
@@ -606,9 +615,9 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul14"></script>
+<script src="app.js?v=overhaul15"></script>
 <script src="twin.js?v=twin3"></script>
-<script src="network.js?v=network1"></script>
+<script src="network.js?v=network2"></script>
 <script src="backend.js?v=backend3"></script>
 </body>
 </html>

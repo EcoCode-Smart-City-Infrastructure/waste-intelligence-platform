@@ -26,6 +26,112 @@ const fmtN = n => (n==null||isNaN(n)?'—':Number(n).toLocaleString(undefined,{m
 const BORO = {Manhattan:[40.7831,-73.9712],Brooklyn:[40.6782,-73.9442],Queens:[40.7282,-73.7949],Bronx:[40.8448,-73.8648],'Staten Island':[40.5795,-74.1502]};
 const STREAM_COLOUR = {organics:'#22c55e',refuse:'#64748b',recycling:'#2dd4bf',paper:'#2dd4bf',mgp:'#f59e0b',yard:'#84cc16'};
 let kg = null, hubs = [], spine = null, sequence = [], currentHub = null;
+let leafletMap = null, leafletLayers = null, leafletRoute = null, leafletTrack = null, leafletTrackTimer = null, dropLayer = null, osrmRoute = null;
+const TILE_LAYERS = {
+  'osm': {url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'},
+  'carto-dark': {url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'},
+  'carto-voyager': {url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', attr:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'}
+};
+function loadLeaflet(){
+  if(window.L) return Promise.resolve();
+  if(loadLeaflet.p) return loadLeaflet.p;
+  loadLeaflet.p = new Promise(res=>{
+    const link = document.createElement('link'); link.rel='stylesheet'; link.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(link);
+    const sc = document.createElement('script'); sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; sc.onload=()=>res(); sc.onerror=()=>res(); document.body.appendChild(sc);
+  });
+  return loadLeaflet.p;
+}
+function setBasemap(){
+  if(!leafletMap) return;
+  const key = $n('#netBasemap')?.value || 'osm';
+  if(leafletLayers?.base) leafletMap.removeLayer(leafletLayers.base);
+  leafletLayers.base = window.L.tileLayer(TILE_LAYERS[key].url, {maxZoom:19, attribution:TILE_LAYERS[key].attr, subdomains:'abcd'}).addTo(leafletMap);
+}
+async function drawLeafletMap(){
+  await loadLeaflet();
+  const el = $n('#netMap'); if(!el || !window.L) return false;
+  if(!leafletMap){
+    leafletMap = window.L.map(el).setView([40.7128,-73.96], 11);
+    leafletLayers = {markers: window.L.layerGroup().addTo(leafletMap)};
+    setBasemap();
+  }
+  leafletLayers.markers.clearLayers();
+  const nodes = allNodes();
+  nodes.forEach(x=>{
+    const isHub = x.kind==='hub' || x.kind==='facility';
+    const icon = isHub ? window.L.divIcon({className:'', html:`<div style="width:16px;height:16px;background:#2563eb;border:2px solid #fff;box-shadow:0 0 4px #000"></div>`, iconSize:[16,16]})
+      : window.L.divIcon({className:'', html:`<div style="width:14px;height:14px;border-radius:50%;background:${STREAM_COLOUR[x.stream]||'#22c55e'};border:2px solid #fff;box-shadow:0 0 4px #000"></div>`, iconSize:[14,14]});
+    window.L.marker([x.lat,x.lon], {icon, title: x.site}).addTo(leafletLayers.markers)
+      .bindPopup(`<strong>${escN(x.site)}</strong><br>${escN(x.kind)} · ${escN(x.stream)} · host ${escN(x.host)}<br>${escN(x.borough)}${x.fill!=null?` · fill ${x.fill}%`:''}${x.approx?' · position approximate':''}`);
+  });
+  if(osrmRoute){
+    if(leafletRoute) leafletMap.removeLayer(leafletRoute);
+    leafletRoute = window.L.geoJSON(osrmRoute, {style:{color:'#1d7a4f', weight:4, opacity:0.9}}).addTo(leafletMap);
+    try{ leafletMap.fitBounds(leafletRoute.getBounds(), {padding:[20,20]}); }catch(e){}
+  } else if(sequence.length && currentHub){
+    if(leafletRoute) leafletMap.removeLayer(leafletRoute);
+    const pts = [currentHub, ...sequence, currentHub].map(p=>[p.lat,p.lon]);
+    leafletRoute = window.L.polyline(pts, {color:'#1d7a4f', weight:3, dashArray:'6 6'}).addTo(leafletMap);
+  }
+  return true;
+}
+async function fetchOsrmRoute(){
+  osrmRoute = null;
+  if(!sequence.length || !currentHub) return;
+  const pts = [currentHub, ...sequence, currentHub];
+  const coords = pts.map(p=>`${p.lon},${p.lat}`).join(';');
+  try{
+    const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+    const j = await r.json();
+    if(j.routes && j.routes[0]){
+      osrmRoute = j.routes[0].geometry;
+      const km = j.routes[0].distance/1000, min = Math.round(j.routes[0].duration/60 + sequence.length*6);
+      $n('#netSeqSummary').textContent += ` · Road route (OSRM, OpenStreetMap data): ${km.toFixed(1)} km driving, about ${min} min + 6 min per stop.`;
+    }
+  }catch(e){ /* straight-line fallback already drawn */ }
+}
+async function toggleDropOffs(){
+  if(!leafletMap){ await drawLeafletMap(); }
+  const btn = $n('#netDropBtn');
+  if(dropLayer){ leafletMap.removeLayer(dropLayer); dropLayer = null; btn.textContent = 'Show DSNY food-scrap drop-offs (live)'; return; }
+  btn.textContent = 'Loading drop-offs…';
+  try{
+    const rows = await (await fetch('https://data.cityofnewyork.us/resource/if26-z6xq.json?$select=food_scrap_drop_off_site,latitude,longitude,hosted_by,operation_day_hours,dsny_district&$limit=200&$where=latitude IS NOT NULL')).json();
+    dropLayer = window.L.layerGroup();
+    rows.forEach(r=>{
+      const lat = +r.latitude, lon = +r.longitude; if(!lat || !lon) return;
+      window.L.marker([lat,lon], {icon: window.L.divIcon({className:'', html:'<div style="font-size:16px;line-height:16px">♻</div>', iconSize:[16,16]})}).addTo(dropLayer)
+        .bindPopup(`<strong>${escN(r.food_scrap_drop_off_site)}</strong><br>Host: ${escN(r.hosted_by||'—')}<br>Hours: ${escN(r.operation_day_hours||'—')}<br>DSNY district: ${escN(r.dsny_district||'—')}<br><span class="muted">Source: DSNY Food Scrap Drop-Off Locations if26-z6xq (live)</span>`);
+    });
+    dropLayer.addTo(leafletMap); btn.textContent = `Hide DSNY drop-offs (${rows.length} loaded)`;
+  }catch(e){ btn.textContent = 'Drop-offs failed to load — retry'; }
+}
+function playTracking(){
+  if(!leafletMap || !sequence.length) return;
+  const coords = osrmRoute ? osrmRoute.coordinates.map(c=>[c[1],c[0]]) : [currentHub, ...sequence, currentHub].map(p=>[p.lat,p.lon]);
+  if(leafletTrackTimer) clearInterval(leafletTrackTimer);
+  if(leafletTrack) leafletMap.removeLayer(leafletTrack);
+  leafletTrack = window.L.marker(coords[0], {icon: window.L.divIcon({className:'', html:'<div style="width:20px;height:20px;border-radius:50%;background:#f59e0b;border:3px solid #fff;box-shadow:0 0 8px #000"></div>', iconSize:[20,20]})}).addTo(leafletMap)
+    .bindPopup('Modelled collection vehicle — generated route, not a DSNY truck.').openPopup();
+  let i = 0; const step = Math.max(1, Math.floor(coords.length/120));
+  $n('#netTrackNote').textContent = 'Tracking (modelled): vehicle marker moving along the generated route at accelerated speed. This is not a live DSNY vehicle.';
+  leafletTrackTimer = setInterval(()=>{
+    i += step; if(i >= coords.length){ clearInterval(leafletTrackTimer); $n('#netTrackNote').textContent = 'Tracking complete — modelled route finished. Log events with “Run sequence” to record collections.'; return; }
+    leafletTrack.setLatLng(coords[i]);
+  }, 200);
+}
+async function geocodeAddress(){
+  const q = ($n('#netNodeAddress').value||'').trim();
+  const out = $n('#netGeoNote'); if(!q){ out.textContent = 'Enter an address first.'; return; }
+  out.textContent = 'Geocoding via OpenStreetMap Nominatim…';
+  try{
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ', New York, NY')}&format=json&limit=1`, {headers:{'Accept':'application/json'}});
+    const j = await r.json();
+    if(!j.length){ out.textContent = 'No match found — try a street address or place name in NYC.'; return; }
+    $n('#netNodeLat').value = (+j[0].lat).toFixed(5); $n('#netNodeLon').value = (+j[0].lon).toFixed(5);
+    out.textContent = `Found: ${j[0].display_name} — lat/lon filled. Source: OpenStreetMap Nominatim (open, no key).`;
+  }catch(e){ out.textContent = 'Geocoding failed — check connection and retry.'; }
+}
 function loadNodes(){ try{ return JSON.parse(localStorage.getItem('wip_network_nodes')||'[]'); }catch(e){ return []; } }
 function saveNodes(a){ try{ localStorage.setItem('wip_network_nodes', JSON.stringify(a)); }catch(e){} }
 function loadEvents(){ try{ return JSON.parse(localStorage.getItem('wip_network_events')||'[]'); }catch(e){ return []; } }
@@ -69,21 +175,22 @@ function renderNodes(){
   const sel = $n('#netHubSelect'); if(sel){ const cur = sel.value; sel.innerHTML = hubs.map(h=>`<option value="${h.id}">${escN(h.site)}</option>`).join(''); if(cur) sel.value = cur; }
 }
 function xy(lat,lon){ const x = 20 + (lon - (-74.25)) / (-73.70 - (-74.25)) * 860; const y = 500 - (lat - 40.49) / (40.92 - 40.49) * 480; return [x,y]; }
-function drawMap(){
+async function drawMap(){
+  if(await drawLeafletMap()) return;
   const svg = $n('#netMap'); if(!svg) return;
   const nodes = allNodes();
   let html = '';
   if(sequence.length && currentHub){
     const pts = [currentHub, ...sequence, currentHub];
-    html += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${xy(p.lat,p.lon).join(',')}`).join(' ')}" fill="none" stroke="#1d7a4f" stroke-width="2.5" stroke-dasharray="6 4"/>`;
-  }
+    html += `<svg viewBox="0 0 900 520" style="width:100%"><path d="${pts.map((p,i)=>`${i?'L':'M'}${xy(p.lat,p.lon).join(',')}`).join(' ')}" fill="none" stroke="#1d7a4f" stroke-width="2.5" stroke-dasharray="6 4"/>`;
+  } else html += '<svg viewBox="0 0 900 520" style="width:100%">';
   html += nodes.map(x=>{
     const [cx,cy] = xy(x.lat,x.lon);
     const isHub = x.kind==='hub' || x.kind==='facility';
     return isHub
       ? `<g><rect x="${cx-7}" y="${cy-7}" width="14" height="14" fill="#2563eb" stroke="#fff" stroke-width="1.5"/><text x="${cx}" y="${cy+24}" text-anchor="middle" font-size="10">${escN((x.site||'').slice(0,18))}</text></g>`
       : `<g><circle cx="${cx}" cy="${cy}" r="6" fill="${STREAM_COLOUR[x.stream]||'#22c55e'}" stroke="#fff" stroke-width="1.5"/><text x="${cx}" y="${cy+20}" text-anchor="middle" font-size="10">${escN((x.site||x.id||'').slice(0,16))}</text></g>`;
-  }).join('');
+  }).join('') + '</svg>';
   svg.innerHTML = html;
 }
 function conversionFor(stream, process, tonnes){
@@ -107,7 +214,7 @@ function renderEvents(){
         c = ev.reduce((a,e)=>a+(e.co2||0),0), m = ev.reduce((a,e)=>a+(e.ch4||0),0), r = ev.reduce((a,e)=>a+(e.resource||0),0);
   const k = $n('#netKpis'); if(k) k.innerHTML = `<div><b>${ev.length}</b><span>Collection events</span></div><div><b>${fmtN(t)} t</b><span>Collected (logged)</span></div><div><b>${fmtN(d)} t</b><span>Diverted (modelled)</span></div><div><b>${fmtN(c)} MTCO₂e</b><span>Avoided vs landfill (WARM v15)</span></div><div><b>${fmtN(m)} kg</b><span>Methane avoided (CH₄ only)</span></div><div><b>${fmtN(r)} t</b><span>Compost / resource out</span></div>`;
 }
-function buildSequence(){
+async function buildSequence(){
   const stream = $n('#netStream').value;
   const borough = $n('#netBorough').value;
   const hubId = $n('#netHubSelect').value;
@@ -126,7 +233,9 @@ function buildSequence(){
     ? `${order.length} stops · hub ${currentHub?currentHub.site:'—'} → return · ${dist.toFixed(1)} km straight-line segments · about ${Math.round(dist/22*60+order.length*6)} min at city pace + 6 min per stop · scheduled day (public spine): ${spine? (spine.freq?.['freq_'+stream]||spine.freq?.freq_organics||'load a district above') : 'load a district above'} · vendor destination: ${destText(stream)}`
     : 'No stops match that stream/borough — add a collection node below, or pick another borough.';
   $n('#netSeqList').innerHTML = order.map((x,i)=>`<li><strong>${i+1}. ${escN(x.site)}</strong> — ${escN(x.id)} · ${escN(x.stream)} · host ${escN(x.host)} · fill ${x.fill!=null?x.fill+'%':'—'}</li>`).join('');
-  drawMap();
+  await drawMap();
+  await fetchOsrmRoute();
+  await drawMap();
 }
 function logEvent(node, seqId, at){
   const stream = $n('#netStream').value, process = $n('#netProcess').value;
@@ -138,8 +247,10 @@ function logEvent(node, seqId, at){
     tonnes, diverted: conv.diverted, co2: conv.co2, ch4: conv.ch4, resource: conv.resource, resourceName: conv.resourceName,
     destination: currentHub? currentHub.site : destText(stream), seq: seqId, note: conv.note});
   saveEvents(ev);
-  // A collected bin empties in the demo fleet, so the next sequence sees it empty.
+  // A collected bin empties, whether it came from the demo fleet or from
+  // a user-added node, so the next sequence sees it empty.
   try{ const f = window.wipFleet && window.wipFleet(); const b = f && f.find(x=>x.id===node.id); if(b){ b.fill = 0; if(window.saveFleet) window.saveFleet(); } }catch(e){}
+  try{ const nodes = loadNodes(); const u = nodes.find(x=>x.id===node.id); if(u){ u.fill = 0; saveNodes(nodes); } }catch(e){}
   renderEvents(); renderNodes(); drawMap();
 }
 async function loadSpine(){
@@ -167,6 +278,10 @@ async function init(){
   }
   renderHubs(); renderNodes(); renderEvents(); drawMap();
   $n('#netSpineBtn')?.addEventListener('click', loadSpine);
+  $n('#netBasemap')?.addEventListener('change', setBasemap);
+  $n('#netDropBtn')?.addEventListener('click', toggleDropOffs);
+  $n('#netTrackBtn')?.addEventListener('click', playTracking);
+  $n('#netGeoBtn')?.addEventListener('click', geocodeAddress);
   $n('#netBuildBtn')?.addEventListener('click', buildSequence);
   $n('#netRunBtn')?.addEventListener('click', ()=>{
     if(!sequence.length){ $n('#netSeqSummary').textContent = 'Build a sequence first.'; return; }
