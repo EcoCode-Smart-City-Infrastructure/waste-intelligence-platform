@@ -1,1409 +1,1853 @@
 {
- "nodes": [
-  {
-   "id": "FoodScraps",
-   "type": "Waste_Type",
-   "name": "Food Scraps",
-   "desc": "Organic waste from food preparation and consumption, including fruit and vegetable scraps, coffee grounds, tea bags, eggshells, and other biodegradable food waste.",
-   "detail": {
-    "composition": {
-     "carbohydrates": 45.0,
-     "proteins": 15.0,
-     "fats": 10.0,
-     "fiber": 20.0,
-     "moisture": 10.0
+  "nodes": [
+    {
+      "id": "FoodScraps",
+      "type": "Waste_Type",
+      "name": "Food Scraps",
+      "desc": "Organic waste from food preparation and consumption, including fruit and vegetable scraps, coffee grounds, tea bags, eggshells, and other biodegradable food waste.",
+      "detail": {
+        "composition": {
+          "carbohydrates": 45.0,
+          "proteins": 15.0,
+          "fats": 10.0,
+          "fiber": 20.0,
+          "moisture": 10.0
+        },
+        "moisture_content": 70.0,
+        "organic_content": 95.0,
+        "typical_source": [
+          "Residential",
+          "Restaurants",
+          "Grocery Stores",
+          "Institutional Kitchens"
+        ],
+        "c_n_ratio": 15.0
+      }
     },
-    "moisture_content": 70.0,
-    "organic_content": 95.0,
-    "typical_source": [
-     "Residential",
-     "Restaurants",
-     "Grocery Stores",
-     "Institutional Kitchens"
-    ],
-    "c_n_ratio": 15.0
-   }
-  },
-  {
-   "id": "YardWaste",
-   "type": "Waste_Type",
-   "name": "Yard Waste",
-   "desc": "Organic waste from landscape maintenance, including grass clippings, leaves, branches, and other garden debris.",
-   "detail": {
-    "composition": {
-     "cellulose": 40.0,
-     "hemicellulose": 25.0,
-     "lignin": 20.0,
-     "proteins": 5.0,
-     "other": 10.0
+    {
+      "id": "YardWaste",
+      "type": "Waste_Type",
+      "name": "Yard Waste",
+      "desc": "Organic waste from landscape maintenance, including grass clippings, leaves, branches, and other garden debris.",
+      "detail": {
+        "composition": {
+          "cellulose": 40.0,
+          "hemicellulose": 25.0,
+          "lignin": 20.0,
+          "proteins": 5.0,
+          "other": 10.0
+        },
+        "moisture_content": 50.0,
+        "organic_content": 98.0,
+        "typical_source": [
+          "Residential",
+          "Parks",
+          "Landscaping Services"
+        ],
+        "c_n_ratio": 30.0
+      }
     },
-    "moisture_content": 50.0,
-    "organic_content": 98.0,
-    "typical_source": [
-     "Residential",
-     "Parks",
-     "Landscaping Services"
-    ],
-    "c_n_ratio": 30.0
-   }
-  },
-  {
-   "id": "CoffeeGrounds",
-   "type": "Waste_Type",
-   "name": "Coffee Grounds",
-   "desc": "Spent coffee grounds from coffee brewing, rich in nitrogen and organic matter.",
-   "detail": {
-    "composition": {
-     "organic_matter": 95.0,
-     "nitrogen": 2.0,
-     "phosphorus": 0.5,
-     "potassium": 0.5
+    {
+      "id": "CoffeeGrounds",
+      "type": "Waste_Type",
+      "name": "Coffee Grounds",
+      "desc": "Spent coffee grounds from coffee brewing, rich in nitrogen and organic matter.",
+      "detail": {
+        "composition": {
+          "organic_matter": 95.0,
+          "nitrogen": 2.0,
+          "phosphorus": 0.5,
+          "potassium": 0.5
+        },
+        "moisture_content": 60.0,
+        "organic_content": 97.0,
+        "typical_source": [
+          "Coffee Shops",
+          "Offices",
+          "Households"
+        ],
+        "c_n_ratio": 20.0,
+        "ph": 6.5
+      }
     },
-    "moisture_content": 60.0,
-    "organic_content": 97.0,
-    "typical_source": [
-     "Coffee Shops",
-     "Offices",
-     "Households"
-    ],
-    "c_n_ratio": 20.0,
-    "ph": 6.5
-   }
-  },
-  {
-   "id": "SpentGrain",
-   "type": "Waste_Type",
-   "name": "Spent Grain",
-   "desc": "Byproduct from beer brewing process, high in protein and fiber.",
-   "detail": {
-    "composition": {
-     "protein": 25.0,
-     "fiber": 40.0,
-     "carbohydrates": 25.0,
-     "fats": 5.0,
-     "moisture": 5.0
+    {
+      "id": "SpentGrain",
+      "type": "Waste_Type",
+      "name": "Spent Grain",
+      "desc": "Byproduct from beer brewing process, high in protein and fiber.",
+      "detail": {
+        "composition": {
+          "protein": 25.0,
+          "fiber": 40.0,
+          "carbohydrates": 25.0,
+          "fats": 5.0,
+          "moisture": 5.0
+        },
+        "moisture_content": 75.0,
+        "organic_content": 95.0,
+        "typical_source": [
+          "Breweries",
+          "Distilleries"
+        ],
+        "c_n_ratio": 12.0
+      }
     },
-    "moisture_content": 75.0,
-    "organic_content": 95.0,
-    "typical_source": [
-     "Breweries",
-     "Distilleries"
-    ],
-    "c_n_ratio": 12.0
-   }
-  },
-  {
-   "id": "FatsOilsGrease",
-   "type": "Waste_Type",
-   "name": "Fats, Oils, and Grease (FOG)",
-   "desc": "Waste cooking oils, fats, and grease from food preparation and processing.",
-   "detail": {
-    "composition": {
-     "fats": 80.0,
-     "oils": 15.0,
-     "grease": 5.0
+    {
+      "id": "FatsOilsGrease",
+      "type": "Waste_Type",
+      "name": "Fats, Oils, and Grease (FOG)",
+      "desc": "Waste cooking oils, fats, and grease from food preparation and processing.",
+      "detail": {
+        "composition": {
+          "fats": 80.0,
+          "oils": 15.0,
+          "grease": 5.0
+        },
+        "moisture_content": 5.0,
+        "organic_content": 99.0,
+        "typical_source": [
+          "Restaurants",
+          "Food Processing",
+          "Households"
+        ],
+        "energy_content_mj_per_kg": 38.0
+      }
     },
-    "moisture_content": 5.0,
-    "organic_content": 99.0,
-    "typical_source": [
-     "Restaurants",
-     "Food Processing",
-     "Households"
-    ],
-    "energy_content_mj_per_kg": 38.0
-   }
-  },
-  {
-   "id": "ResidentialOrganicsBrooklyn",
-   "type": "Waste_Stream",
-   "name": "Residential Organics - Brooklyn",
-   "desc": "Curbside collected organic waste from residential properties in Brooklyn, NYC.",
-   "detail": {
-    "source_location": "Brooklyn, NYC",
-    "volume_tonnes_per_year": 150000.0,
-    "collection_frequency": "weekly",
-    "participation_rate": 0.45,
-    "diversion_rate": 0.85
-   }
-  },
-  {
-   "id": "RestaurantFoodWaste_Downtown",
-   "type": "Waste_Stream",
-   "name": "Restaurant Food Waste - Downtown",
-   "desc": "Food waste collected from restaurants in downtown Manhattan.",
-   "detail": {
-    "source_location": "Downtown Manhattan, NYC",
-    "volume_tonnes_per_year": 80000.0,
-    "collection_frequency": "daily",
-    "number_of_establishments": 1500,
-    "contamination_rate": 0.05
-   }
-  },
-  {
-   "id": "AerobicComposting",
-   "type": "Process",
-   "name": "Aerobic Composting",
-   "desc": "Controlled aerobic decomposition of organic waste to produce compost. Requires oxygen, moisture, and proper C:N ratio.",
-   "detail": {
-    "efficiency": 85.0,
-    "processing_time_hours": 168.0,
-    "energy_requirement_kwh_per_tonne": 25.0,
-    "carbon_footprint_kg_co2_per_tonne": 50.0,
-    "optimal_temperature_c": 55.0,
-    "optimal_moisture_percent": 55.0,
-    "c_n_ratio_range": [
-     25.0,
-     35.0
-    ],
-    "oxygen_requirement": "high"
-   }
-  },
-  {
-   "id": "AnaerobicDigestion",
-   "type": "Process",
-   "name": "Anaerobic Digestion",
-   "desc": "Biological process where organic matter is broken down by microorganisms in the absence of oxygen, producing biogas and digestate.",
-   "detail": {
-    "efficiency": 90.0,
-    "processing_time_hours": 336.0,
-    "energy_requirement_kwh_per_tonne": 45.0,
-    "carbon_footprint_kg_co2_per_tonne": 30.0,
-    "biogas_yield_m3_per_tonne": 150.0,
-    "methane_content_percent": 60.0,
-    "optimal_temperature_c": 37.0,
-    "ph_range": [
-     6.8,
-     7.4
-    ]
-   }
-  },
-  {
-   "id": "BlackSoldierFlyLarvae",
-   "type": "Process",
-   "name": "Black Soldier Fly Larvae (BSFL)",
-   "desc": "Insect-based bioconversion where black soldier fly larvae consume organic waste and convert it into insect protein and frass (manure).",
-   "detail": {
-    "efficiency": 75.0,
-    "processing_time_hours": 720.0,
-    "energy_requirement_kwh_per_tonne": 15.0,
-    "carbon_footprint_kg_co2_per_tonne": 20.0,
-    "protein_conversion_efficiency": 0.4,
-    "larvae_yield_kg_per_tonne_waste": 150.0,
-    "optimal_temperature_c": 27.0,
-    "optimal_humidity_percent": 70.0
-   }
-  },
-  {
-   "id": "BiocharProduction",
-   "type": "Process",
-   "name": "Biochar Production",
-   "desc": "Thermal decomposition of organic waste in a low-oxygen environment (pyrolysis) to produce biochar, a stable carbon-rich material.",
-   "detail": {
-    "efficiency": 80.0,
-    "processing_time_hours": 2.0,
-    "energy_requirement_kwh_per_tonne": 150.0,
-    "carbon_footprint_kg_co2_per_tonne": 100.0,
-    "biochar_yield_percent": 30.0,
-    "pyrolysis_temperature_c": 500.0,
-    "syngas_produced": true,
-    "carbon_sequestration_potential": "high"
-   }
-  },
-  {
-   "id": "Vermicomposting",
-   "type": "Process",
-   "name": "Vermicomposting",
-   "desc": "Composting using various species of earthworms to create a mixture of decomposing vegetable or food waste, bedding materials, and vermicast.",
-   "detail": {
-    "efficiency": 80.0,
-    "processing_time_hours": 336.0,
-    "energy_requirement_kwh_per_tonne": 10.0,
-    "carbon_footprint_kg_co2_per_tonne": 25.0,
-    "worm_density_per_m2": 10000.0,
-    "optimal_temperature_c": 25.0,
-    "optimal_ph": 7.0,
-    "space_requirement": "low"
-   }
-  },
-  {
-   "id": "CompostAmendment",
-   "type": "Resource",
-   "name": "Compost Amendment",
-   "desc": "Finished compost product used to improve soil structure, fertility, and water retention in agricultural and landscaping applications.",
-   "detail": {
-    "economic_value_per_tonne": 80.0,
-    "market_demand": "high",
-    "quality_grade": "A",
-    "nutrient_content": {
-     "nitrogen": 1.5,
-     "phosphorus": 0.8,
-     "potassium": 1.2
+    {
+      "id": "ResidentialOrganicsBrooklyn",
+      "type": "Waste_Stream",
+      "name": "Residential Organics - Brooklyn",
+      "desc": "Curbside collected organic waste from residential properties in Brooklyn, NYC.",
+      "detail": {
+        "source_location": "Brooklyn, NYC",
+        "volume_tonnes_per_year": 150000.0,
+        "collection_frequency": "weekly",
+        "participation_rate": 0.45,
+        "diversion_rate": 0.85
+      }
     },
-    "organic_matter_percent": 45.0,
-    "application_rate_tonnes_per_hectare": 10.0,
-    "shelf_life_months": 12.0
-   }
-  },
-  {
-   "id": "Biogas",
-   "type": "Resource",
-   "name": "Biogas",
-   "desc": "Renewable energy source produced from anaerobic digestion, primarily composed of methane (50-75%) and carbon dioxide (25-50%).",
-   "detail": {
-    "economic_value_per_tonne": 400.0,
-    "market_demand": "very_high",
-    "quality_grade": "A",
-    "energy_content_mj_per_kg": 22.0,
-    "methane_content_percent": 65.0,
-    "can_be_upgraded_to_biomethane": true,
-    "typical_uses": [
-     "Electricity Generation",
-     "Heating",
-     "Vehicle Fuel"
-    ],
-    "storage_requirements": "pressurized_tanks"
-   }
-  },
-  {
-   "id": "DigestateFertilizer",
-   "type": "Resource",
-   "name": "Digestate Fertilizer",
-   "desc": "Nutrient-rich byproduct of anaerobic digestion, used as organic fertilizer for agricultural crops.",
-   "detail": {
-    "economic_value_per_tonne": 50.0,
-    "market_demand": "high",
-    "quality_grade": "A",
-    "nutrient_content": {
-     "nitrogen": 4.0,
-     "phosphorus": 2.0,
-     "potassium": 1.5,
-     "ammonia_nitrogen": 2.5
+    {
+      "id": "RestaurantFoodWaste_Downtown",
+      "type": "Waste_Stream",
+      "name": "Restaurant Food Waste - Downtown",
+      "desc": "Food waste collected from restaurants in downtown Manhattan.",
+      "detail": {
+        "source_location": "Downtown Manhattan, NYC",
+        "volume_tonnes_per_year": 80000.0,
+        "collection_frequency": "daily",
+        "number_of_establishments": 1500,
+        "contamination_rate": 0.05
+      }
     },
-    "dry_matter_percent": 5.0,
-    "ph": 8.0,
-    "application_methods": [
-     "Injection",
-     "Broadcast",
-     "Irrigation"
-    ]
-   }
-  },
-  {
-   "id": "AnimalFeed",
-   "type": "Resource",
-   "name": "Animal Feed (Insect Protein)",
-   "desc": "High-protein animal feed produced from black soldier fly larvae, used for poultry, aquaculture, and livestock.",
-   "detail": {
-    "economic_value_per_tonne": 1200.0,
-    "market_demand": "very_high",
-    "quality_grade": "A",
-    "protein_content_percent": 45.0,
-    "fat_content_percent": 30.0,
-    "digestibility_percent": 90.0,
-    "target_animals": [
-     "Chickens",
-     "Fish",
-     "Pigs",
-     "Cattle"
-    ],
-    "shelf_life_months": 6.0
-   }
-  },
-  {
-   "id": "Frass",
-   "type": "Resource",
-   "name": "Frass (Insect Manure)",
-   "desc": "Organic fertilizer produced as a byproduct of black soldier fly larvae digestion, rich in nutrients and beneficial microorganisms.",
-   "detail": {
-    "economic_value_per_tonne": 200.0,
-    "market_demand": "high",
-    "quality_grade": "A",
-    "nutrient_content": {
-     "nitrogen": 3.5,
-     "phosphorus": 2.5,
-     "potassium": 1.8
+    {
+      "id": "AerobicComposting",
+      "type": "Process",
+      "name": "Aerobic Composting",
+      "desc": "Controlled aerobic decomposition of organic waste to produce compost. Requires oxygen, moisture, and proper C:N ratio.",
+      "detail": {
+        "efficiency": 85.0,
+        "processing_time_hours": 168.0,
+        "energy_requirement_kwh_per_tonne": 25.0,
+        "carbon_footprint_kg_co2_per_tonne": 50.0,
+        "optimal_temperature_c": 55.0,
+        "optimal_moisture_percent": 55.0,
+        "c_n_ratio_range": [
+          25.0,
+          35.0
+        ],
+        "oxygen_requirement": "high"
+      }
     },
-    "organic_matter_percent": 35.0,
-    "ph": 7.2,
-    "beneficial_microbes": true
-   }
-  },
-  {
-   "id": "Biochar",
-   "type": "Resource",
-   "name": "Biochar",
-   "desc": "Stable carbon-rich material produced through pyrolysis, used for soil amendment, carbon sequestration, and water filtration.",
-   "detail": {
-    "economic_value_per_tonne": 500.0,
-    "market_demand": "growing",
-    "quality_grade": "A",
-    "carbon_content_percent": 70.0,
-    "surface_area_m2_per_g": 300.0,
-    "ph": 9.0,
-    "carbon_sequestration_stability": "1000+ years",
-    "application_rate_tonnes_per_hectare": 2.0,
-    "water_retention_improvement_percent": 20.0
-   }
-  },
-  {
-   "id": "Syngas",
-   "type": "Resource",
-   "name": "Syngas",
-   "desc": "Synthesis gas produced during pyrolysis, composed primarily of hydrogen, carbon monoxide, and carbon dioxide. Can be used for energy generation or as a chemical feedstock.",
-   "detail": {
-    "economic_value_per_tonne": 300.0,
-    "market_demand": "medium",
-    "quality_grade": "B",
-    "energy_content_mj_per_kg": 15.0,
-    "composition": {
-     "hydrogen": 15.0,
-     "carbon_monoxide": 25.0,
-     "carbon_dioxide": 10.0,
-     "methane": 5.0,
-     "other": 45.0
+    {
+      "id": "AnaerobicDigestion",
+      "type": "Process",
+      "name": "Anaerobic Digestion",
+      "desc": "Biological process where organic matter is broken down by microorganisms in the absence of oxygen, producing biogas and digestate.",
+      "detail": {
+        "efficiency": 90.0,
+        "processing_time_hours": 336.0,
+        "energy_requirement_kwh_per_tonne": 45.0,
+        "carbon_footprint_kg_co2_per_tonne": 30.0,
+        "biogas_yield_m3_per_tonne": 150.0,
+        "methane_content_percent": 60.0,
+        "optimal_temperature_c": 37.0,
+        "ph_range": [
+          6.8,
+          7.4
+        ]
+      }
     },
-    "can_be_used_for_heat": true,
-    "can_be_used_for_power": true
-   }
-  },
-  {
-   "id": "FACILITY-BK-COMPOST-01",
-   "type": "Facility",
-   "name": "Brooklyn Composting Facility 01",
-   "desc": "Large-scale aerobic composting facility in Brooklyn, processing residential and commercial organic waste.",
-   "detail": {
-    "location": {
-     "latitude": 40.6782,
-     "longitude": -73.9442,
-     "borough": "Brooklyn",
-     "neighborhood": "Red Hook"
+    {
+      "id": "BlackSoldierFlyLarvae",
+      "type": "Process",
+      "name": "Black Soldier Fly Larvae (BSFL)",
+      "desc": "Insect-based bioconversion where black soldier fly larvae consume organic waste and convert it into insect protein and frass (manure).",
+      "detail": {
+        "efficiency": 75.0,
+        "processing_time_hours": 720.0,
+        "energy_requirement_kwh_per_tonne": 15.0,
+        "carbon_footprint_kg_co2_per_tonne": 20.0,
+        "protein_conversion_efficiency": 0.4,
+        "larvae_yield_kg_per_tonne_waste": 150.0,
+        "optimal_temperature_c": 27.0,
+        "optimal_humidity_percent": 70.0
+      }
     },
-    "capacity_tonnes_per_year": 100000.0,
-    "operational_status": "active",
-    "contact_info": "info@brooklyncompost.nyc.gov",
-    "year_commissioned": 2018,
-    "technology": "Aerated Static Pile",
-    "processing_fee_per_tonne": 45.0,
-    "current_utilization_percent": 85.0
-   }
-  },
-  {
-   "id": "AD_PLANT-QUEENS-02",
-   "type": "Facility",
-   "name": "Queens Anaerobic Digestion Plant 02",
-   "desc": "Advanced anaerobic digestion facility in Queens, producing biogas and digestate fertilizer from organic waste.",
-   "detail": {
-    "location": {
-     "latitude": 40.7484,
-     "longitude": -73.8968,
-     "borough": "Queens",
-     "neighborhood": "Maspeth"
+    {
+      "id": "BiocharProduction",
+      "type": "Process",
+      "name": "Biochar Production",
+      "desc": "Thermal decomposition of organic waste in a low-oxygen environment (pyrolysis) to produce biochar, a stable carbon-rich material.",
+      "detail": {
+        "efficiency": 80.0,
+        "processing_time_hours": 2.0,
+        "energy_requirement_kwh_per_tonne": 150.0,
+        "carbon_footprint_kg_co2_per_tonne": 100.0,
+        "biochar_yield_percent": 30.0,
+        "pyrolysis_temperature_c": 500.0,
+        "syngas_produced": true,
+        "carbon_sequestration_potential": "high"
+      }
     },
-    "capacity_tonnes_per_year": 200000.0,
-    "operational_status": "active",
-    "contact_info": "operations@queensad.nyc.gov",
-    "year_commissioned": 2020,
-    "technology": "Continuous Stirred Tank Reactor (CSTR)",
-    "processing_fee_per_tonne": 65.0,
-    "current_utilization_percent": 70.0,
-    "biogas_to_grid_connection": true,
-    "electricity_generation_capacity_mw": 5.0
-   }
-  },
-  {
-   "id": "BSFL_FARM-BRONX-01",
-   "type": "Facility",
-   "name": "Bronx Black Soldier Fly Farm 01",
-   "desc": "Innovative insect-based waste processing facility using black soldier fly larvae to convert organic waste into protein and fertilizer.",
-   "detail": {
-    "location": {
-     "latitude": 40.8442,
-     "longitude": -73.8681,
-     "borough": "Bronx",
-     "neighborhood": "Hunts Point"
+    {
+      "id": "Vermicomposting",
+      "type": "Process",
+      "name": "Vermicomposting",
+      "desc": "Composting using various species of earthworms to create a mixture of decomposing vegetable or food waste, bedding materials, and vermicast.",
+      "detail": {
+        "efficiency": 80.0,
+        "processing_time_hours": 336.0,
+        "energy_requirement_kwh_per_tonne": 10.0,
+        "carbon_footprint_kg_co2_per_tonne": 25.0,
+        "worm_density_per_m2": 10000.0,
+        "optimal_temperature_c": 25.0,
+        "optimal_ph": 7.0,
+        "space_requirement": "low"
+      }
     },
-    "capacity_tonnes_per_year": 50000.0,
-    "operational_status": "active",
-    "contact_info": "contact@bsflbronx.com",
-    "year_commissioned": 2022,
-    "technology": "Automated BSFL Bioconversion",
-    "processing_fee_per_tonne": 80.0,
-    "current_utilization_percent": 60.0,
-    "larvae_production_capacity_tonnes_per_year": 7500.0,
-    "frass_production_capacity_tonnes_per_year": 37500.0
-   }
-  },
-  {
-   "id": "BIOCHAR_PLANT-SI-01",
-   "type": "Facility",
-   "name": "Staten Island Biochar Plant 01",
-   "desc": "Pyrolysis facility producing biochar and syngas from woody biomass and organic waste.",
-   "detail": {
-    "location": {
-     "latitude": 40.6413,
-     "longitude": -74.1457,
-     "borough": "Staten Island",
-     "neighborhood": "Port Richmond"
+    {
+      "id": "CompostAmendment",
+      "type": "Resource",
+      "name": "Compost Amendment",
+      "desc": "Finished compost product used to improve soil structure, fertility, and water retention in agricultural and landscaping applications.",
+      "detail": {
+        "economic_value_per_tonne": 80.0,
+        "market_demand": "high",
+        "quality_grade": "A",
+        "nutrient_content": {
+          "nitrogen": 1.5,
+          "phosphorus": 0.8,
+          "potassium": 1.2
+        },
+        "organic_matter_percent": 45.0,
+        "application_rate_tonnes_per_hectare": 10.0,
+        "shelf_life_months": 12.0
+      }
     },
-    "capacity_tonnes_per_year": 30000.0,
-    "operational_status": "active",
-    "contact_info": "admin@sibiochar.com",
-    "year_commissioned": 2021,
-    "technology": "Slow Pyrolysis",
-    "processing_fee_per_tonne": 100.0,
-    "current_utilization_percent": 55.0,
-    "biochar_production_capacity_tonnes_per_year": 9000.0,
-    "syngas_production_capacity_m3_per_year": 21000000.0
-   }
-  },
-  {
-   "id": "NYCRegulationOrganicWaste",
-   "type": "Constraint",
-   "name": "NYC Local Law 146 - Organic Waste Separation",
-   "desc": "NYC law requiring certain businesses to separate organic waste for composting or anaerobic digestion. Applies to food service establishments, retail food stores, and food manufacturers with annual organic waste exceeding 1 ton.",
-   "detail": {
-    "constraint_type": "regulatory",
-    "severity": "high",
-    "jurisdiction": "New York City",
-    "effective_date": "2024-07-01",
-    "applies_to": [
-     "Food Service Establishments",
-     "Retail Food Stores",
-     "Food Manufacturers"
-    ],
-    "threshold_tonnes_per_year": 1.0,
-    "penalty_for_non_compliance": "$250-$1000 per violation",
-    "reporting_requirements": "quarterly"
-   }
-  },
-  {
-   "id": "OdorControlRequirement",
-   "type": "Constraint",
-   "name": "Odor Control Requirement",
-   "desc": "Environmental regulation requiring organic waste processing facilities to implement odor control measures to prevent nuisance conditions.",
-   "detail": {
-    "constraint_type": "environmental",
-    "severity": "medium",
-    "jurisdiction": "New York State",
-    "applies_to": [
-     "Composting Facilities",
-     "Anaerobic Digestion Plants"
-    ],
-    "odor_standards": "NYSDEC Part 211",
-    "required_controls": [
-     "Biofilters",
-     "Activated Carbon",
-     "Negative Air Pressure",
-     "Enclosed Processing"
-    ],
-    "monitoring_requirements": "continuous"
-   }
-  },
-  {
-   "id": "HeavyMetal_Limit",
-   "type": "Constraint",
-   "name": "Heavy Metal Limits for Compost and Digestate",
-   "desc": "Regulatory limits on heavy metal concentrations in compost and digestate products used for land application.",
-   "detail": {
-    "constraint_type": "regulatory",
-    "severity": "high",
-    "jurisdiction": "New York State",
-    "applies_to": [
-     "Compost Products",
-     "Digestate Fertilizer"
-    ],
-    "maximum_concentrations_mg_per_kg": {
-     "arsenic": 41.0,
-     "cadmium": 39.0,
-     "chromium": 1200.0,
-     "lead": 300.0,
-     "mercury": 17.0,
-     "nickel": 420.0,
-     "selenium": 36.0,
-     "zinc": 2800.0
+    {
+      "id": "Biogas",
+      "type": "Resource",
+      "name": "Biogas",
+      "desc": "Renewable energy source produced from anaerobic digestion, primarily composed of methane (50-75%) and carbon dioxide (25-50%).",
+      "detail": {
+        "economic_value_per_tonne": 400.0,
+        "market_demand": "very_high",
+        "quality_grade": "A",
+        "energy_content_mj_per_kg": 22.0,
+        "methane_content_percent": 65.0,
+        "can_be_upgraded_to_biomethane": true,
+        "typical_uses": [
+          "Electricity Generation",
+          "Heating",
+          "Vehicle Fuel"
+        ],
+        "storage_requirements": "pressurized_tanks"
+      }
     },
-    "testing_frequency": "annual",
-    "source_materials_restrictions": "Source-separated organics only"
-   }
-  },
-  {
-   "id": "DSNY",
-   "type": "Actor",
-   "name": "NYC Department of Sanitation (DSNY)",
-   "desc": "New York City's municipal agency responsible for waste collection, recycling, and disposal services. Manages curbside organics collection program.",
-   "detail": {
-    "actor_type": "government",
-    "scale": "city",
-    "website": "https://www.nyc.gov/sanitation",
-    "contact": "311",
-    "annual_budget_millions": 1500.0,
-    "employees": 7200,
-    "services": [
-     "Waste Collection",
-     "Recycling",
-     "Organics Collection",
-     "Street Cleaning",
-     "Snow Removal"
-    ],
-    "organics_collection_coverage": "All 5 boroughs"
-   }
-  },
-  {
-   "id": "PrivateHauler",
-   "type": "Actor",
-   "name": "Private Waste Hauler",
-   "desc": "Licensed private companies that provide waste collection and transportation services to commercial businesses and institutions in NYC.",
-   "detail": {
-    "actor_type": "private",
-    "scale": "city",
-    "number_of_companies": 250,
-    "services": [
-     "Commercial Waste Collection",
-     "Organics Collection",
-     "Recycling",
-     "Waste Transportation"
-    ],
-    "regulation": "NYC Business Integrity Commission",
-    "typical_contract_length": "3-5 years"
-   }
-  },
-  {
-   "id": "UrbanFarm",
-   "type": "Actor",
-   "name": "Urban Farm",
-   "desc": "Community-based agricultural operations in urban areas that use compost and digestate products to grow food for local consumption.",
-   "detail": {
-    "actor_type": "community",
-    "scale": "neighborhood",
-    "number_in_nyc": 600,
-    "primary_needs": [
-     "Compost",
-     "Soil Amendments",
-     "Water",
-     "Seeds",
-     "Labor"
-    ],
-    "production_types": [
-     "Vegetables",
-     "Herbs",
-     "Fruits",
-     "Flowers"
-    ],
-    "distribution_models": [
-     "Farmers Markets",
-     "CSA",
-     "Donation",
-     "Restaurant Supply"
-    ]
-   }
-  },
-  {
-   "id": "Waste_Processor",
-   "type": "Actor",
-   "name": "Waste Processor",
-   "desc": "Companies and facilities that process organic waste into value-added products such as compost, biogas, and animal feed.",
-   "detail": {
-    "actor_type": "private",
-    "scale": "regional",
-    "services": [
-     "Composting",
-     "Anaerobic Digestion",
-     "BSFL Processing",
-     "Biochar Production"
-    ],
-    "certifications": [
-     "USCC",
-     "OMRI",
-     "NYSDEC"
-    ],
-    "typical_processing_fee": "$40-$100 per tonne",
-    "end_products": [
-     "Compost",
-     "Biogas",
-     "Digestate",
-     "Animal Feed",
-     "Biochar"
-    ]
-   }
-  },
-  {
-   "id": "NYCUrbanAgriculture",
-   "type": "Actor",
-   "name": "NYC Urban Agriculture Initiative",
-   "desc": "City program supporting urban agriculture through access to land, resources, and technical assistance.",
-   "detail": {
-    "actor_type": "government",
-    "scale": "city",
-    "website": "https://www.nyc.gov/urbanag",
-    "programs": [
-     "Community Garden Support",
-     "Urban Farm Grants",
-     "Soil Testing",
-     "Compost Distribution"
-    ],
-    "annual_compost_needs_tonnes": 50000.0,
-    "participating_sites": 1200
-   }
-  }
- ],
- "edges": [
-  {
-   "from": "FoodScraps",
-   "to": "AerobicComposting",
-   "type": "WASTECANBEPROCESSEDBY",
-   "props": {
-    "suitability": "high",
-    "preprocessing_required": [
-     "Contaminant Removal",
-     "Size Reduction"
-    ],
-    "optimal_c_n_ratio": 25.0,
-    "typical_diversion_rate": 0.85
-   }
-  },
-  {
-   "from": "FoodScraps",
-   "to": "AnaerobicDigestion",
-   "type": "WASTECANBEPROCESSEDBY",
-   "props": {
-    "suitability": "very_high",
-    "preprocessing_required": [
-     "Contaminant Removal",
-     "Grinding",
-     "Slurry Preparation"
-    ],
-    "typical_biogas_yield_m3_per_tonne": 180.0,
-    "typical_diversion_rate": 0.9
-   }
-  },
-  {
-   "from": "FoodScraps",
-   "to": "BlackSoldierFlyLarvae",
-   "type": "WASTECANBEPROCESSEDBY",
-   "props": {
-    "suitability": "high",
-    "preprocessing_required": [
-     "Contaminant Removal"
-    ],
-    "optimal_waste_types": [
-     "Fruits",
-     "Vegetables",
-     "Grains",
-     "Coffee Grounds"
-    ],
-    "avoid": [
-     "Meat",
-     "Dairy",
-     "Oils",
-     "Salty Foods"
-    ],
-    "typical_diversion_rate": 0.75
-   }
-  },
-  {
-   "from": "YardWaste",
-   "to": "AerobicComposting",
-   "type": "WASTECANBEPROCESSEDBY",
-   "props": {
-    "suitability": "very_high",
-    "preprocessing_required": [
-     "Size Reduction",
-     "Leaf Removal"
-    ],
-    "optimal_c_n_ratio": 30.0,
-    "typical_diversion_rate": 0.95
-   }
-  },
-  {
-   "from": "YardWaste",
-   "to": "Vermicomposting",
-   "type": "WASTECANBEPROCESSEDBY",
-   "props": {
-    "suitability": "medium",
-    "preprocessing_required": [
-     "Size Reduction",
-     "Partial Composting"
-    ],
-    "optimal_mix_ratio": "50% yard waste, 50% food scraps",
-    "typical_diversion_rate": 0.8
-   }
-  },
-  {
-   "from": "CoffeeGrounds",
-   "to": "AerobicComposting",
-   "type": "WASTECANBEPROCESSEDBY",
-   "props": {
-    "suitability": "high",
-    "preprocessing_required": [
-     "Contaminant Removal"
-    ],
-    "note": "High nitrogen content - mix with carbon-rich materials",
-    "typical_diversion_rate": 0.9
-   }
-  },
-  {
-   "from": "CoffeeGrounds",
-   "to": "BlackSoldierFlyLarvae",
-   "type": "WASTECANBEPROCESSEDBY",
-   "props": {
-    "suitability": "high",
-    "preprocessing_required": [
-     "Drying recommended"
-    ],
-    "note": "BSFL can consume coffee grounds directly",
-    "typical_diversion_rate": 0.8
-   }
-  },
-  {
-   "from": "SpentGrain",
-   "to": "AnaerobicDigestion",
-   "type": "WASTECANBEPROCESSEDBY",
-   "props": {
-    "suitability": "very_high",
-    "preprocessing_required": [
-     "Size Reduction"
-    ],
-    "typical_biogas_yield_m3_per_tonne": 250.0,
-    "note": "High organic load - excellent for AD",
-    "typical_diversion_rate": 0.95
-   }
-  },
-  {
-   "from": "SpentGrain",
-   "to": "BlackSoldierFlyLarvae",
-   "type": "WASTECANBEPROCESSEDBY",
-   "props": {
-    "suitability": "very_high",
-    "preprocessing_required": [],
-    "note": "Excellent substrate for BSFL - high protein content",
-    "typical_diversion_rate": 0.9
-   }
-  },
-  {
-   "from": "FatsOilsGrease",
-   "to": "AnaerobicDigestion",
-   "type": "WASTECANBEPROCESSEDBY",
-   "props": {
-    "suitability": "high",
-    "preprocessing_required": [
-     "Pre-treatment for long-chain fatty acids"
-    ],
-    "typical_biogas_yield_m3_per_tonne": 1200.0,
-    "note": "High energy content - increases biogas production significantly",
-    "typical_diversion_rate": 0.98,
-    "max_loading_rate_percent": 5.0
-   }
-  },
-  {
-   "from": "FatsOilsGrease",
-   "to": "BiocharProduction",
-   "type": "WASTECANBEPROCESSEDBY",
-   "props": {
-    "suitability": "medium",
-    "preprocessing_required": [
-     "Dewatering",
-     "Drying"
-    ],
-    "note": "Specialized pyrolysis required for oily materials",
-    "typical_diversion_rate": 0.85
-   }
-  },
-  {
-   "from": "YardWaste",
-   "to": "BiocharProduction",
-   "type": "WASTECANBEPROCESSEDBY",
-   "props": {
-    "suitability": "very_high",
-    "preprocessing_required": [
-     "Drying",
-     "Size Reduction"
-    ],
-    "note": "Woody yard waste produces high-quality biochar",
-    "typical_diversion_rate": 0.9
-   }
-  },
-  {
-   "from": "AerobicComposting",
-   "to": "CompostAmendment",
-   "type": "PROCESSPRODUCESRESOURCE",
-   "props": {
-    "yield_tonnes_per_tonne_waste": 0.4,
-    "quality": "high",
-    "byproducts": [
-     "CO2",
-     "Water Vapor",
-     "Heat"
-    ],
-    "typical_uses": [
-     "Soil Amendment",
-     "Landscaping",
-     "Urban Agriculture"
-    ]
-   }
-  },
-  {
-   "from": "Vermicomposting",
-   "to": "CompostAmendment",
-   "type": "PROCESSPRODUCESRESOURCE",
-   "props": {
-    "yield_tonnes_per_tonne_waste": 0.35,
-    "quality": "very_high",
-    "byproducts": [
-     "CO2",
-     "Worm Castings"
-    ],
-    "typical_uses": [
-     "Potting Mix",
-     "Garden Amendment",
-     "High-Value Horticulture"
-    ]
-   }
-  },
-  {
-   "from": "AnaerobicDigestion",
-   "to": "Biogas",
-   "type": "PROCESSPRODUCESRESOURCE",
-   "props": {
-    "yield_m3_per_tonne_waste": 150.0,
-    "quality": "high",
-    "byproducts": [
-     "Digestate"
-    ],
-    "typical_uses": [
-     "Electricity Generation",
-     "Heating",
-     "Vehicle Fuel"
-    ]
-   }
-  },
-  {
-   "from": "AnaerobicDigestion",
-   "to": "DigestateFertilizer",
-   "type": "PROCESSPRODUCESRESOURCE",
-   "props": {
-    "yield_tonnes_per_tonne_waste": 0.9,
-    "quality": "medium",
-    "byproducts": [
-     "Biogas"
-    ],
-    "typical_uses": [
-     "Agricultural Fertilizer",
-     "Soil Amendment"
-    ]
-   }
-  },
-  {
-   "from": "BlackSoldierFlyLarvae",
-   "to": "AnimalFeed",
-   "type": "PROCESSPRODUCESRESOURCE",
-   "props": {
-    "yield_kg_per_tonne_waste": 150.0,
-    "quality": "high",
-    "byproducts": [
-     "Frass"
-    ],
-    "typical_uses": [
-     "Poultry Feed",
-     "Aquaculture Feed",
-     "Livestock Feed"
-    ]
-   }
-  },
-  {
-   "from": "BlackSoldierFlyLarvae",
-   "to": "Frass",
-   "type": "PROCESSPRODUCESRESOURCE",
-   "props": {
-    "yield_kg_per_tonne_waste": 850.0,
-    "quality": "high",
-    "byproducts": [
-     "Animal Feed"
-    ],
-    "typical_uses": [
-     "Organic Fertilizer",
-     "Soil Amendment",
-     "Plant Nutrient Source"
-    ]
-   }
-  },
-  {
-   "from": "BiocharProduction",
-   "to": "Biochar",
-   "type": "PROCESSPRODUCESRESOURCE",
-   "props": {
-    "yield_percent": 30.0,
-    "quality": "high",
-    "byproducts": [
-     "Syngas",
-     "Heat"
-    ],
-    "typical_uses": [
-     "Soil Amendment",
-     "Carbon Sequestration",
-     "Water Filtration"
-    ]
-   }
-  },
-  {
-   "from": "BiocharProduction",
-   "to": "Syngas",
-   "type": "PROCESSPRODUCESRESOURCE",
-   "props": {
-    "yield_percent": 40.0,
-    "quality": "medium",
-    "byproducts": [
-     "Biochar",
-     "Heat"
-    ],
-    "typical_uses": [
-     "Energy Generation",
-     "Chemical Feedstock"
-    ]
-   }
-  },
-  {
-   "from": "FACILITY-BK-COMPOST-01",
-   "to": "AerobicComposting",
-   "type": "FACILITYSUPPORTSPROCESS",
-   "props": {
-    "capacity_tonnes_per_year": 100000.0,
-    "number_of_lines": 4,
-    "technology": "Aerated Static Pile",
-    "operational_hours_per_day": 16,
-    "staff_required": 25
-   }
-  },
-  {
-   "from": "FACILITY-BK-COMPOST-01",
-   "to": "FoodScraps",
-   "type": "FACILITYACCEPTSWASTE",
-   "props": {
-    "accepted_volume_tonnes_per_year": 60000.0,
-    "contamination_limit_percent": 2.0,
-    "tipping_fee_per_tonne": 45.0,
-    "accepted_sources": [
-     "Residential",
-     "Commercial",
-     "Institutional"
-    ]
-   }
-  },
-  {
-   "from": "FACILITY-BK-COMPOST-01",
-   "to": "YardWaste",
-   "type": "FACILITYACCEPTSWASTE",
-   "props": {
-    "accepted_volume_tonnes_per_year": 40000.0,
-    "contamination_limit_percent": 5.0,
-    "tipping_fee_per_tonne": 35.0,
-    "accepted_sources": [
-     "Residential",
-     "Parks",
-     "Landscaping"
-    ]
-   }
-  },
-  {
-   "from": "AD_PLANT-QUEENS-02",
-   "to": "AnaerobicDigestion",
-   "type": "FACILITYSUPPORTSPROCESS",
-   "props": {
-    "capacity_tonnes_per_year": 200000.0,
-    "number_of_digestors": 3,
-    "technology": "Continuous Stirred Tank Reactor (CSTR)",
-    "operational_hours_per_day": 24,
-    "staff_required": 35,
-    "electricity_generation_capacity_mw": 5.0
-   }
-  },
-  {
-   "from": "AD_PLANT-QUEENS-02",
-   "to": "FoodScraps",
-   "type": "FACILITYACCEPTSWASTE",
-   "props": {
-    "accepted_volume_tonnes_per_year": 120000.0,
-    "contamination_limit_percent": 1.0,
-    "tipping_fee_per_tonne": 65.0,
-    "accepted_sources": [
-     "Commercial",
-     "Institutional",
-     "Food Processing"
-    ]
-   }
-  },
-  {
-   "from": "AD_PLANT-QUEENS-02",
-   "to": "FatsOilsGrease",
-   "type": "FACILITYACCEPTSWASTE",
-   "props": {
-    "accepted_volume_tonnes_per_year": 30000.0,
-    "contamination_limit_percent": 0.5,
-    "tipping_fee_per_tonne": 85.0,
-    "accepted_sources": [
-     "Restaurants",
-     "Food Processing",
-     "Grease Traps"
-    ]
-   }
-  },
-  {
-   "from": "AD_PLANT-QUEENS-02",
-   "to": "SpentGrain",
-   "type": "FACILITYACCEPTSWASTE",
-   "props": {
-    "accepted_volume_tonnes_per_year": 20000.0,
-    "contamination_limit_percent": 1.0,
-    "tipping_fee_per_tonne": 55.0,
-    "accepted_sources": [
-     "Breweries",
-     "Distilleries"
-    ]
-   }
-  },
-  {
-   "from": "BSFL_FARM-BRONX-01",
-   "to": "BlackSoldierFlyLarvae",
-   "type": "FACILITYSUPPORTSPROCESS",
-   "props": {
-    "capacity_tonnes_per_year": 50000.0,
-    "number_of_growing_rooms": 10,
-    "technology": "Automated BSFL Bioconversion",
-    "operational_hours_per_day": 24,
-    "staff_required": 15,
-    "larvae_production_tonnes_per_year": 7500.0
-   }
-  },
-  {
-   "from": "BSFL_FARM-BRONX-01",
-   "to": "FoodScraps",
-   "type": "FACILITYACCEPTSWASTE",
-   "props": {
-    "accepted_volume_tonnes_per_year": 40000.0,
-    "contamination_limit_percent": 0.1,
-    "tipping_fee_per_tonne": 80.0,
-    "accepted_sources": [
-     "Grocery Stores",
-     "Food Processing",
-     "Institutional Kitchens"
-    ],
-    "restricted_items": [
-     "Meat",
-     "Dairy",
-     "Oils",
-     "Salty Foods",
-     "Citrus"
-    ]
-   }
-  },
-  {
-   "from": "BSFL_FARM-BRONX-01",
-   "to": "CoffeeGrounds",
-   "type": "FACILITYACCEPTSWASTE",
-   "props": {
-    "accepted_volume_tonnes_per_year": 5000.0,
-    "contamination_limit_percent": 0.5,
-    "tipping_fee_per_tonne": 70.0,
-    "accepted_sources": [
-     "Coffee Shops",
-     "Offices",
-     "Households"
-    ]
-   }
-  },
-  {
-   "from": "BSFL_FARM-BRONX-01",
-   "to": "SpentGrain",
-   "type": "FACILITYACCEPTSWASTE",
-   "props": {
-    "accepted_volume_tonnes_per_year": 5000.0,
-    "contamination_limit_percent": 0.5,
-    "tipping_fee_per_tonne": 75.0,
-    "accepted_sources": [
-     "Breweries",
-     "Distilleries"
-    ]
-   }
-  },
-  {
-   "from": "BIOCHAR_PLANT-SI-01",
-   "to": "BiocharProduction",
-   "type": "FACILITYSUPPORTSPROCESS",
-   "props": {
-    "capacity_tonnes_per_year": 30000.0,
-    "number_of_pyrolysis_units": 2,
-    "technology": "Slow Pyrolysis",
-    "operational_hours_per_day": 20,
-    "staff_required": 10,
-    "biochar_production_tonnes_per_year": 9000.0
-   }
-  },
-  {
-   "from": "BIOCHAR_PLANT-SI-01",
-   "to": "YardWaste",
-   "type": "FACILITYACCEPTSWASTE",
-   "props": {
-    "accepted_volume_tonnes_per_year": 25000.0,
-    "contamination_limit_percent": 3.0,
-    "tipping_fee_per_tonne": 100.0,
-    "accepted_sources": [
-     "Parks",
-     "Landscaping",
-     "Tree Services"
-    ],
-    "preferred_materials": [
-     "Branches",
-     "Wood Chips",
-     "Leaves"
-    ]
-   }
-  },
-  {
-   "from": "CompostAmendment",
-   "to": "UrbanFarm",
-   "type": "RESOURCEDEMANDEDBY_ACTOR",
-   "props": {
-    "annual_demand_tonnes": 25000.0,
-    "demand_frequency": "seasonal",
-    "quality_requirements": "Grade A or B",
-    "delivery_preference": [
-     "Bulk",
-     "Bagged"
-    ],
-    "willing_to_pay_per_tonne": 80.0
-   }
-  },
-  {
-   "from": "CompostAmendment",
-   "to": "NYCUrbanAgriculture",
-   "type": "RESOURCEDEMANDEDBY_ACTOR",
-   "props": {
-    "annual_demand_tonnes": 50000.0,
-    "demand_frequency": "annual",
-    "quality_requirements": "Grade A",
-    "delivery_preference": [
-     "Bulk"
-    ],
-    "willing_to_pay_per_tonne": 60.0
-   }
-  },
-  {
-   "from": "Biogas",
-   "to": "Waste_Processor",
-   "type": "RESOURCEDEMANDEDBY_ACTOR",
-   "props": {
-    "annual_demand_m3": 30000000.0,
-    "demand_frequency": "continuous",
-    "quality_requirements": "Minimum 55% methane",
-    "delivery_preference": [
-     "Pipeline"
-    ],
-    "willing_to_pay_per_m3": 0.45
-   }
-  },
-  {
-   "from": "DigestateFertilizer",
-   "to": "UrbanFarm",
-   "type": "RESOURCEDEMANDEDBY_ACTOR",
-   "props": {
-    "annual_demand_tonnes": 15000.0,
-    "demand_frequency": "seasonal",
-    "quality_requirements": "Pathogen-free",
-    "delivery_preference": [
-     "Liquid Tanker",
-     "Bulk"
-    ],
-    "willing_to_pay_per_tonne": 40.0
-   }
-  },
-  {
-   "from": "AnimalFeed",
-   "to": "Waste_Processor",
-   "type": "RESOURCEDEMANDEDBY_ACTOR",
-   "props": {
-    "annual_demand_tonnes": 5000.0,
-    "demand_frequency": "monthly",
-    "quality_requirements": "Grade A, protein > 40%",
-    "delivery_preference": [
-     "Bagged",
-     "Bulk"
-    ],
-    "willing_to_pay_per_tonne": 1200.0
-   }
-  },
-  {
-   "from": "Frass",
-   "to": "UrbanFarm",
-   "type": "RESOURCEDEMANDEDBY_ACTOR",
-   "props": {
-    "annual_demand_tonnes": 5000.0,
-    "demand_frequency": "seasonal",
-    "quality_requirements": "Grade A",
-    "delivery_preference": [
-     "Bagged"
-    ],
-    "willing_to_pay_per_tonne": 200.0
-   }
-  },
-  {
-   "from": "Biochar",
-   "to": "Waste_Processor",
-   "type": "RESOURCEDEMANDEDBY_ACTOR",
-   "props": {
-    "annual_demand_tonnes": 3000.0,
-    "demand_frequency": "quarterly",
-    "quality_requirements": "Grade A, carbon content > 65%",
-    "delivery_preference": [
-     "Bagged",
-     "Bulk"
-    ],
-    "willing_to_pay_per_tonne": 500.0
-   }
-  },
-  {
-   "from": "NYCRegulationOrganicWaste",
-   "to": "FoodScraps",
-   "type": "CONSTRAINTAPPLIESTO",
-   "props": {
-    "requirement": "Mandatory separation",
-    "threshold_tonnes_per_year": 1.0,
-    "compliance_deadline": "2025-01-01"
-   }
-  },
-  {
-   "from": "NYCRegulationOrganicWaste",
-   "to": "YardWaste",
-   "type": "CONSTRAINTAPPLIESTO",
-   "props": {
-    "requirement": "Mandatory separation",
-    "threshold_tonnes_per_year": 1.0,
-    "compliance_deadline": "2025-01-01"
-   }
-  },
-  {
-   "from": "OdorControlRequirement",
-   "to": "AerobicComposting",
-   "type": "CONSTRAINTAPPLIESTO",
-   "props": {
-    "requirement": "Biofilter or equivalent odor control",
-    "monitoring": "Continuous",
-    "compliance_certificate_required": true
-   }
-  },
-  {
-   "from": "OdorControlRequirement",
-   "to": "AnaerobicDigestion",
-   "type": "CONSTRAINTAPPLIESTO",
-   "props": {
-    "requirement": "Enclosed processing with gas collection",
-    "monitoring": "Continuous",
-    "compliance_certificate_required": true
-   }
-  },
-  {
-   "from": "HeavyMetal_Limit",
-   "to": "CompostAmendment",
-   "type": "CONSTRAINTAPPLIESTO",
-   "props": {
-    "requirement": "Must meet NYSDEC Part 360 standards",
-    "testing_frequency": "Annual",
-    "source_materials": "Source-separated organics only"
-   }
-  },
-  {
-   "from": "HeavyMetal_Limit",
-   "to": "DigestateFertilizer",
-   "type": "CONSTRAINTAPPLIESTO",
-   "props": {
-    "requirement": "Must meet NYSDEC Part 360 standards",
-    "testing_frequency": "Annual",
-    "source_materials": "Source-separated organics only"
-   }
-  },
-  {
-   "from": "HeavyMetal_Limit",
-   "to": "FACILITY-BK-COMPOST-01",
-   "type": "CONSTRAINTAPPLIESTO",
-   "props": {
-    "requirement": "Input materials must be tested",
-    "testing_frequency": "Quarterly",
-    "record_keeping": "5 years"
-   }
-  },
-  {
-   "from": "DSNY",
-   "to": "FACILITY-BK-COMPOST-01",
-   "type": "ACTOROPERATESFACILITY",
-   "props": {
-    "relationship": "Direct operation",
-    "contract_type": "Municipal",
-    "funding_source": "City budget"
-   }
-  },
-  {
-   "from": "PrivateHauler",
-   "to": "AD_PLANT-QUEENS-02",
-   "type": "ACTOROPERATESFACILITY",
-   "props": {
-    "relationship": "Private operation",
-    "contract_type": "Concession",
-    "funding_source": "Private investment"
-   }
-  },
-  {
-   "from": "PrivateHauler",
-   "to": "BSFL_FARM-BRONX-01",
-   "type": "ACTOROPERATESFACILITY",
-   "props": {
-    "relationship": "Private operation",
-    "contract_type": "Private",
-    "funding_source": "Private investment"
-   }
-  },
-  {
-   "from": "PrivateHauler",
-   "to": "BIOCHAR_PLANT-SI-01",
-   "type": "ACTOROPERATESFACILITY",
-   "props": {
-    "relationship": "Private operation",
-    "contract_type": "Private",
-    "funding_source": "Private investment"
-   }
-  },
-  {
-   "from": "ResidentialOrganicsBrooklyn",
-   "to": "FoodScraps",
-   "type": "WASTESTREAMHASWASTETYPE",
-   "props": {
-    "percentage": 70.0,
-    "seasonal_variation": "Higher in summer months"
-   }
-  },
-  {
-   "from": "ResidentialOrganicsBrooklyn",
-   "to": "YardWaste",
-   "type": "WASTESTREAMHASWASTETYPE",
-   "props": {
-    "percentage": 30.0,
-    "seasonal_variation": "Higher in fall months"
-   }
-  },
-  {
-   "from": "RestaurantFoodWaste_Downtown",
-   "to": "FoodScraps",
-   "type": "WASTESTREAMHASWASTETYPE",
-   "props": {
-    "percentage": 95.0,
-    "contamination_risk": "medium"
-   }
-  },
-  {
-   "from": "RestaurantFoodWaste_Downtown",
-   "to": "FatsOilsGrease",
-   "type": "WASTESTREAMHASWASTETYPE",
-   "props": {
-    "percentage": 5.0,
-    "contamination_risk": "high"
-   }
-  }
- ]
+    {
+      "id": "DigestateFertilizer",
+      "type": "Resource",
+      "name": "Digestate Fertilizer",
+      "desc": "Nutrient-rich byproduct of anaerobic digestion, used as organic fertilizer for agricultural crops.",
+      "detail": {
+        "economic_value_per_tonne": 50.0,
+        "market_demand": "high",
+        "quality_grade": "A",
+        "nutrient_content": {
+          "nitrogen": 4.0,
+          "phosphorus": 2.0,
+          "potassium": 1.5,
+          "ammonia_nitrogen": 2.5
+        },
+        "dry_matter_percent": 5.0,
+        "ph": 8.0,
+        "application_methods": [
+          "Injection",
+          "Broadcast",
+          "Irrigation"
+        ]
+      }
+    },
+    {
+      "id": "AnimalFeed",
+      "type": "Resource",
+      "name": "Animal Feed (Insect Protein)",
+      "desc": "High-protein animal feed produced from black soldier fly larvae, used for poultry, aquaculture, and livestock.",
+      "detail": {
+        "economic_value_per_tonne": 1200.0,
+        "market_demand": "very_high",
+        "quality_grade": "A",
+        "protein_content_percent": 45.0,
+        "fat_content_percent": 30.0,
+        "digestibility_percent": 90.0,
+        "target_animals": [
+          "Chickens",
+          "Fish",
+          "Pigs",
+          "Cattle"
+        ],
+        "shelf_life_months": 6.0
+      }
+    },
+    {
+      "id": "Frass",
+      "type": "Resource",
+      "name": "Frass (Insect Manure)",
+      "desc": "Organic fertilizer produced as a byproduct of black soldier fly larvae digestion, rich in nutrients and beneficial microorganisms.",
+      "detail": {
+        "economic_value_per_tonne": 200.0,
+        "market_demand": "high",
+        "quality_grade": "A",
+        "nutrient_content": {
+          "nitrogen": 3.5,
+          "phosphorus": 2.5,
+          "potassium": 1.8
+        },
+        "organic_matter_percent": 35.0,
+        "ph": 7.2,
+        "beneficial_microbes": true
+      }
+    },
+    {
+      "id": "Biochar",
+      "type": "Resource",
+      "name": "Biochar",
+      "desc": "Stable carbon-rich material produced through pyrolysis, used for soil amendment, carbon sequestration, and water filtration.",
+      "detail": {
+        "economic_value_per_tonne": 500.0,
+        "market_demand": "growing",
+        "quality_grade": "A",
+        "carbon_content_percent": 70.0,
+        "surface_area_m2_per_g": 300.0,
+        "ph": 9.0,
+        "carbon_sequestration_stability": "1000+ years",
+        "application_rate_tonnes_per_hectare": 2.0,
+        "water_retention_improvement_percent": 20.0
+      }
+    },
+    {
+      "id": "Syngas",
+      "type": "Resource",
+      "name": "Syngas",
+      "desc": "Synthesis gas produced during pyrolysis, composed primarily of hydrogen, carbon monoxide, and carbon dioxide. Can be used for energy generation or as a chemical feedstock.",
+      "detail": {
+        "economic_value_per_tonne": 300.0,
+        "market_demand": "medium",
+        "quality_grade": "B",
+        "energy_content_mj_per_kg": 15.0,
+        "composition": {
+          "hydrogen": 15.0,
+          "carbon_monoxide": 25.0,
+          "carbon_dioxide": 10.0,
+          "methane": 5.0,
+          "other": 45.0
+        },
+        "can_be_used_for_heat": true,
+        "can_be_used_for_power": true
+      }
+    },
+    {
+      "id": "FACILITY-BK-COMPOST-01",
+      "type": "Facility",
+      "name": "Brooklyn Composting Facility 01",
+      "desc": "Large-scale aerobic composting facility in Brooklyn, processing residential and commercial organic waste.",
+      "detail": {
+        "location": {
+          "latitude": 40.6782,
+          "longitude": -73.9442,
+          "borough": "Brooklyn",
+          "neighborhood": "Red Hook"
+        },
+        "capacity_tonnes_per_year": 100000.0,
+        "operational_status": "active",
+        "contact_info": "info@brooklyncompost.nyc.gov",
+        "year_commissioned": 2018,
+        "technology": "Aerated Static Pile",
+        "processing_fee_per_tonne": 45.0,
+        "current_utilization_percent": 85.0
+      }
+    },
+    {
+      "id": "AD_PLANT-QUEENS-02",
+      "type": "Facility",
+      "name": "Queens Anaerobic Digestion Plant 02",
+      "desc": "Advanced anaerobic digestion facility in Queens, producing biogas and digestate fertilizer from organic waste.",
+      "detail": {
+        "location": {
+          "latitude": 40.7484,
+          "longitude": -73.8968,
+          "borough": "Queens",
+          "neighborhood": "Maspeth"
+        },
+        "capacity_tonnes_per_year": 200000.0,
+        "operational_status": "active",
+        "contact_info": "operations@queensad.nyc.gov",
+        "year_commissioned": 2020,
+        "technology": "Continuous Stirred Tank Reactor (CSTR)",
+        "processing_fee_per_tonne": 65.0,
+        "current_utilization_percent": 70.0,
+        "biogas_to_grid_connection": true,
+        "electricity_generation_capacity_mw": 5.0
+      }
+    },
+    {
+      "id": "BSFL_FARM-BRONX-01",
+      "type": "Facility",
+      "name": "Bronx Black Soldier Fly Farm 01",
+      "desc": "Innovative insect-based waste processing facility using black soldier fly larvae to convert organic waste into protein and fertilizer.",
+      "detail": {
+        "location": {
+          "latitude": 40.8442,
+          "longitude": -73.8681,
+          "borough": "Bronx",
+          "neighborhood": "Hunts Point"
+        },
+        "capacity_tonnes_per_year": 50000.0,
+        "operational_status": "active",
+        "contact_info": "contact@bsflbronx.com",
+        "year_commissioned": 2022,
+        "technology": "Automated BSFL Bioconversion",
+        "processing_fee_per_tonne": 80.0,
+        "current_utilization_percent": 60.0,
+        "larvae_production_capacity_tonnes_per_year": 7500.0,
+        "frass_production_capacity_tonnes_per_year": 37500.0
+      }
+    },
+    {
+      "id": "BIOCHAR_PLANT-SI-01",
+      "type": "Facility",
+      "name": "Staten Island Biochar Plant 01",
+      "desc": "Pyrolysis facility producing biochar and syngas from woody biomass and organic waste.",
+      "detail": {
+        "location": {
+          "latitude": 40.6413,
+          "longitude": -74.1457,
+          "borough": "Staten Island",
+          "neighborhood": "Port Richmond"
+        },
+        "capacity_tonnes_per_year": 30000.0,
+        "operational_status": "active",
+        "contact_info": "admin@sibiochar.com",
+        "year_commissioned": 2021,
+        "technology": "Slow Pyrolysis",
+        "processing_fee_per_tonne": 100.0,
+        "current_utilization_percent": 55.0,
+        "biochar_production_capacity_tonnes_per_year": 9000.0,
+        "syngas_production_capacity_m3_per_year": 21000000.0
+      }
+    },
+    {
+      "id": "NYCRegulationOrganicWaste",
+      "type": "Constraint",
+      "name": "NYC Local Law 146 - Organic Waste Separation",
+      "desc": "NYC law requiring certain businesses to separate organic waste for composting or anaerobic digestion. Applies to food service establishments, retail food stores, and food manufacturers with annual organic waste exceeding 1 ton.",
+      "detail": {
+        "constraint_type": "regulatory",
+        "severity": "high",
+        "jurisdiction": "New York City",
+        "effective_date": "2024-07-01",
+        "applies_to": [
+          "Food Service Establishments",
+          "Retail Food Stores",
+          "Food Manufacturers"
+        ],
+        "threshold_tonnes_per_year": 1.0,
+        "penalty_for_non_compliance": "$250-$1000 per violation",
+        "reporting_requirements": "quarterly"
+      }
+    },
+    {
+      "id": "OdorControlRequirement",
+      "type": "Constraint",
+      "name": "Odor Control Requirement",
+      "desc": "Environmental regulation requiring organic waste processing facilities to implement odor control measures to prevent nuisance conditions.",
+      "detail": {
+        "constraint_type": "environmental",
+        "severity": "medium",
+        "jurisdiction": "New York State",
+        "applies_to": [
+          "Composting Facilities",
+          "Anaerobic Digestion Plants"
+        ],
+        "odor_standards": "NYSDEC Part 211",
+        "required_controls": [
+          "Biofilters",
+          "Activated Carbon",
+          "Negative Air Pressure",
+          "Enclosed Processing"
+        ],
+        "monitoring_requirements": "continuous"
+      }
+    },
+    {
+      "id": "HeavyMetal_Limit",
+      "type": "Constraint",
+      "name": "Heavy Metal Limits for Compost and Digestate",
+      "desc": "Regulatory limits on heavy metal concentrations in compost and digestate products used for land application.",
+      "detail": {
+        "constraint_type": "regulatory",
+        "severity": "high",
+        "jurisdiction": "New York State",
+        "applies_to": [
+          "Compost Products",
+          "Digestate Fertilizer"
+        ],
+        "maximum_concentrations_mg_per_kg": {
+          "arsenic": 41.0,
+          "cadmium": 39.0,
+          "chromium": 1200.0,
+          "lead": 300.0,
+          "mercury": 17.0,
+          "nickel": 420.0,
+          "selenium": 36.0,
+          "zinc": 2800.0
+        },
+        "testing_frequency": "annual",
+        "source_materials_restrictions": "Source-separated organics only"
+      }
+    },
+    {
+      "id": "DSNY",
+      "type": "Actor",
+      "name": "NYC Department of Sanitation (DSNY)",
+      "desc": "New York City's municipal agency responsible for waste collection, recycling, and disposal services. Manages curbside organics collection program.",
+      "detail": {
+        "actor_type": "government",
+        "scale": "city",
+        "website": "https://www.nyc.gov/sanitation",
+        "contact": "311",
+        "annual_budget_millions": 1500.0,
+        "employees": 7200,
+        "services": [
+          "Waste Collection",
+          "Recycling",
+          "Organics Collection",
+          "Street Cleaning",
+          "Snow Removal"
+        ],
+        "organics_collection_coverage": "All 5 boroughs"
+      }
+    },
+    {
+      "id": "PrivateHauler",
+      "type": "Actor",
+      "name": "Private Waste Hauler",
+      "desc": "Licensed private companies that provide waste collection and transportation services to commercial businesses and institutions in NYC.",
+      "detail": {
+        "actor_type": "private",
+        "scale": "city",
+        "number_of_companies": 250,
+        "services": [
+          "Commercial Waste Collection",
+          "Organics Collection",
+          "Recycling",
+          "Waste Transportation"
+        ],
+        "regulation": "NYC Business Integrity Commission",
+        "typical_contract_length": "3-5 years"
+      }
+    },
+    {
+      "id": "UrbanFarm",
+      "type": "Actor",
+      "name": "Urban Farm",
+      "desc": "Community-based agricultural operations in urban areas that use compost and digestate products to grow food for local consumption.",
+      "detail": {
+        "actor_type": "community",
+        "scale": "neighborhood",
+        "number_in_nyc": 600,
+        "primary_needs": [
+          "Compost",
+          "Soil Amendments",
+          "Water",
+          "Seeds",
+          "Labor"
+        ],
+        "production_types": [
+          "Vegetables",
+          "Herbs",
+          "Fruits",
+          "Flowers"
+        ],
+        "distribution_models": [
+          "Farmers Markets",
+          "CSA",
+          "Donation",
+          "Restaurant Supply"
+        ]
+      }
+    },
+    {
+      "id": "Waste_Processor",
+      "type": "Actor",
+      "name": "Waste Processor",
+      "desc": "Companies and facilities that process organic waste into value-added products such as compost, biogas, and animal feed.",
+      "detail": {
+        "actor_type": "private",
+        "scale": "regional",
+        "services": [
+          "Composting",
+          "Anaerobic Digestion",
+          "BSFL Processing",
+          "Biochar Production"
+        ],
+        "certifications": [
+          "USCC",
+          "OMRI",
+          "NYSDEC"
+        ],
+        "typical_processing_fee": "$40-$100 per tonne",
+        "end_products": [
+          "Compost",
+          "Biogas",
+          "Digestate",
+          "Animal Feed",
+          "Biochar"
+        ]
+      }
+    },
+    {
+      "id": "NYCUrbanAgriculture",
+      "type": "Actor",
+      "name": "NYC Urban Agriculture Initiative",
+      "desc": "City program supporting urban agriculture through access to land, resources, and technical assistance.",
+      "detail": {
+        "actor_type": "government",
+        "scale": "city",
+        "website": "https://www.nyc.gov/urbanag",
+        "programs": [
+          "Community Garden Support",
+          "Urban Farm Grants",
+          "Soil Testing",
+          "Compost Distribution"
+        ],
+        "annual_compost_needs_tonnes": 50000.0,
+        "participating_sites": 1200
+      }
+    },
+    {
+      "id": "ResidentialOrganicsCitywide",
+      "label": "Residential Organics \u2014 Citywide",
+      "type": "Waste_Stream",
+      "desc": "Mandatory curbside organics for all NYC residents: weekly pickup on the recycling day, all five boroughs, brown or labelled bin up to 55 gallons. This is the public programme, distinct from the Brooklyn sample stream.",
+      "detail": {
+        "collection_frequency": "weekly, on recycling day",
+        "host_type": "residential, DSNY-collected",
+        "coverage": "all five boroughs",
+        "source": "DSNY curbside composting page, nyc.gov/site/dsny/collection/residents/curbside-composting.page",
+        "mandate": "Zero Waste Act, citywide rollout completed 7 Oct 2024; fines possible from 1 Apr 2025"
+      }
+    },
+    {
+      "id": "CommercialOrganicsLL146",
+      "label": "Commercial Organics \u2014 Large Generators (LL146)",
+      "type": "Waste_Stream",
+      "desc": "Back-of-house organics from large covered establishments under Local Law 146 of 2013 only \u2014 not all commercial food waste. Collected by a BIC-licensed private carter, BIC-registered self-haul, or DSNY-registered on-site processing; DSNY does not collect commercial waste.",
+      "detail": {
+        "collection_frequency": "varies by carter contract",
+        "host_type": "commercial, privately hauled",
+        "source": "DSNY commercial organics requirements page",
+        "regulation": "Local Law 146 of 2013"
+      }
+    },
+    {
+      "id": "CommunityFoodScraps",
+      "label": "Community Food Scraps (Drop-off / Smart Bin)",
+      "type": "Waste_Stream",
+      "desc": "Food scraps taken to community drop-offs and DSNY Smart Compost Bins. Community sites typically accept fruit and vegetable scraps only \u2014 stricter than curbside, which accepts meat, bones and dairy. Smart Bin tonnage is not reported separately from school-truck tonnage.",
+      "detail": {
+        "collection_frequency": "drop-off hours vary by site",
+        "host_type": "community / nonprofit, public drop-off",
+        "source": "DSNY Food Scrap Drop-Off Locations dataset if26-z6xq; DSNY drop-off page",
+        "accepted_at_community_sites": "fruit and vegetable scraps only, typically"
+      }
+    },
+    {
+      "id": "SICF_StatenIsland",
+      "label": "Staten Island Compost Facility",
+      "type": "Facility",
+      "desc": "DSNY-owned, Denali-operated aerobic composting facility at 450 West Service Road, Staten Island (DSNY page gives ZIP 10313, DEC annual report gives 10314 \u2014 verify ZIP before geocoding). Produces STA-certified compost; bulk sale, free bulk to agencies/nonprofits, and 40-lb giveback bags.",
+      "detail": {
+        "location": {
+          "latitude": 40.5795,
+          "longitude": -74.1502,
+          "borough": "Staten Island",
+          "address": "450 West Service Rd, Staten Island (entrance 600 West Service Rd)"
+        },
+        "operational_status": "active",
+        "technology": "Aerobic composting",
+        "source": "DSNY Staten Island Compost Facility page; NYSDEC facility annual report 2024",
+        "output": "STA-certified compost"
+      }
+    },
+    {
+      "id": "NewtownCreekAD",
+      "label": "Newtown Creek Wastewater Resource Recovery Facility",
+      "type": "Facility",
+      "desc": "DEP-operated wastewater facility at 329 Greenpoint Avenue, Brooklyn. Anaerobic co-digestion of pre-processed food scraps and fats/oils/grease since 2016, about 250 tonnes per day. Output is biogas / renewable natural gas plus digestate \u2014 NOT finished garden compost.",
+      "detail": {
+        "location": {
+          "latitude": 40.7317,
+          "longitude": -73.9534,
+          "borough": "Brooklyn",
+          "address": "329 Greenpoint Ave, Brooklyn"
+        },
+        "operational_status": "active",
+        "technology": "Anaerobic co-digestion",
+        "source": "NYSDEC completed application notice; DEP presentation slides",
+        "output": "biogas/RNG + digestate, not compost"
+      }
+    },
+    {
+      "id": "SoundviewYardCompost",
+      "label": "Soundview Park Yard Waste Compost Facility",
+      "type": "Facility",
+      "desc": "DSNY-owned, Denali-operated yard-waste-only composting site at Soundview Park, Randall Avenue, Bronx. Seasonal; it does not take food scraps.",
+      "detail": {
+        "location": {
+          "borough": "Bronx",
+          "address": "Soundview Park, Randall Ave, Bronx"
+        },
+        "operational_status": "active",
+        "technology": "Aerobic composting, yard waste only",
+        "source": "NYSDEC facility annual report 2024"
+      }
+    },
+    {
+      "id": "EarthMatterCommunity",
+      "label": "Earth Matter NY (Governors Island)",
+      "type": "Facility",
+      "desc": "Community composting site on Governors Island, NYSDEC-registered, up to 600 tonnes per year. Finished compost (over 250 cubic yards per year) goes to Governors Island partners, NYC Parks, GreenThumb community gardens and street trees \u2014 used locally, with no public facility-to-garden consignment ledger.",
+      "detail": {
+        "location": {
+          "borough": "Manhattan",
+          "address": "Governors Island"
+        },
+        "operational_status": "active",
+        "technology": "Aerobic composting, community scale",
+        "source": "Earth Matter NY community compost network page",
+        "output": "finished compost, local use"
+      }
+    },
+    {
+      "id": "CommunityGarden",
+      "label": "Community Garden",
+      "type": "Actor",
+      "desc": "A community garden receiving compost for soil building, including via DSNY GetCompost giveback bags and community compost sites. Demand is seasonal and site-specific; no public dataset records tonnes received per garden.",
+      "detail": {
+        "actor_type": "community",
+        "scale": "neighbourhood",
+        "source": "DSNY GetCompost programme; NYC Parks GreenThumb",
+        "demand": "compost, seasonal"
+      }
+    },
+    {
+      "id": "GetCompostDistribution",
+      "label": "DSNY GetCompost Giveback",
+      "type": "Actor",
+      "desc": "DSNY programme returning finished compost in 40-pound bags at six fixed 2026 sites (Bronx 570 Zerega Ave; Brooklyn 459 N Henry St; Manhattan 2442 1st Ave; Queens East 235-69 Hillside Ave; Queens West 77-28 19th Ave; Staten Island 600 West Service Rd) plus pop-ups, and in bulk free to agencies and nonprofits.",
+      "detail": {
+        "actor_type": "government programme",
+        "scale": "city",
+        "source": "DSNY Staten Island Compost Facility page; DSNY GetCompost",
+        "distribution": "40-lb bags at fixed sites + bulk to agencies/nonprofits"
+      }
+    },
+    {
+      "id": "RNG",
+      "label": "Renewable Natural Gas (RNG)",
+      "type": "Resource",
+      "desc": "Biogas from anaerobic digestion, purified to pipeline-quality renewable natural gas for the gas grid (the Newtown Creek route). WARM electricity-offset factors do not apply to RNG-to-grid displacement \u2014 do not substitute them.",
+      "detail": {
+        "economic_value_per_tonne": "not priced in this sample",
+        "market_demand": "grid gas",
+        "quality_grade": "pipeline quality after purification",
+        "source": "DEP / WM CORe commentary on Newtown Creek biogas"
+      }
+    },
+    {
+      "id": "ZeroWasteActOrganics",
+      "label": "Zero Waste Act \u2014 Mandatory Curbside Organics",
+      "type": "Constraint",
+      "desc": "Citywide mandatory curbside organics programme: at least 30 sanitation districts by 2 Oct 2023, all districts by 7 Oct 2024. Weekly collection on the recycling day. Enforcement fines were possible from 1 Apr 2025, with a pause and low-level resumption in 2026 \u2014 do not model enforcement as continuous.",
+      "detail": {
+        "constraint_type": "regulatory",
+        "severity": "high",
+        "jurisdiction": "New York City",
+        "effective_date": "2024-10-07",
+        "source": "NYC Admin Code 16-308.1 (Intro 244-A); DSNY curbside page; IBO Apr 2026"
+      }
+    },
+    {
+      "id": "CommercialWasteZones",
+      "label": "Commercial Waste Zones (LL199)",
+      "type": "Constraint",
+      "desc": "Commercial waste zoning under Local Law 199 of 2019: 20 zones, up to three competitively selected carters each, citywide completion targeted 31 Dec 2027. Carter GPS and tonnage reporting is contractual; its public-release status is unstated, so it is not modelled as open data here.",
+      "detail": {
+        "constraint_type": "regulatory",
+        "severity": "high",
+        "jurisdiction": "New York City",
+        "source": "DSNY commercial waste zones programme; Local Law 199 of 2019",
+        "zones": 20
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "FoodScraps",
+      "to": "AerobicComposting",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "high",
+        "preprocessing_required": [
+          "Contaminant Removal",
+          "Size Reduction"
+        ],
+        "optimal_c_n_ratio": 25.0,
+        "typical_diversion_rate": 0.85
+      }
+    },
+    {
+      "from": "FoodScraps",
+      "to": "AnaerobicDigestion",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "very_high",
+        "preprocessing_required": [
+          "Contaminant Removal",
+          "Grinding",
+          "Slurry Preparation"
+        ],
+        "typical_biogas_yield_m3_per_tonne": 180.0,
+        "typical_diversion_rate": 0.9
+      }
+    },
+    {
+      "from": "FoodScraps",
+      "to": "BlackSoldierFlyLarvae",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "high",
+        "preprocessing_required": [
+          "Contaminant Removal"
+        ],
+        "optimal_waste_types": [
+          "Fruits",
+          "Vegetables",
+          "Grains",
+          "Coffee Grounds"
+        ],
+        "avoid": [
+          "Meat",
+          "Dairy",
+          "Oils",
+          "Salty Foods"
+        ],
+        "typical_diversion_rate": 0.75
+      }
+    },
+    {
+      "from": "YardWaste",
+      "to": "AerobicComposting",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "very_high",
+        "preprocessing_required": [
+          "Size Reduction",
+          "Leaf Removal"
+        ],
+        "optimal_c_n_ratio": 30.0,
+        "typical_diversion_rate": 0.95
+      }
+    },
+    {
+      "from": "YardWaste",
+      "to": "Vermicomposting",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "medium",
+        "preprocessing_required": [
+          "Size Reduction",
+          "Partial Composting"
+        ],
+        "optimal_mix_ratio": "50% yard waste, 50% food scraps",
+        "typical_diversion_rate": 0.8
+      }
+    },
+    {
+      "from": "CoffeeGrounds",
+      "to": "AerobicComposting",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "high",
+        "preprocessing_required": [
+          "Contaminant Removal"
+        ],
+        "note": "High nitrogen content - mix with carbon-rich materials",
+        "typical_diversion_rate": 0.9
+      }
+    },
+    {
+      "from": "CoffeeGrounds",
+      "to": "BlackSoldierFlyLarvae",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "high",
+        "preprocessing_required": [
+          "Drying recommended"
+        ],
+        "note": "BSFL can consume coffee grounds directly",
+        "typical_diversion_rate": 0.8
+      }
+    },
+    {
+      "from": "SpentGrain",
+      "to": "AnaerobicDigestion",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "very_high",
+        "preprocessing_required": [
+          "Size Reduction"
+        ],
+        "typical_biogas_yield_m3_per_tonne": 250.0,
+        "note": "High organic load - excellent for AD",
+        "typical_diversion_rate": 0.95
+      }
+    },
+    {
+      "from": "SpentGrain",
+      "to": "BlackSoldierFlyLarvae",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "very_high",
+        "preprocessing_required": [],
+        "note": "Excellent substrate for BSFL - high protein content",
+        "typical_diversion_rate": 0.9
+      }
+    },
+    {
+      "from": "FatsOilsGrease",
+      "to": "AnaerobicDigestion",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "high",
+        "preprocessing_required": [
+          "Pre-treatment for long-chain fatty acids"
+        ],
+        "typical_biogas_yield_m3_per_tonne": 1200.0,
+        "note": "High energy content - increases biogas production significantly",
+        "typical_diversion_rate": 0.98,
+        "max_loading_rate_percent": 5.0
+      }
+    },
+    {
+      "from": "FatsOilsGrease",
+      "to": "BiocharProduction",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "medium",
+        "preprocessing_required": [
+          "Dewatering",
+          "Drying"
+        ],
+        "note": "Specialized pyrolysis required for oily materials",
+        "typical_diversion_rate": 0.85
+      }
+    },
+    {
+      "from": "YardWaste",
+      "to": "BiocharProduction",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "very_high",
+        "preprocessing_required": [
+          "Drying",
+          "Size Reduction"
+        ],
+        "note": "Woody yard waste produces high-quality biochar",
+        "typical_diversion_rate": 0.9
+      }
+    },
+    {
+      "from": "AerobicComposting",
+      "to": "CompostAmendment",
+      "type": "PROCESSPRODUCESRESOURCE",
+      "props": {
+        "yield_tonnes_per_tonne_waste": 0.4,
+        "quality": "high",
+        "byproducts": [
+          "CO2",
+          "Water Vapor",
+          "Heat"
+        ],
+        "typical_uses": [
+          "Soil Amendment",
+          "Landscaping",
+          "Urban Agriculture"
+        ]
+      }
+    },
+    {
+      "from": "Vermicomposting",
+      "to": "CompostAmendment",
+      "type": "PROCESSPRODUCESRESOURCE",
+      "props": {
+        "yield_tonnes_per_tonne_waste": 0.35,
+        "quality": "very_high",
+        "byproducts": [
+          "CO2",
+          "Worm Castings"
+        ],
+        "typical_uses": [
+          "Potting Mix",
+          "Garden Amendment",
+          "High-Value Horticulture"
+        ]
+      }
+    },
+    {
+      "from": "AnaerobicDigestion",
+      "to": "Biogas",
+      "type": "PROCESSPRODUCESRESOURCE",
+      "props": {
+        "yield_m3_per_tonne_waste": 150.0,
+        "quality": "high",
+        "byproducts": [
+          "Digestate"
+        ],
+        "typical_uses": [
+          "Electricity Generation",
+          "Heating",
+          "Vehicle Fuel"
+        ]
+      }
+    },
+    {
+      "from": "AnaerobicDigestion",
+      "to": "DigestateFertilizer",
+      "type": "PROCESSPRODUCESRESOURCE",
+      "props": {
+        "yield_tonnes_per_tonne_waste": 0.9,
+        "quality": "medium",
+        "byproducts": [
+          "Biogas"
+        ],
+        "typical_uses": [
+          "Agricultural Fertilizer",
+          "Soil Amendment"
+        ]
+      }
+    },
+    {
+      "from": "BlackSoldierFlyLarvae",
+      "to": "AnimalFeed",
+      "type": "PROCESSPRODUCESRESOURCE",
+      "props": {
+        "yield_kg_per_tonne_waste": 150.0,
+        "quality": "high",
+        "byproducts": [
+          "Frass"
+        ],
+        "typical_uses": [
+          "Poultry Feed",
+          "Aquaculture Feed",
+          "Livestock Feed"
+        ]
+      }
+    },
+    {
+      "from": "BlackSoldierFlyLarvae",
+      "to": "Frass",
+      "type": "PROCESSPRODUCESRESOURCE",
+      "props": {
+        "yield_kg_per_tonne_waste": 850.0,
+        "quality": "high",
+        "byproducts": [
+          "Animal Feed"
+        ],
+        "typical_uses": [
+          "Organic Fertilizer",
+          "Soil Amendment",
+          "Plant Nutrient Source"
+        ]
+      }
+    },
+    {
+      "from": "BiocharProduction",
+      "to": "Biochar",
+      "type": "PROCESSPRODUCESRESOURCE",
+      "props": {
+        "yield_percent": 30.0,
+        "quality": "high",
+        "byproducts": [
+          "Syngas",
+          "Heat"
+        ],
+        "typical_uses": [
+          "Soil Amendment",
+          "Carbon Sequestration",
+          "Water Filtration"
+        ]
+      }
+    },
+    {
+      "from": "BiocharProduction",
+      "to": "Syngas",
+      "type": "PROCESSPRODUCESRESOURCE",
+      "props": {
+        "yield_percent": 40.0,
+        "quality": "medium",
+        "byproducts": [
+          "Biochar",
+          "Heat"
+        ],
+        "typical_uses": [
+          "Energy Generation",
+          "Chemical Feedstock"
+        ]
+      }
+    },
+    {
+      "from": "FACILITY-BK-COMPOST-01",
+      "to": "AerobicComposting",
+      "type": "FACILITYSUPPORTSPROCESS",
+      "props": {
+        "capacity_tonnes_per_year": 100000.0,
+        "number_of_lines": 4,
+        "technology": "Aerated Static Pile",
+        "operational_hours_per_day": 16,
+        "staff_required": 25
+      }
+    },
+    {
+      "from": "FACILITY-BK-COMPOST-01",
+      "to": "FoodScraps",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_volume_tonnes_per_year": 60000.0,
+        "contamination_limit_percent": 2.0,
+        "tipping_fee_per_tonne": 45.0,
+        "accepted_sources": [
+          "Residential",
+          "Commercial",
+          "Institutional"
+        ]
+      }
+    },
+    {
+      "from": "FACILITY-BK-COMPOST-01",
+      "to": "YardWaste",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_volume_tonnes_per_year": 40000.0,
+        "contamination_limit_percent": 5.0,
+        "tipping_fee_per_tonne": 35.0,
+        "accepted_sources": [
+          "Residential",
+          "Parks",
+          "Landscaping"
+        ]
+      }
+    },
+    {
+      "from": "AD_PLANT-QUEENS-02",
+      "to": "AnaerobicDigestion",
+      "type": "FACILITYSUPPORTSPROCESS",
+      "props": {
+        "capacity_tonnes_per_year": 200000.0,
+        "number_of_digestors": 3,
+        "technology": "Continuous Stirred Tank Reactor (CSTR)",
+        "operational_hours_per_day": 24,
+        "staff_required": 35,
+        "electricity_generation_capacity_mw": 5.0
+      }
+    },
+    {
+      "from": "AD_PLANT-QUEENS-02",
+      "to": "FoodScraps",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_volume_tonnes_per_year": 120000.0,
+        "contamination_limit_percent": 1.0,
+        "tipping_fee_per_tonne": 65.0,
+        "accepted_sources": [
+          "Commercial",
+          "Institutional",
+          "Food Processing"
+        ]
+      }
+    },
+    {
+      "from": "AD_PLANT-QUEENS-02",
+      "to": "FatsOilsGrease",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_volume_tonnes_per_year": 30000.0,
+        "contamination_limit_percent": 0.5,
+        "tipping_fee_per_tonne": 85.0,
+        "accepted_sources": [
+          "Restaurants",
+          "Food Processing",
+          "Grease Traps"
+        ]
+      }
+    },
+    {
+      "from": "AD_PLANT-QUEENS-02",
+      "to": "SpentGrain",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_volume_tonnes_per_year": 20000.0,
+        "contamination_limit_percent": 1.0,
+        "tipping_fee_per_tonne": 55.0,
+        "accepted_sources": [
+          "Breweries",
+          "Distilleries"
+        ]
+      }
+    },
+    {
+      "from": "BSFL_FARM-BRONX-01",
+      "to": "BlackSoldierFlyLarvae",
+      "type": "FACILITYSUPPORTSPROCESS",
+      "props": {
+        "capacity_tonnes_per_year": 50000.0,
+        "number_of_growing_rooms": 10,
+        "technology": "Automated BSFL Bioconversion",
+        "operational_hours_per_day": 24,
+        "staff_required": 15,
+        "larvae_production_tonnes_per_year": 7500.0
+      }
+    },
+    {
+      "from": "BSFL_FARM-BRONX-01",
+      "to": "FoodScraps",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_volume_tonnes_per_year": 40000.0,
+        "contamination_limit_percent": 0.1,
+        "tipping_fee_per_tonne": 80.0,
+        "accepted_sources": [
+          "Grocery Stores",
+          "Food Processing",
+          "Institutional Kitchens"
+        ],
+        "restricted_items": [
+          "Meat",
+          "Dairy",
+          "Oils",
+          "Salty Foods",
+          "Citrus"
+        ]
+      }
+    },
+    {
+      "from": "BSFL_FARM-BRONX-01",
+      "to": "CoffeeGrounds",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_volume_tonnes_per_year": 5000.0,
+        "contamination_limit_percent": 0.5,
+        "tipping_fee_per_tonne": 70.0,
+        "accepted_sources": [
+          "Coffee Shops",
+          "Offices",
+          "Households"
+        ]
+      }
+    },
+    {
+      "from": "BSFL_FARM-BRONX-01",
+      "to": "SpentGrain",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_volume_tonnes_per_year": 5000.0,
+        "contamination_limit_percent": 0.5,
+        "tipping_fee_per_tonne": 75.0,
+        "accepted_sources": [
+          "Breweries",
+          "Distilleries"
+        ]
+      }
+    },
+    {
+      "from": "BIOCHAR_PLANT-SI-01",
+      "to": "BiocharProduction",
+      "type": "FACILITYSUPPORTSPROCESS",
+      "props": {
+        "capacity_tonnes_per_year": 30000.0,
+        "number_of_pyrolysis_units": 2,
+        "technology": "Slow Pyrolysis",
+        "operational_hours_per_day": 20,
+        "staff_required": 10,
+        "biochar_production_tonnes_per_year": 9000.0
+      }
+    },
+    {
+      "from": "BIOCHAR_PLANT-SI-01",
+      "to": "YardWaste",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_volume_tonnes_per_year": 25000.0,
+        "contamination_limit_percent": 3.0,
+        "tipping_fee_per_tonne": 100.0,
+        "accepted_sources": [
+          "Parks",
+          "Landscaping",
+          "Tree Services"
+        ],
+        "preferred_materials": [
+          "Branches",
+          "Wood Chips",
+          "Leaves"
+        ]
+      }
+    },
+    {
+      "from": "CompostAmendment",
+      "to": "UrbanFarm",
+      "type": "RESOURCEDEMANDEDBY_ACTOR",
+      "props": {
+        "annual_demand_tonnes": 25000.0,
+        "demand_frequency": "seasonal",
+        "quality_requirements": "Grade A or B",
+        "delivery_preference": [
+          "Bulk",
+          "Bagged"
+        ],
+        "willing_to_pay_per_tonne": 80.0
+      }
+    },
+    {
+      "from": "CompostAmendment",
+      "to": "NYCUrbanAgriculture",
+      "type": "RESOURCEDEMANDEDBY_ACTOR",
+      "props": {
+        "annual_demand_tonnes": 50000.0,
+        "demand_frequency": "annual",
+        "quality_requirements": "Grade A",
+        "delivery_preference": [
+          "Bulk"
+        ],
+        "willing_to_pay_per_tonne": 60.0
+      }
+    },
+    {
+      "from": "Biogas",
+      "to": "Waste_Processor",
+      "type": "RESOURCEDEMANDEDBY_ACTOR",
+      "props": {
+        "annual_demand_m3": 30000000.0,
+        "demand_frequency": "continuous",
+        "quality_requirements": "Minimum 55% methane",
+        "delivery_preference": [
+          "Pipeline"
+        ],
+        "willing_to_pay_per_m3": 0.45
+      }
+    },
+    {
+      "from": "DigestateFertilizer",
+      "to": "UrbanFarm",
+      "type": "RESOURCEDEMANDEDBY_ACTOR",
+      "props": {
+        "annual_demand_tonnes": 15000.0,
+        "demand_frequency": "seasonal",
+        "quality_requirements": "Pathogen-free",
+        "delivery_preference": [
+          "Liquid Tanker",
+          "Bulk"
+        ],
+        "willing_to_pay_per_tonne": 40.0
+      }
+    },
+    {
+      "from": "AnimalFeed",
+      "to": "Waste_Processor",
+      "type": "RESOURCEDEMANDEDBY_ACTOR",
+      "props": {
+        "annual_demand_tonnes": 5000.0,
+        "demand_frequency": "monthly",
+        "quality_requirements": "Grade A, protein > 40%",
+        "delivery_preference": [
+          "Bagged",
+          "Bulk"
+        ],
+        "willing_to_pay_per_tonne": 1200.0
+      }
+    },
+    {
+      "from": "Frass",
+      "to": "UrbanFarm",
+      "type": "RESOURCEDEMANDEDBY_ACTOR",
+      "props": {
+        "annual_demand_tonnes": 5000.0,
+        "demand_frequency": "seasonal",
+        "quality_requirements": "Grade A",
+        "delivery_preference": [
+          "Bagged"
+        ],
+        "willing_to_pay_per_tonne": 200.0
+      }
+    },
+    {
+      "from": "Biochar",
+      "to": "Waste_Processor",
+      "type": "RESOURCEDEMANDEDBY_ACTOR",
+      "props": {
+        "annual_demand_tonnes": 3000.0,
+        "demand_frequency": "quarterly",
+        "quality_requirements": "Grade A, carbon content > 65%",
+        "delivery_preference": [
+          "Bagged",
+          "Bulk"
+        ],
+        "willing_to_pay_per_tonne": 500.0
+      }
+    },
+    {
+      "from": "NYCRegulationOrganicWaste",
+      "to": "FoodScraps",
+      "type": "CONSTRAINTAPPLIESTO",
+      "props": {
+        "requirement": "Mandatory separation",
+        "threshold_tonnes_per_year": 1.0,
+        "compliance_deadline": "2025-01-01"
+      }
+    },
+    {
+      "from": "NYCRegulationOrganicWaste",
+      "to": "YardWaste",
+      "type": "CONSTRAINTAPPLIESTO",
+      "props": {
+        "requirement": "Mandatory separation",
+        "threshold_tonnes_per_year": 1.0,
+        "compliance_deadline": "2025-01-01"
+      }
+    },
+    {
+      "from": "OdorControlRequirement",
+      "to": "AerobicComposting",
+      "type": "CONSTRAINTAPPLIESTO",
+      "props": {
+        "requirement": "Biofilter or equivalent odor control",
+        "monitoring": "Continuous",
+        "compliance_certificate_required": true
+      }
+    },
+    {
+      "from": "OdorControlRequirement",
+      "to": "AnaerobicDigestion",
+      "type": "CONSTRAINTAPPLIESTO",
+      "props": {
+        "requirement": "Enclosed processing with gas collection",
+        "monitoring": "Continuous",
+        "compliance_certificate_required": true
+      }
+    },
+    {
+      "from": "HeavyMetal_Limit",
+      "to": "CompostAmendment",
+      "type": "CONSTRAINTAPPLIESTO",
+      "props": {
+        "requirement": "Must meet NYSDEC Part 360 standards",
+        "testing_frequency": "Annual",
+        "source_materials": "Source-separated organics only"
+      }
+    },
+    {
+      "from": "HeavyMetal_Limit",
+      "to": "DigestateFertilizer",
+      "type": "CONSTRAINTAPPLIESTO",
+      "props": {
+        "requirement": "Must meet NYSDEC Part 360 standards",
+        "testing_frequency": "Annual",
+        "source_materials": "Source-separated organics only"
+      }
+    },
+    {
+      "from": "HeavyMetal_Limit",
+      "to": "FACILITY-BK-COMPOST-01",
+      "type": "CONSTRAINTAPPLIESTO",
+      "props": {
+        "requirement": "Input materials must be tested",
+        "testing_frequency": "Quarterly",
+        "record_keeping": "5 years"
+      }
+    },
+    {
+      "from": "DSNY",
+      "to": "FACILITY-BK-COMPOST-01",
+      "type": "ACTOROPERATESFACILITY",
+      "props": {
+        "relationship": "Direct operation",
+        "contract_type": "Municipal",
+        "funding_source": "City budget"
+      }
+    },
+    {
+      "from": "PrivateHauler",
+      "to": "AD_PLANT-QUEENS-02",
+      "type": "ACTOROPERATESFACILITY",
+      "props": {
+        "relationship": "Private operation",
+        "contract_type": "Concession",
+        "funding_source": "Private investment"
+      }
+    },
+    {
+      "from": "PrivateHauler",
+      "to": "BSFL_FARM-BRONX-01",
+      "type": "ACTOROPERATESFACILITY",
+      "props": {
+        "relationship": "Private operation",
+        "contract_type": "Private",
+        "funding_source": "Private investment"
+      }
+    },
+    {
+      "from": "PrivateHauler",
+      "to": "BIOCHAR_PLANT-SI-01",
+      "type": "ACTOROPERATESFACILITY",
+      "props": {
+        "relationship": "Private operation",
+        "contract_type": "Private",
+        "funding_source": "Private investment"
+      }
+    },
+    {
+      "from": "ResidentialOrganicsBrooklyn",
+      "to": "FoodScraps",
+      "type": "WASTESTREAMHASWASTETYPE",
+      "props": {
+        "percentage": 70.0,
+        "seasonal_variation": "Higher in summer months"
+      }
+    },
+    {
+      "from": "ResidentialOrganicsBrooklyn",
+      "to": "YardWaste",
+      "type": "WASTESTREAMHASWASTETYPE",
+      "props": {
+        "percentage": 30.0,
+        "seasonal_variation": "Higher in fall months"
+      }
+    },
+    {
+      "from": "RestaurantFoodWaste_Downtown",
+      "to": "FoodScraps",
+      "type": "WASTESTREAMHASWASTETYPE",
+      "props": {
+        "percentage": 95.0,
+        "contamination_risk": "medium"
+      }
+    },
+    {
+      "from": "RestaurantFoodWaste_Downtown",
+      "to": "FatsOilsGrease",
+      "type": "WASTESTREAMHASWASTETYPE",
+      "props": {
+        "percentage": 5.0,
+        "contamination_risk": "high"
+      }
+    },
+    {
+      "from": "ResidentialOrganicsCitywide",
+      "to": "FoodScraps",
+      "type": "WASTESTREAMHASWASTETYPE",
+      "props": {
+        "source": "DSNY programme definitions"
+      }
+    },
+    {
+      "from": "CommercialOrganicsLL146",
+      "to": "FoodScraps",
+      "type": "WASTESTREAMHASWASTETYPE",
+      "props": {
+        "source": "DSNY programme definitions"
+      }
+    },
+    {
+      "from": "CommunityFoodScraps",
+      "to": "FoodScraps",
+      "type": "WASTESTREAMHASWASTETYPE",
+      "props": {
+        "source": "DSNY programme definitions"
+      }
+    },
+    {
+      "from": "ResidentialOrganicsCitywide",
+      "to": "YardWaste",
+      "type": "WASTESTREAMHASWASTETYPE",
+      "props": {
+        "source": "DSNY curbside accepted materials"
+      }
+    },
+    {
+      "from": "ResidentialOrganicsCitywide",
+      "to": "AerobicComposting",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "high",
+        "typical_diversion_rate": 0.85,
+        "co2e_saved_mt_per_metric_tonne_warm_v15": 0.68,
+        "methane_avoided_kg_per_tonne": 23.2,
+        "emissions_source": "EPA WARM v15 (Nov 2020), food waste, per metric tonne input, vs landfilling",
+        "emissions_note": "WARM v15 composting saving vs landfilling; older WARM v13 gives 0.95 \u2014 version difference, not a second measurement"
+      }
+    },
+    {
+      "from": "ResidentialOrganicsCitywide",
+      "to": "AnaerobicDigestion",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "high",
+        "typical_diversion_rate": 0.9,
+        "co2e_saved_mt_per_metric_tonne_warm_v15": 0.62,
+        "methane_avoided_kg_per_tonne": 23.4,
+        "emissions_source": "EPA WARM v15 (Nov 2020), food waste, per metric tonne input, vs landfilling",
+        "emissions_note": "WARM v15 wet AD, digestate cured then land-applied; direct land application gives 0.71"
+      }
+    },
+    {
+      "from": "CommercialOrganicsLL146",
+      "to": "AerobicComposting",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "high",
+        "typical_diversion_rate": 0.85,
+        "co2e_saved_mt_per_metric_tonne_warm_v15": 0.68,
+        "methane_avoided_kg_per_tonne": 23.2,
+        "emissions_source": "EPA WARM v15 (Nov 2020), food waste, per metric tonne input, vs landfilling"
+      }
+    },
+    {
+      "from": "CommercialOrganicsLL146",
+      "to": "AnaerobicDigestion",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "very_high",
+        "typical_diversion_rate": 0.9,
+        "co2e_saved_mt_per_metric_tonne_warm_v15": 0.62,
+        "methane_avoided_kg_per_tonne": 23.4,
+        "emissions_source": "EPA WARM v15 (Nov 2020), food waste, per metric tonne input, vs landfilling"
+      }
+    },
+    {
+      "from": "CommunityFoodScraps",
+      "to": "AerobicComposting",
+      "type": "WASTECANBEPROCESSEDBY",
+      "props": {
+        "suitability": "high",
+        "typical_diversion_rate": 0.9,
+        "co2e_saved_mt_per_metric_tonne_warm_v15": 0.68,
+        "methane_avoided_kg_per_tonne": 23.2,
+        "emissions_source": "EPA WARM v15 (Nov 2020), food waste, per metric tonne input, vs landfilling",
+        "emissions_note": "Community sites accept fruit/vegetable scraps only; factor is for food waste generally"
+      }
+    },
+    {
+      "from": "SICF_StatenIsland",
+      "to": "AerobicComposting",
+      "type": "FACILITYSUPPORTSPROCESS",
+      "props": {
+        "technology": "Aerobic composting",
+        "source": "DSNY facility page"
+      }
+    },
+    {
+      "from": "NewtownCreekAD",
+      "to": "AnaerobicDigestion",
+      "type": "FACILITYSUPPORTSPROCESS",
+      "props": {
+        "technology": "Anaerobic co-digestion",
+        "capacity_tonnes_per_day": 250,
+        "source": "DEP slides"
+      }
+    },
+    {
+      "from": "SoundviewYardCompost",
+      "to": "AerobicComposting",
+      "type": "FACILITYSUPPORTSPROCESS",
+      "props": {
+        "technology": "Aerobic composting, yard waste only",
+        "source": "NYSDEC annual report"
+      }
+    },
+    {
+      "from": "EarthMatterCommunity",
+      "to": "AerobicComposting",
+      "type": "FACILITYSUPPORTSPROCESS",
+      "props": {
+        "technology": "Aerobic composting, community scale",
+        "capacity_tonnes_per_year": 600,
+        "source": "Earth Matter NY"
+      }
+    },
+    {
+      "from": "SICF_StatenIsland",
+      "to": "ResidentialOrganicsCitywide",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_sources": [
+          "Residential",
+          "Agencies",
+          "Nonprofits"
+        ],
+        "source": "DSNY facility page"
+      }
+    },
+    {
+      "from": "SICF_StatenIsland",
+      "to": "YardWaste",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_sources": [
+          "Residential",
+          "Commercial landscapers"
+        ],
+        "source": "DSNY facility page"
+      }
+    },
+    {
+      "from": "NewtownCreekAD",
+      "to": "FoodScraps",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_sources": [
+          "Pre-processed food scraps via WM CORe slurry",
+          "Fats, oils and grease"
+        ],
+        "note": "Slurry via tanker, not direct curbside delivery; output is biogas/RNG, not compost",
+        "source": "DEP slides; WM CORe commentary"
+      }
+    },
+    {
+      "from": "SoundviewYardCompost",
+      "to": "YardWaste",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_sources": [
+          "Yard waste only, seasonal"
+        ],
+        "source": "NYSDEC annual report"
+      }
+    },
+    {
+      "from": "EarthMatterCommunity",
+      "to": "CommunityFoodScraps",
+      "type": "FACILITYACCEPTSWASTE",
+      "props": {
+        "accepted_sources": [
+          "Governors Island organics",
+          "Partner drop-offs"
+        ],
+        "source": "Earth Matter NY"
+      }
+    },
+    {
+      "from": "CompostAmendment",
+      "to": "CommunityGarden",
+      "type": "RESOURCEDEMANDEDBY_ACTOR",
+      "props": {
+        "demand_frequency": "seasonal",
+        "quality_requirements": "Grade A",
+        "delivery_preference": [
+          "Bulk",
+          "Bagged"
+        ],
+        "note": "No public per-garden tonnage ledger exists",
+        "source": "DSNY GetCompost; GreenThumb"
+      }
+    },
+    {
+      "from": "CompostAmendment",
+      "to": "GetCompostDistribution",
+      "type": "RESOURCEDEMANDEDBY_ACTOR",
+      "props": {
+        "demand_frequency": "seasonal, Apr-Sep",
+        "delivery_preference": [
+          "40-lb bags",
+          "Bulk"
+        ],
+        "note": "Giveback totals are programme-level only",
+        "source": "DSNY GetCompost"
+      }
+    },
+    {
+      "from": "AnaerobicDigestion",
+      "to": "RNG",
+      "type": "PROCESSPRODUCESRESOURCE",
+      "props": {
+        "quality": "pipeline quality after purification",
+        "typical_uses": [
+          "Gas grid"
+        ],
+        "note": "Distinct from Biogas electricity offset in WARM \u2014 do not substitute WARM electricity factors",
+        "source": "DEP / WM CORe commentary"
+      }
+    },
+    {
+      "from": "DSNY",
+      "to": "SICF_StatenIsland",
+      "type": "ACTOROPERATESFACILITY",
+      "props": {
+        "relationship": "DSNY-owned, Denali-operated",
+        "source": "DSNY facility page"
+      }
+    },
+    {
+      "from": "DSNY",
+      "to": "SoundviewYardCompost",
+      "type": "ACTOROPERATESFACILITY",
+      "props": {
+        "relationship": "DSNY-owned, Denali-operated",
+        "source": "NYSDEC annual report"
+      }
+    },
+    {
+      "from": "ZeroWasteActOrganics",
+      "to": "ResidentialOrganicsCitywide",
+      "type": "CONSTRAINTAPPLIESTO",
+      "props": {
+        "source": "NYC Admin Code 16-308.1"
+      }
+    },
+    {
+      "from": "CommercialWasteZones",
+      "to": "CommercialOrganicsLL146",
+      "type": "CONSTRAINTAPPLIESTO",
+      "props": {
+        "source": "Local Law 199 of 2019"
+      }
+    },
+    {
+      "from": "NYCRegulationOrganicWaste",
+      "to": "CommercialOrganicsLL146",
+      "type": "CONSTRAINTAPPLIESTO",
+      "props": {
+        "source": "Local Law 146 of 2013"
+      }
+    }
+  ]
 }

@@ -280,7 +280,8 @@
   <div class="kg-hero">
     <div class="kg-blob" aria-hidden="true"></div>
     <h1>Waste-to-Resource Knowledge Graph</h1>
-    <p class="lede">The repo's real sample graph (<code>cloud_platform/analytics/kg/data/w2rkg_nyc_sample.json</code>): 31 nodes, 55 edges — now drawn as a circle, because nothing here ends at a landfill. Waste becomes a process, a process becomes a resource, demand pulls that resource back through a facility, and the facility takes waste again.</p>
+    <p class="lede">The repo's real sample graph (<code>cloud_platform/analytics/kg/data/w2rkg_nyc_sample.json</code>): 43 nodes, 81 edges — the 31-node sample plus 12 sourced public-data nodes (citywide curbside organics, LL146 commercial organics, community drop-offs, Staten Island Compost Facility, Newtown Creek AD, Soundview, Earth Matter, community gardens, GetCompost, RNG, Zero Waste Act, Commercial Waste Zones), with EPA WARM v15 emissions factors on the new organics edges — now drawn as a circle, because nothing here ends at a landfill. Waste becomes a process, a process becomes a resource, demand pulls that resource back through a facility, and the facility takes waste again.</p>
+    <p class="muted small">Collection tracking, honestly: public data tracks organics at district-month level (DSNY Monthly Tonnage, ebb7-mvp5), not by address, route, truck or day. DSNY publishes no turn-by-turn collection routes and no live collection-truck GPS — route planning in this app therefore uses the address collection-day lookup and the DSNY Frequencies polygons as its public spine, and never invents a route geometry. Commercial organics tonnage by address or hauler is likewise not publicly published (BIC registers are proprietary; Commercial Waste Zone GPS/tonnage reporting is contractual, not stated as public).</p>
   </div>
   <div class="card kg-ring-card">
     <h2>Circular navigation <span class="pill">tap a segment</span></h2>
@@ -311,8 +312,8 @@
     <div id="flowMetrics"></div>
   </div>
   <div class="card kg-loops-card">
-    <h2>Demonstration loops for every element <span class="pill">all 31 nodes</span></h2>
-    <p class="muted small">Tap any element below and its own loop plays. A loop is a staged journey — Waste → Process → Resource → Demand → Facility → back to Waste — built from the sample's real edges wherever they exist. One honest caveat, shown in the player itself: <strong>no node in the 31-node sample sits on a directed cycle</strong>, because the demand actors in the sample (Urban Farm, Waste Processor, NYC Urban Agriculture) do not operate facilities. So every loop has four real steps plus one dashed, labelled bridge (demand → facility, or facility → next load). The bridge is a system step, never presented as a sample edge.</p>
+    <h2>Demonstration loops for every element <span class="pill">all 43 nodes</span></h2>
+    <p class="muted small">Tap any element below and its own loop plays. A loop is a staged journey — Waste → Process → Resource → Demand → Facility → back to Waste — built from the sample's real edges wherever they exist. One honest caveat, shown in the player itself: <strong>no node in the 43-node graph sits on a directed cycle</strong>, because the demand actors in the sample (Urban Farm, Waste Processor, NYC Urban Agriculture) do not operate facilities. So every loop has four real steps plus one dashed, labelled bridge (demand → facility, or facility → next load). The bridge is a system step, never presented as a sample edge.</p>
     <div id="loopGallery" class="loop-gallery"></div>
     <div class="controls">
       <label>Loop for <select id="loopElement"></select></label>
@@ -540,7 +541,7 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul11"></script>
+<script src="app.js?v=overhaul12"></script>
 <script src="twin.js?v=twin3"></script>
 <script src="backend.js?v=backend3"></script>
 </body>
