@@ -207,7 +207,8 @@ function createStore() {
    for additional styles). CARTO's GL styles are public and need no token. */
 const CUSTOM_MAP_STYLES = [
   { id: 'carto_dark_matter', label: 'CARTO Dark Matter (no token)', url: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json' },
-  { id: 'carto_positron', label: 'CARTO Positron (no token)', url: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json' }
+  { id: 'carto_positron', label: 'CARTO Positron (no token)', url: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json' },
+  { id: 'maplibre_demo', label: 'MapLibre demo tiles (test)', url: 'https://demotiles.maplibre.org/style.json' }
 ];
 function mountKepler() {
   const token = (() => { try { return localStorage.getItem('wip_mapbox_token') || ''; } catch (e) { return ''; } })();
@@ -255,6 +256,7 @@ async function loadDataIntoKepler(attempt) {
     hideStatus();
     const bm = $('#activeBasemap');
     if (bm) { const st = (inst2.mapStyle && inst2.mapStyle.styleType) || 'unknown'; bm.textContent = 'Active basemap in Kepler state: ' + st + ' · datasets: ' + n + ' · layers: ' + layers; }
+    if (!window.__bmPoll) { window.__bmPoll = setInterval(() => { try { const inst3 = mapInstance(); const el = $('#activeBasemap'); if (inst3 && el) { const st3 = (inst3.mapStyle && inst3.mapStyle.styleType) || 'unknown'; const n3 = inst3.visState && inst3.visState.datasets ? Object.keys(inst3.visState.datasets).length : 0; const l3 = inst3.visState ? (inst3.visState.layers || []).length : 0; el.textContent = 'Active basemap in Kepler state: ' + st3 + ' · datasets: ' + n3 + ' · layers: ' + l3; } } catch (e) {} }, 2000); }
     renderKpis(tonnage);
   }, 600);
 }
