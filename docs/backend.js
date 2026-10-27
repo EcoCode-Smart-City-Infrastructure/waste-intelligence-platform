@@ -7,28 +7,35 @@
      GET /mcp/waste/bin?bin_id=, POST /mcp/waste/kg {query, limit}.
      CORS default "*" (Config.CORS_ORIGINS) — browser-callable once it
      has a public HTTPS URL. DB-backed: empty DB means empty lists.
-   - Hub Flask API (hub_layer, port 5000 in code): GET /health,
-     GET /bins, /facilities, /analytics/summary — TODAY those three
-     return hardcoded empty/zero stubs by code, not DB data. Wiring to
-     them must show "0 registered (stub)" and never replace the demo
-     fleet with an empty list.
+   - Hub Flask API (hub_layer, port 5000 in code, composed as
+     hub-flask): GET /health, GET /bins, /facilities,
+     /analytics/summary — DB-backed via the repositories on platform
+     branch fix/browser-cors-kg-service-hub-db (503 when the DB is
+     unreachable). Older code returns hardcoded empty/zero stubs;
+     wiring to them must show "0 registered (stub)" and never
+     replace the demo fleet with an empty list.
    - Forecasting (services/forecasting, :8002): GET /health,
      POST /forecast {bin_id, horizon_hours} and POST /anomaly
      {bin_id, features:{filllevelpct}}. Real math, DB telemetry.
-     NO CORS middleware in the service — a browser call from Pages
-     will be blocked unless the service is put behind a reverse proxy
-     that adds CORS headers (see the Connect deployment guide).
+     CORS middleware added on platform branch
+     fix/browser-cors-kg-service-hub-db (defaults include the Pages
+     origin); deployments from older code still need a reverse
+     proxy that adds CORS headers (see the Connect guide).
    - Copilot (copilot_service, :8004): GET /health,
      POST /copilot/query {user_id, question} -> {answer, model,
      used_tools, audit_id}. Optional X-API-Key when REQUIRE_API_KEY.
-     CORS origins default to localhost/grafana only — the Pages
-     origin must be added via CORS_ORIGINS env (or a proxy).
+     CORS origins are env-driven (CORS_ORIGINS) with the Pages
+     origin in the defaults, on platform branch
+     fix/browser-cors-kg-service-hub-db; older code defaults to
+     localhost/grafana only.
    - Contamination (services/contamination, :8005): GET /health,
      POST /predict (multipart image + stream) -> detections,
-     contaminants, model. NO CORS middleware — same proxy note.
-   - Compose references a kg-service:8003 that has NO service
-     definition in docker-compose.yml; the KG that exists is the
-     in-memory engine behind the Platform API's /mcp/waste/kg.
+     contaminants, model. CORS middleware added on platform branch
+     fix/browser-cors-kg-service-hub-db (same as forecasting).
+   - Compose now defines a real kg-service:8003 (platform branch
+     fix/browser-cors-kg-service-hub-db): GET /health, POST /kg
+     {query, limit}, POST /kg/pathways — the same W2RKG engine the
+     Platform API serves in-memory at /mcp/waste/kg.
    - Pages is HTTPS: browsers block plain-HTTP backend calls
      (mixed content). A deployed backend MUST be HTTPS, ideally
      behind one reverse proxy that also fixes CORS.
@@ -66,14 +73,15 @@ async function wiBackendCall(base, path, opts){
 }
 function failHint(res){
   if(res.status) return `Backend answered HTTP ${res.status}${res.json&&res.json.detail?': '+esc(String(res.json.detail)).slice(0,200):''}.`;
-  return 'Browser could not reach it (network error, CORS block, or mixed-content block — an HTTPS page cannot call a plain-HTTP backend). See the deployment guide in Connect: the backend needs HTTPS, and forecasting/contamination need a proxy that adds CORS headers.';
+  return 'Browser could not reach it (network error, CORS block, or mixed-content block — an HTTPS page cannot call a plain-HTTP backend). See the deployment guide in Connect: the backend needs HTTPS, and deployments from older code need a proxy that adds CORS headers for forecasting/contamination.';
 }
 const SERVICES=[
   {key:'platform', label:'Platform API (src, :8001)', health:'/health', note:'GET /mcp/waste/bins, /mcp/waste/bin, POST /mcp/waste/kg. CORS default *.'},
-  {key:'hub', label:'Hub Flask API (:5000)', health:'/health', note:'GET /bins, /facilities, /analytics/summary — TODAY hardcoded empty/zero stubs in code.'},
-  {key:'forecasting', label:'Forecasting (:8002)', health:'/health', note:'POST /forecast + /anomaly, real math on DB telemetry. NO CORS in the service — needs a proxy.'},
-  {key:'copilot', label:'Copilot (:8004)', health:'/health', note:'POST /copilot/query. CORS defaults to localhost only — add the Pages origin via CORS_ORIGINS.'},
-  {key:'contamination', label:'Contamination (:8005)', health:'/health', note:'POST /predict (YOLOv11 image). NO CORS in the service — needs a proxy.'},
+  {key:'hub', label:'Hub Flask API (:5000)', health:'/health', note:'GET /bins (with latest fill per bin), /facilities, /analytics/summary — DB-backed on the fix branch; hardcoded stubs on older code.'},
+  {key:'kg', label:'Knowledge Graph service (:8003)', health:'/health', note:'POST /kg {query, limit} — same shape as Platform /mcp/waste/kg. New on the fix branch.'},
+  {key:'forecasting', label:'Forecasting (:8002)', health:'/health', note:'POST /forecast + /anomaly, real math on DB telemetry. CORS middleware added on fix branch (defaults include Pages origin); older deployments need a proxy.'},
+  {key:'copilot', label:'Copilot (:8004)', health:'/health', note:'POST /copilot/query. CORS origins env-driven, Pages origin in defaults on fix branch.'},
+  {key:'contamination', label:'Contamination (:8005)', health:'/health', note:'POST /predict (YOLOv11 image). CORS middleware added on fix branch; older deployments need a proxy.'},
 ];
 async function wiBackendProbe(){
   const cfg=wiBackendLoad(); const box=$('connectResult'); if(!box) return;
@@ -90,7 +98,7 @@ async function wiBackendProbe(){
 function wiInitBackend(){
   if(window.__beInit) return; window.__beInit=true;
   const cfg=wiBackendLoad();
-  const map={bePlatform:'platform',beHub:'hub',beForecasting:'forecasting',beCopilot:'copilot',beContamination:'contamination',bePlatformKey:'platformKey',beCopilotKey:'copilotKey'};
+  const map={bePlatform:'platform',beHub:'hub',beForecasting:'forecasting',beCopilot:'copilot',beContamination:'contamination',beKg:'kg',bePlatformKey:'platformKey',beCopilotKey:'copilotKey'};
   Object.keys(map).forEach(id=>{const el=$(id); if(el) el.value=cfg[map[id]]||'';});
   $('beSave')?.addEventListener('click',()=>{
     const next={}; Object.keys(map).forEach(id=>{const el=$(id); next[map[id]]=el?(id.toLowerCase().includes('key')?el.value.trim():trim(el.value)):'';});
@@ -114,7 +122,7 @@ function wiInitBackend(){
     const j=res.json||{};
     let anom='';
     const ares=await wiBackendCall(base,'/anomaly',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bin_id:binId,features:{filllevelpct:bin?bin.fill:null}})});
-    if(ares.ok&&ares.json) anom=`<p>Backend anomaly scores: ${esc(JSON.stringify(ares.json.scores||ares.json))}</p>`;
+    if(ares.ok&&ares.json) anom=`<p>Backend anomaly: <strong>${ares.json.is_anomaly?'ANOMALY':'normal'}</strong> · score ${esc(ares.json.anomaly_score)} · z-scores ${esc(JSON.stringify(ares.json.z_scores||ares.json.scores||{}))}</p>`;
     else if(ares.json) anom=`<p class="muted small">Backend anomaly not returned (${esc(String(ares.json.detail||('HTTP '+ares.status)))}).</p>`;
     if(out) out.innerHTML=`<p><span class="pill">BACKEND · ${esc(j.model_version||'waste-forecast-v1.0')}</span> ${esc(binId)}: predicted <strong>${esc(j.predicted_value)}%</strong> in ${esc(j.horizon_hours)} h · confidence ${esc(j.confidence)} · trend ${esc(j.trend_fill_per_hour)} /h · R² ${esc(j.r_squared)} · readings used ${esc(j.readings_used)} · hours to full ${esc(j.hours_until_full==null?'—':j.hours_until_full)}.</p>${anom}<p class="muted small">This is the platform service's answer from DB telemetry. If it disagrees with the local card, the local card is the ported math on demo history — the backend wins only when its telemetry is real.</p>`;
   });
@@ -124,11 +132,12 @@ function wiInitBackend(){
     if(!base){if(out) out.innerHTML='<p class="muted">No Platform API URL saved. Set it in <a href="#connect">Connect</a>. The demo fleet below is unchanged.</p>'; return;}
     if(out) out.innerHTML='<p>Fetching registered bins…</p>';
     const res=await wiBackendCall(base,'/mcp/waste/bins?limit=100',{apiKey:trim(cfg2.platformKey)||undefined});
-    if(!res.ok){if(out) out.innerHTML=`<p><strong>Platform bins fetch failed.</strong> ${failHint(res)} Demo fleet below is unchanged.</p>`; return;}
+    if(!res.ok && !(res.status===404)){if(out) out.innerHTML=`<p><strong>Platform bins fetch failed.</strong> ${failHint(res)} Demo fleet below is unchanged.</p>`; return;}
+    if(!res.ok && res.status===404){if(out) out.innerHTML=`<p><strong>Platform API returned 0 registered bins.</strong> The API answers 404 when its database has no bin telemetry yet — that is an empty database, not a broken endpoint. Demo fleet below is unchanged and stays labelled demo.</p>`; return;}
     const list=Array.isArray(res.json)?res.json:(res.json&&Array.isArray(res.json.bins)?res.json.bins:[]);
     let hubNote='';
     const hub=trim(cfg2.hub);
-    if(hub){const h=await wiBackendCall(hub,'/bins'); hubNote=h.ok?`<p class="muted small">Hub Flask /bins answered: ${esc(JSON.stringify(h.json)).slice(0,200)} — note: that endpoint returns a hardcoded empty list in code today, so 0 there is a stub, not a sensor count.</p>`:`<p class="muted small">Hub Flask /bins could not be read (${failHint(h)})</p>`;}
+    if(hub){const h=await wiBackendCall(hub,'/bins'); hubNote=h.ok?`<p class="muted small">Hub Flask /bins answered: ${esc(JSON.stringify(h.json)).slice(0,200)} — on the platform fix branch this is DB-backed (with latest fill per bin); on older code it is a hardcoded empty stub, so 0 there is a stub, not a sensor count.</p>`:`<p class="muted small">Hub Flask /bins could not be read (${failHint(h)})</p>`;}
     if(out) out.innerHTML=list.length
       ?`<p><strong>Platform API registered bins: ${list.length}</strong> (first 20 shown). These are DB-backed telemetry bins — they are NOT the demo fleet below, which stays separate until you choose to replace it.</p><ul class="list">${list.slice(0,20).map(b=>`<li>${esc(b.bin_id||b.id||'?')} — ${esc(b.timestamp||'')} — ${esc(JSON.stringify(b.sensors||b.location||{}).slice(0,160))}</li>`).join('')}</ul>${hubNote}`
       :`<p><strong>Platform API returned 0 registered bins.</strong> That means the database has no bin telemetry yet (or the API key/DB is not wired) — it does NOT mean the city has no bins. Demo fleet below is unchanged and stays labelled demo.</p>${hubNote}`;
@@ -150,23 +159,23 @@ function wiInitBackend(){
       const cons=(j.contaminants||[]).map(d=>`${esc(d.material)} (${esc(d.confidence)})`).join(', ')||'none';
       if(out) out.innerHTML=`<p><span class="pill">BACKEND YOLO · ${esc(j.model||'')}</span> Stream <strong>${esc(j.stream)}</strong> · Verdict: <strong>${j.is_contaminated?'CONTAMINATED':'CLEAN'}</strong> · contaminant count ${esc(j.contaminant_count)}.</p><p>Detections: ${dets}</p><p>Contaminants: ${cons}</p><p class="muted small">This is the service's model output on your photo. The manual ticks below are a separate demo and were not used for this verdict.</p>`;
     }catch(e){
-      if(out) out.innerHTML=`<p><strong>Backend check could not reach the service.</strong> ${esc(e.message||'network error')} — most likely CORS (this service ships no CORS middleware) or mixed content. Put it behind a reverse proxy that adds CORS headers for the Pages origin, or run this page locally. Manual verdict below is unchanged.</p>`;
+      if(out) out.innerHTML=`<p><strong>Backend check could not reach the service.</strong> ${esc(e.message||'network error')} — most likely CORS (deployments from older code ship no CORS middleware for this service) or mixed content. Deploy from the platform fix branch, or put it behind a reverse proxy that adds CORS headers for the Pages origin, or run this page locally. Manual verdict below is unchanged.</p>`;
     }
   });
   // Graph view: ask the Platform API's in-memory KG.
   $('beKgBtn')?.addEventListener('click',async()=>{
-    const out=$('beKgResult'); const cfg2=wiBackendLoad(); const base=trim(cfg2.platform);
+    const out=$('beKgResult'); const cfg2=wiBackendLoad(); const base=trim(cfg2.platform)||trim(cfg2.kg); const viaKgService=!trim(cfg2.platform)&&!!trim(cfg2.kg);
     const q=($('beKgQuery')?.value||'').trim();
-    if(!base){if(out) out.innerHTML='<p class="muted">No Platform API URL saved. Set it in <a href="#connect">Connect</a>. The local sample graph above is unchanged.</p>'; return;}
+    if(!base){if(out) out.innerHTML='<p class="muted">No Platform API or KG service URL saved. Set one in <a href="#connect">Connect</a>. The local sample graph above is unchanged.</p>'; return;}
     if(!q){if(out) out.textContent='Type a KG query first (e.g. a node name or waste type).'; return;}
     if(out) out.textContent='Asking the Platform KG…';
-    const res=await wiBackendCall(base,'/mcp/waste/kg',{method:'POST',headers:{'Content-Type':'application/json'},apiKey:trim(cfg2.platformKey)||undefined,body:JSON.stringify({query:q,limit:10})});
+    const res=await wiBackendCall(base,viaKgService?'/kg':'/mcp/waste/kg',{method:'POST',headers:{'Content-Type':'application/json'},apiKey:trim(cfg2.platformKey)||undefined,body:JSON.stringify({query:q,limit:10})});
     if(!res.ok){if(out) out.innerHTML=`<p><strong>Platform KG failed.</strong> ${failHint(res)} Local sample graph above is unchanged.</p>`; return;}
     const j=res.json||{};
     const rows=Array.isArray(j.results)?j.results:[];
     if(out) out.innerHTML=rows.length
       ?`<p><strong>Platform KG answered in ${esc(j.execution_time)}s:</strong></p><ul class="list">${rows.slice(0,10).map(r=>`<li>${esc(JSON.stringify(r).slice(0,300))}</li>`).join('')}</ul><p class="muted small">This is the platform's in-memory KG engine, not the local kg.json file — compare the two before treating either as the only truth.</p>`
-      :`<p>Platform KG returned no results for "${esc(q)}". Local sample graph above is unchanged.</p>`;
+      :`<p>${viaKgService?'KG service':'Platform KG'} returned no results for "${esc(q)}". Local sample graph above is unchanged.</p>`;
   });
 }
 window.wiBackendLoad=wiBackendLoad;

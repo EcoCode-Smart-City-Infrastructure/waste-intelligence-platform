@@ -140,3 +140,34 @@ body{background:linear-gradient(180deg,#eef4ec 0%,#f4f6f3 22%,#fdf8ec 100%)}
   .dash-hero svg{height:auto}
   #cmdkResults{max-height:60vh}
 }
+
+/* ---------- City Overview (screenshot layout, waste data) ---------- */
+.ov-crumb{font-size:.85rem;letter-spacing:.04em;color:#94a3b8;margin:0 0 .1rem}.ov-crumb span{color:#64748b}
+.ov-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem;margin:1rem 0}
+.ov-kpi{background:#141b17;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:1rem 1.1rem;color:#e2e8f0}
+.ov-kpi-label{display:block;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8}
+.ov-kpi b{display:block;font-size:2.1rem;line-height:1.15;margin:.3rem 0 .2rem;font-weight:800}
+.ov-kpi-sub{font-size:.85rem;color:#94a3b8}
+.ov-kpi.ov-urgent b{color:#f87171}
+.ov-middle{display:grid;grid-template-columns:2fr 1fr;gap:.9rem;margin:1rem 0}
+.ov-map .dash-hero{margin:0;height:100%}
+.ov-alerts{background:#141b17;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:1rem;color:#e2e8f0}
+.ov-alerts h2{color:#f1f5f9}
+.ov-alert-list{list-style:none;padding:0;margin:.8rem 0}
+.ov-alert-list li{display:flex;gap:.6rem;padding:.55rem 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:.92rem}
+.ov-alert-list li:last-child{border-bottom:0}
+.ov-alert-time{flex:0 0 74px;font-size:.78rem;color:#94a3b8;padding-top:.15rem}
+.ov-alert-dot{flex:0 0 10px;height:10px;border-radius:50%;margin-top:.35rem}
+.ov-alert-dot.red{background:#f87171}.ov-alert-dot.amber{background:#fbbf24}.ov-alert-dot.teal{background:#2dd4bf}.ov-alert-dot.grey{background:#64748b}
+.ov-alert-list a{color:#e2e8f0}
+.ov-charts{display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem;margin:1rem 0}
+.ov-chart{background:#141b17;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:1rem;color:#e2e8f0}
+.ov-chart h2{color:#f1f5f9}
+.ov-chart .muted{color:#94a3b8}
+.ov-bar-row{display:grid;grid-template-columns:96px 1fr 64px;gap:.5rem;align-items:center;font-size:.88rem;margin:.45rem 0}
+.ov-bar-row .bar{background:#1e293b}
+.ov-bar-row .bar i{background:#2dd4bf}
+.ov-bar-row .bar i.high{background:#f87171}
+#ovTrendSvg{width:100%;height:auto}
+@media (max-width:900px){.ov-kpis{grid-template-columns:repeat(2,1fr)}.ov-middle,.ov-charts{grid-template-columns:1fr}}
+@media (max-width:640px){.ov-kpi b{font-size:1.6rem}}

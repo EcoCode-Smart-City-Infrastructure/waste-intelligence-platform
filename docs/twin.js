@@ -24,15 +24,21 @@ function wiParseFeed(json){
   let rows=[];
   if(Array.isArray(json)) rows=json;
   else if(json&&Array.isArray(json.bins)) rows=json.bins;
-  else if(json&&json.type==='FeatureCollection'&&Array.isArray(json.features)) rows=json.features.map(f=>({id:f.properties&&f.properties.id, site:f.properties&&f.properties.site, fill:f.properties&&f.properties.fill, lon:f.geometry&&f.geometry.coordinates&&f.geometry.coordinates[0], lat:f.geometry&&f.geometry.coordinates&&f.geometry.coordinates[1]}));
+  else if(json&&json.type==='FeatureCollection'&&Array.isArray(json.features)) rows=json.features.map(f=>({id:f.properties&&(f.properties.id||f.properties.bin_id), site:f.properties&&(f.properties.site||f.properties.name), fill:f.properties&&(f.properties.fill??f.properties.fill_level_percent??f.properties.latest_fill_percent), lon:f.geometry&&f.geometry.coordinates&&f.geometry.coordinates[0], lat:f.geometry&&f.geometry.coordinates&&f.geometry.coordinates[1]}));
   else return {bins:[], skipped:0, error:'Feed did not match the contract: expected an array, {"bins":[...]}, or a GeoJSON FeatureCollection.'};
   let skipped=0; const bins=[];
   rows.forEach(r=>{
-    const id=r&&r.id!=null?String(r.id):'';
-    if(r==null||r.lat==null||r.lon==null||r.fill==null||r.lat===''||r.lon===''||r.fill===''){skipped++; return;}
-    const lat=+r.lat, lon=+r.lon, fill=+r.fill;
+    // Aliases: Hub Flask rows use bin_id/latitude/longitude/latest_fill_percent,
+    // Platform packets use bin_id + sensors; the contract accepts all of them
+    // so a hub feed is plottable instead of being silently skipped.
+    const rr=r||{};
+    const id=rr.id!=null?String(rr.id):(rr.bin_id!=null?String(rr.bin_id):'');
+    const latV=rr.lat??rr.latitude, lonV=rr.lon??rr.longitude;
+    const fillV=rr.fill??rr.fill_level_percent??rr.latest_fill_percent??rr.filllevelpct??(rr.sensors&&rr.sensors.fill_level_percent);
+    if(rr==null||latV==null||lonV==null||fillV==null||latV===''||lonV===''||fillV===''){skipped++; return;}
+    const lat=+latV, lon=+lonV, fill=+fillV;
     if(!id||!isFinite(lat)||!isFinite(lon)||!isFinite(fill)){skipped++; return;}
-    bins.push({id:id, site:r.site?String(r.site):id, lat:lat, lon:lon, fill:Math.max(0,Math.min(100,fill))});
+    bins.push({id:id, site:(r.site||r.name)?String(r.site||r.name):id, lat:lat, lon:lon, fill:Math.max(0,Math.min(100,fill))});
   });
   return {bins:bins, skipped:skipped, error:''};
 }

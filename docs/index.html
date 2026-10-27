@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://data.cityofnewyork.us">
 <meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
-<link rel="stylesheet" href="styles.css?v=overhaul7">
+<link rel="stylesheet" href="styles.css?v=overhaul11">
 </head>
 <body>
 <a class="skip-link" href="#views">Skip to content</a>
@@ -61,7 +61,7 @@
     </aside>
     <div class="dash-main">
       <div class="dash-top">
-        <div><h1>NYC waste, in one operations view</h1><p class="dash-sub">Live city data where it exists, a working demo fleet where the backend is not running, and every number labelled with its source. No API key, no server needed.</p></div>
+        <div><p class="ov-crumb">Operations <span aria-hidden="true">›</span> City Overview</p><h1>City Overview</h1><p class="dash-sub">NYC waste operations — live city data where it exists, demo fleet where the backend is not running, every number labelled with its source.</p></div>
         <div class="dash-top-actions">
           <label class="dash-search">🔍 <input id="dashSearch" placeholder="Search bins or sites… (Enter)"></label>
           <a class="dash-icon" href="#bins" title="Urgent bins">🔔 <span id="dashBellCount">0</span></a>
@@ -69,6 +69,49 @@
           <a class="dash-icon" href="login.html" title="Sign in">👤</a>
         </div>
       </div>
+
+      <section class="ov" aria-label="City overview">
+        <div class="ov-kpis">
+          <div class="ov-kpi ov-urgent"><span class="ov-kpi-label">Urgent bins</span><b id="ovKpiUrgent">—</b><span class="ov-kpi-sub" id="ovKpiUrgentSub">bins at or above 80% fill</span></div>
+          <div class="ov-kpi"><span class="ov-kpi-label">Fleet fill index</span><b id="ovKpiFill">—</b><span class="ov-kpi-sub">average fill across the demo fleet</span></div>
+          <div class="ov-kpi"><span class="ov-kpi-label">Organics share</span><b id="ovKpiOrganics">—</b><span class="ov-kpi-sub" id="ovKpiOrganicsSub">of live tonnage</span></div>
+          <div class="ov-kpi"><span class="ov-kpi-label">Live tonnage</span><b id="ovKpiTonnage">—</b><span class="ov-kpi-sub" id="ovKpiTonnageSub">latest month in the DSNY feed</span></div>
+        </div>
+        <div class="ov-middle">
+          <div class="ov-map">
+<section class="dash-card dash-hero" aria-label="City grid">
+        <div class="dash-card-head"><h2>Live City Operations Map</h2><span class="pill" id="dashGridBadge">demo fleet · live tonnage where available</span></div>
+        <p class="muted small">A 2D interactive grid — not a 3D rendering and not a phased loop. Pulses travel the urgent route; tap a bin dot to open it in Forecasting. Toggle layers to change what the grid shows.</p>
+        <div class="dash-grid-controls">
+          <label><input type="checkbox" id="dashLayerFleet" checked> Fleet</label>
+          <label><input type="checkbox" id="dashLayerRoute" checked> Urgent route</label>
+          <label><input type="checkbox" id="dashLayerHeat" checked> Fill heat</label>
+          <label><input type="checkbox" id="dashLayerLabels" checked> Borough labels</label>
+          <button class="btn" id="dashPulseBtn">⏸ Pause pulses</button>
+          <label>Replay <input type="range" id="dashReplay" min="0" max="47" value="47" aria-label="Replay the last 48 hours of demo fill history"> <span id="dashReplayLabel">now</span></label>
+          <button class="btn" id="dashReplayPlay" type="button">▶ Play replay</button>
+        </div>
+        <svg id="dashGridSvg" viewBox="0 0 600 340" role="img" aria-label="Interactive NYC bin grid"></svg>
+        <p class="muted small" id="dashGridNote"></p>
+        <div class="whatif"><span class="pill warn">Simulated</span>
+          <label>Add vehicles <select id="whatifVehicles"><option>1</option><option>2</option><option>3</option></select></label>
+          <button class="btn" id="whatifBtn" type="button">Simulate 4 hours</button>
+          <p class="muted small" id="whatifOut">Assumption: 1 vehicle clears 1 urgent bin per 30 minutes, starting now. This is an illustrative simulation, not a live forecast — live state is unchanged.</p>
+        </div>
+      </section>
+          </div>
+          <section class="ov-alerts" aria-label="Real-time alerts">
+            <div class="dash-card-head"><h2>Real-Time Alerts</h2><span class="pill" id="ovAlertsBadge">—</span></div>
+            <ul class="ov-alert-list" id="ovAlerts"></ul>
+            <p class="muted small">Alerts are computed from the demo fleet and its forecasts right now — not live sensor alarms. When a backend is connected, the same panel will show its bins beside these.</p>
+          </section>
+        </div>
+        <div class="ov-charts">
+          <section class="ov-chart"><div class="dash-card-head"><h2>Tonnage by borough</h2><span class="pill" id="ovBoroughBadge">—</span></div><div id="ovBoroughBars"></div><p class="muted small">Total tonnes (refuse + paper + MGP + organics), latest month. Live feed when reachable, labelled sample otherwise.</p></section>
+          <section class="ov-chart"><div class="dash-card-head"><h2>Fill trend — most urgent bin</h2></div><svg id="ovTrendSvg" viewBox="0 0 520 180" role="img" aria-label="Fill trend of the most urgent bin"></svg><p class="muted small" id="ovTrendNote"></p></section>
+          <section class="ov-chart"><div class="dash-card-head"><h2>Hours to full — urgent bins</h2></div><div id="ovHoursBars"></div><p class="muted small">Forecast from each urgent bin's own current cycle (least-squares, same math as Forecasting). "Steady" means no rising trend — not a promise.</p></section>
+        </div>
+      </section>
 
       <div class="role-bar" role="group" aria-label="Role preset">
         <span><strong>Role:</strong></span>
@@ -113,27 +156,7 @@
         <p class="muted small" id="layoutRegistry"></p></details>
       </section>
 
-      <section class="dash-card dash-hero" aria-label="City grid">
-        <div class="dash-card-head"><h2>City grid — live operations</h2><span class="pill" id="dashGridBadge">demo fleet · live tonnage where available</span></div>
-        <p class="muted small">A 2D interactive grid — not a 3D rendering and not a phased loop. Pulses travel the urgent route; tap a bin dot to open it in Forecasting. Toggle layers to change what the grid shows.</p>
-        <div class="dash-grid-controls">
-          <label><input type="checkbox" id="dashLayerFleet" checked> Fleet</label>
-          <label><input type="checkbox" id="dashLayerRoute" checked> Urgent route</label>
-          <label><input type="checkbox" id="dashLayerHeat" checked> Fill heat</label>
-          <label><input type="checkbox" id="dashLayerLabels" checked> Borough labels</label>
-          <button class="btn" id="dashPulseBtn">⏸ Pause pulses</button>
-          <label>Replay <input type="range" id="dashReplay" min="0" max="47" value="47" aria-label="Replay the last 48 hours of demo fill history"> <span id="dashReplayLabel">now</span></label>
-          <button class="btn" id="dashReplayPlay" type="button">▶ Play replay</button>
-        </div>
-        <svg id="dashGridSvg" viewBox="0 0 600 340" role="img" aria-label="Interactive NYC bin grid"></svg>
-        <p class="muted small" id="dashGridNote"></p>
-        <div class="whatif"><span class="pill warn">Simulated</span>
-          <label>Add vehicles <select id="whatifVehicles"><option>1</option><option>2</option><option>3</option></select></label>
-          <button class="btn" id="whatifBtn" type="button">Simulate 4 hours</button>
-          <p class="muted small" id="whatifOut">Assumption: 1 vehicle clears 1 urgent bin per 30 minutes, starting now. This is an illustrative simulation, not a live forecast — live state is unchanged.</p>
-        </div>
-      </section>
-
+      
       <div class="dash-grid">
         <section class="dash-card dash-span6"><div class="dash-card-head"><h2>Fleet fill by borough</h2></div><div id="dashBoroughBars"></div><p class="muted small">Average fill of the demo fleet, by borough. Bars are demo data, never live sensor readings.</p></section>
         <section class="dash-card dash-span6"><div class="dash-card-head"><h2>Live tonnage</h2><span class="pill" id="dashWaveBadge">—</span></div><div class="dash-big" id="dashWaveTotal">—</div><div class="dash-wave" id="dashWaveBars"></div><p class="muted small" id="dashWaveNote"></p></section>
@@ -216,7 +239,7 @@
       </div>
       <div class="card">
         <h2>Platform registered bins</h2>
-        <p class="muted small">Fetches <code>GET /mcp/waste/bins</code> from the Platform API saved in Connect. Registered bins are DB telemetry — a separate list from the demo fleet above, which stays until registered bins exist and you choose to use them. Hub Flask <code>/bins</code> is also shown, with its stub warning.</p>
+        <p class="muted small">Fetches <code>GET /mcp/waste/bins</code> from the Platform API saved in Connect. Registered bins are DB telemetry — a separate list from the demo fleet above, which stays until registered bins exist and you choose to use them. Hub Flask <code>/bins</code> is also shown (DB-backed on the platform fix branch; a stub on older code).</p>
         <div class="controls"><button class="btn primary" id="beBinsFetch" type="button">Fetch from Platform API</button></div>
         <div id="beBinsResult"></div>
       </div>
@@ -379,6 +402,7 @@
       <label>Forecasting service base URL (:8002) <input id="beForecasting" placeholder="http://localhost:8002"></label>
       <label>Copilot service base URL (:8004) <input id="beCopilot" placeholder="http://localhost:8004"></label>
       <label>Contamination service base URL (:8005) <input id="beContamination" placeholder="http://localhost:8005"></label>
+      <label>Knowledge Graph service base URL (:8003) <input id="beKg" placeholder="http://localhost:8003"></label>
       <label>Platform API key (optional, only if REQUIRE_API_KEY) <input type="password" id="bePlatformKey" placeholder="Saved in this browser only"></label>
       <label>Copilot API key (optional, only if REQUIRE_API_KEY) <input type="password" id="beCopilotKey" placeholder="Saved in this browser only"></label>
       <div class="controls"><button class="btn primary" type="button" id="beSave">Save in this browser</button><button class="btn" type="button" id="beProbe">Probe /health endpoints</button></div>
@@ -387,11 +411,11 @@
     <div id="connectResult"></div>
     <details><summary>Deploy the backend so this HTTPS page can reach it — read before you paste a URL</summary>
     <ol class="list">
-      <li><strong>Run the stack on a server you control:</strong> <code>docker compose up</code> from the platform repo root. That starts the Platform API (:8001), forecasting (:8002), copilot (:8004), contamination (:8005), Postgres, Redis, MQTT and Grafana on that host — it does <em>not</em> publish them to the internet.</li>
+      <li><strong>Run the stack on a server you control:</strong> <code>docker compose up</code> from the platform repo root. That starts the Platform API (:8001), forecasting (:8002), KG service (:8003), copilot (:8004), contamination (:8005), Hub Flask (:5000), Postgres, Redis, MQTT and Grafana on that host — it does <em>not</em> publish them to the internet.</li>
       <li><strong>Put one HTTPS reverse proxy in front (Caddy or nginx) with TLS:</strong> Pages is HTTPS, and browsers block plain-HTTP backend calls (mixed content). Map one domain, e.g. <code>https://api.example.com/platform/</code> → :8001, <code>/forecast/</code> → :8002, <code>/copilot/</code> → :8004, <code>/contam/</code> → :8005, and paste those proxied URLs above (one proxy also fixes CORS in step 3).</li>
-      <li><strong>CORS:</strong> Platform API defaults to <code>CORS_ORIGINS=*</code> (works). Copilot defaults to localhost/grafana only — set <code>CORS_ORIGINS</code> to include <code>https://ecocode-smart-city-infrastructure.github.io</code>. Forecasting and contamination ship <em>no</em> CORS middleware at all, so a direct browser call from Pages will be blocked even over HTTPS — they must sit behind the step-2 proxy with CORS headers added there, or gain the same FastAPI CORSMiddleware the other two services have.</li>
+      <li><strong>CORS:</strong> Platform API defaults to <code>CORS_ORIGINS=*</code> (works). Copilot, forecasting, contamination, KG and Hub Flask now all ship CORS middleware whose defaults include <code>https://ecocode-smart-city-infrastructure.github.io</code> (platform repo branch <code>fix/browser-cors-kg-service-hub-db</code>, not yet merged into the default branch). Set <code>CORS_ORIGINS</code> to override. Deployments built from older code still need the step-2 proxy to add CORS headers for forecasting/contamination.</li>
       <li><strong>Keys:</strong> if a service runs with <code>REQUIRE_API_KEY=true</code>, paste its key in the matching field above (browser only). Never put a key in a URL, a repo file, or chat.</li>
-      <li><strong>Known gaps in the repo today (not hidden):</strong> Hub Flask <code>/bins</code>, <code>/facilities</code> and <code>/analytics/summary</code> return hardcoded empty/zero stubs in code; <code>docker-compose.yml</code> references a <code>kg-service:8003</code> that has no service definition — the KG that exists is the in-memory engine behind Platform API <code>POST /mcp/waste/kg</code>, which is what this app calls. Platform <code>/bins</code> returns whatever bin telemetry is in Postgres — an empty database means an empty list, which the Bins card reports as such instead of replacing the demo fleet.</li>
+      <li><strong>Known gaps in the repo today (not hidden):</strong> Fixed on platform branch <code>fix/browser-cors-kg-service-hub-db</code> (merge it, then redeploy): Hub Flask <code>/bins</code>/<code>/facilities</code>/<code>/analytics/summary</code> are now DB-backed via the existing repositories (503 when the database is unreachable, never fake zeros) and are composed as <code>hub-flask</code> (:5000); a real <code>kg-service</code> (:8003) now exists in compose, serving the repo's W2RKG engine (<code>GET /health</code>, <code>POST /kg</code>, <code>POST /kg/pathways</code>) — the Platform API's in-memory <code>POST /mcp/waste/kg</code>, which this app calls, is unchanged. Until that branch is merged and deployed, the old behaviour stands: hub stubs and no kg-service. Platform <code>/bins</code> returns whatever bin telemetry is in Postgres — an empty database means an empty list, which the Bins card reports as such instead of replacing the demo fleet.</li>
       <li><strong>Local testing without a server:</strong> run this page locally (<code>python3 -m http.server</code> in <code>docs/</code>) and paste <code>http://localhost:…</code> URLs — mixed-content blocking does not apply to a local page.</li>
     </ol></details>
     <p class="muted small">Run the stack with <code>docker compose up</code> from the repo root, then use the ports above. Browsers block plain-HTTP calls from an HTTPS Pages site — if a probe is blocked, that is mixed-content protection, not a backend failure; run this page locally (same folder, <code>python3 -m http.server</code>) for local backends.</p>
@@ -512,12 +536,12 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 </main>
 
 <footer>
-    <p class="muted small" id="jsBuild">HTML overhaul9 loaded — waiting for app.js…</p><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
+    <p class="muted small" id="jsBuild">HTML overhaul11 loaded — waiting for app.js…</p><p>Waste Intelligence web app · Built from the EcoCode Waste Intelligence Platform repo · Live data: NYC Open Data (Socrata) · Demo fleet, forecasts and manual contamination tags are labelled as such in each view.</p></footer>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul9"></script>
-<script src="twin.js?v=twin2"></script>
-<script src="backend.js?v=backend1"></script>
+<script src="app.js?v=overhaul11"></script>
+<script src="twin.js?v=twin3"></script>
+<script src="backend.js?v=backend3"></script>
 </body>
 </html>

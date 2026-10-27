@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul9 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul11 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -91,6 +91,7 @@ async function loadDashboard(){
   $('#liveBadge').className='pill'+(live?'':' warn');
   $('#dashTonnage tbody').innerHTML=agg.map(r=>`<tr><td>${esc(agg.month)}</td><td>${esc(r.borough)}</td><td>${fmt(r.refuse)}</td><td>${fmt(r.paper)}</td><td>${fmt(r.mgp)}</td><td>${fmt(r.organics)}</td></tr>`).join('');
   try{dashRender(agg, live);}catch(e){console.warn('Dashboard grid failed, table still available:',e);}
+  try{renderOverview(agg, live);}catch(e){console.warn('City overview failed, rest of dashboard still available:',e);}
 }
 
 /* ---------- live data ---------- */
@@ -1093,3 +1094,43 @@ try{renderBins(); loadDashboard(); loadLive(); loadKG(); route(); wiInitRoles();
 try{wiInitCmdK(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK ERROR: '+e.message;}
 try{wiInitAnno(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Anno bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Anno ERROR: '+e.message;}
 try{wiInitLayout(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Layout bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Layout ERROR: '+e.message;}
+
+/* ---------- City Overview: KPI row, alerts, charts — same data as dashRender ---------- */
+function renderOverview(agg, live){
+  const urgent=fleet.filter(b=>b.fill>=80).sort((a,b)=>b.fill-a.fill);
+  const watch=fleet.filter(b=>b.fill>=70&&b.fill<80).sort((a,b)=>b.fill-a.fill);
+  const avg=fleet.length?fleet.reduce((s,b)=>s+b.fill,0)/fleet.length:0;
+  const totals={refuse:0,paper:0,mgp:0,organics:0};
+  agg.forEach(r=>{totals.refuse+=r.refuse; totals.paper+=r.paper; totals.mgp+=r.mgp; totals.organics+=r.organics;});
+  const totalT=totals.refuse+totals.paper+totals.mgp+totals.organics;
+  const orgShare=totalT?Math.round(totals.organics/totalT*100):0;
+  $('#ovKpiUrgent').textContent=urgent.length+(urgent.length===1?' bin':' bins');
+  $('#ovKpiUrgentSub').textContent=urgent.length?`Highest: ${urgent[0].id} at ${urgent[0].fill}% · of ${fleet.length} demo bins`:`No bin at 80% or above · of ${fleet.length} demo bins`;
+  $('#ovKpiFill').textContent=Math.round(avg)+' /100';
+  $('#ovKpiOrganics').textContent=orgShare+'%';
+  $('#ovKpiOrganicsSub').textContent=live?`of live tonnage · ${agg.month}`:'of sample tonnage · live feed unreachable';
+  $('#ovKpiTonnage').textContent=fmt(totalT)+' t';
+  $('#ovKpiTonnageSub').textContent=live?`latest month · LIVE · ${agg.month}`:'latest month · SAMPLE · live feed unreachable';
+  const top=urgent[0]||fleet[0];
+  const alerts=[];
+  urgent.slice(0,4).forEach(b=>alerts.push({t:'Now',dot:'red',html:`<strong>${esc(b.id)}</strong> urgent at ${b.fill}% — ${esc(b.site)}, ${esc(b.borough)} · <a href="#forecast?bin=${b.id}">Forecast →</a>`}));
+  watch.slice(0,2).forEach(b=>alerts.push({t:'Watch',dot:'amber',html:`<strong>${esc(b.id)}</strong> approaching urgent at ${b.fill}% — ${esc(b.site)} · <a href="#forecast?bin=${b.id}">Forecast →</a>`}));
+  if(top){const a=analyse(historyFor(top)); const h=a.toFull===Infinity?null:Math.round(a.toFull);
+    alerts.push({t:h==null?'Steady':'in ~'+h+' h',dot:h==null?'teal':'amber',html:`Forecast: <strong>${esc(top.id)}</strong> ${h==null?'shows no rising trend':'fills in about '+h+' hours'} (slope ${a.slope.toFixed(2)}/h, R² ${a.r2.toFixed(2)}) · <a href="#forecast?bin=${top.id}">Full forecast →</a>`});}
+  alerts.push({t:live?'Live':'Sample',dot:live?'teal':'grey',html:live?`DSNY tonnage feed reachable — ${agg.month}, ${fmt(totalT)} t across boroughs.`:'DSNY tonnage feed unreachable — dashboard shows the labelled sample.'});
+  $('#ovAlertsBadge').textContent=alerts.length+' alerts';
+  $('#ovAlerts').innerHTML=alerts.map(a=>`<li><span class="ov-alert-time">${esc(a.t)}</span><span class="ov-alert-dot ${a.dot}"></span><span>${a.html}</span></li>`).join('');
+  const maxB=Math.max(...agg.map(r=>r.refuse+r.paper+r.mgp+r.organics),1);
+  $('#ovBoroughBadge').textContent=live?('LIVE · '+agg.month):'SAMPLE';
+  $('#ovBoroughBars').innerHTML=agg.map(r=>{const t=r.refuse+r.paper+r.mgp+r.organics; return `<div class="ov-bar-row"><span>${esc(r.borough)}</span><span class="bar"><i style="width:${Math.round(t/maxB*100)}%"></i></span><span>${fmt(t)} t</span></div>`;}).join('');
+  if(top){
+    const pts=historyFor(top);
+    const X=i=>20+i/(pts.length-1)*480, Y=v=>160-v/100*140;
+    const line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.fill).toFixed(1)}`).join(' ');
+    $('#ovTrendSvg').innerHTML=`<path d="${line} L${X(pts.length-1).toFixed(1)},160 L20,160 Z" fill="rgba(45,212,191,.16)" stroke="none"/><path d="${line}" fill="none" stroke="#2dd4bf" stroke-width="2.5"/>`;
+    $('#ovTrendNote').innerHTML=`<strong>${esc(top.id)}</strong> — ${esc(top.site)}, ${esc(top.borough)} · now ${top.fill}%. Demo fill series, same as the Forecasting view.`;
+  }
+  const hours=urgent.map(b=>{const a=analyse(historyFor(b)); return {b, h:a.toFull};}).sort((x,y)=>(x.h===Infinity?1e9:x.h)-(y.h===Infinity?1e9:y.h));
+  const maxH=Math.max(...hours.filter(x=>x.h!==Infinity).map(x=>x.h),1);
+  $('#ovHoursBars').innerHTML=hours.length?hours.map(({b,h})=>`<div class="ov-bar-row"><span>${esc(b.id)}</span><span class="bar"><i class="${b.fill>=90?'high':''}" style="width:${h===Infinity?8:Math.max(8,Math.round(h/maxH*100))}%"></i></span><span>${h===Infinity?'steady':'~'+Math.round(h)+' h'}</span></div>`).join(''):'<p class="muted small">No urgent bins right now.</p>';
+}
