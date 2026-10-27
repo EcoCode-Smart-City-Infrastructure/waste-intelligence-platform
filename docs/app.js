@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul12 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul13 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -212,7 +212,7 @@ function syncRing(){
 function drawGraph(){
   if(!kgData) return;
   const q=($('#kgSearch').value||'').toLowerCase(), type=$('#kgType').value;
-  const nodes=[...kgData.nodes].sort((a,b)=>TYPE_ORDER.indexOf(a.type)-TYPE_ORDER.indexOf(b.type)||a.name.localeCompare(b.name))
+  const nodes=[...kgData.nodes].sort((a,b)=>TYPE_ORDER.indexOf(a.type)-TYPE_ORDER.indexOf(b.type)||(a.name||'').localeCompare(b.name||''))
     .filter(n=>(!q||(n.name+n.id).toLowerCase().includes(q))&&typeMatches(n,type));
   const ids=new Set(nodes.map(n=>n.id));
   const edges=kgData.edges.filter(e=>ids.has(e.from)&&ids.has(e.to));
@@ -302,7 +302,7 @@ function renderFlow(){
   const T=Math.max(0.1,+$('#flowTonnes').value||1);
   const wp=kgData.edges.find(e=>e.from===w.id&&e.type==='WASTECANBEPROCESSEDBY'&&e.to===p.id)
     ||kgData.edges.find(e=>e.from===w.id&&e.type==='WASTESTREAMHASWASTETYPE'&&processesFor(w.id).includes(p.id)&&kgData.edges.some(x=>x.from===e.to&&x.to===p.id&&x.type==='WASTECANBEPROCESSEDBY'));
-  const wpEdge=kgData.edges.find(e=>e.to===p.id&&e.type==='WASTECANBEPROCESSEDBY'&&(e.from===w.id||(w.type==='Waste_Stream'&&kgData.edges.some(s=>s.from===w.id&&s.to===e.from))));
+  const wpEdge=kgData.edges.find(e=>e.to===p.id&&e.type==='WASTECANBEPROCESSEDBY'&&e.from===w.id)||kgData.edges.find(e=>e.to===p.id&&e.type==='WASTECANBEPROCESSEDBY'&&w.type==='Waste_Stream'&&kgData.edges.some(x=>x.from===w.id&&x.to===e.from));
   const pr=kgData.edges.find(e=>e.from===p.id&&e.to===r.id&&e.type==='PROCESSPRODUCESRESOURCE');
   const dem=kgData.edges.find(e=>e.from===r.id&&e.type==='RESOURCEDEMANDEDBY_ACTOR');
   const actor=dem?kgNode(dem.to):null;

@@ -647,7 +647,6 @@
     },
     {
       "id": "ResidentialOrganicsCitywide",
-      "label": "Residential Organics \u2014 Citywide",
       "type": "Waste_Stream",
       "desc": "Mandatory curbside organics for all NYC residents: weekly pickup on the recycling day, all five boroughs, brown or labelled bin up to 55 gallons. This is the public programme, distinct from the Brooklyn sample stream.",
       "detail": {
@@ -656,11 +655,11 @@
         "coverage": "all five boroughs",
         "source": "DSNY curbside composting page, nyc.gov/site/dsny/collection/residents/curbside-composting.page",
         "mandate": "Zero Waste Act, citywide rollout completed 7 Oct 2024; fines possible from 1 Apr 2025"
-      }
+      },
+      "name": "Residential Organics \u2014 Citywide"
     },
     {
       "id": "CommercialOrganicsLL146",
-      "label": "Commercial Organics \u2014 Large Generators (LL146)",
       "type": "Waste_Stream",
       "desc": "Back-of-house organics from large covered establishments under Local Law 146 of 2013 only \u2014 not all commercial food waste. Collected by a BIC-licensed private carter, BIC-registered self-haul, or DSNY-registered on-site processing; DSNY does not collect commercial waste.",
       "detail": {
@@ -668,11 +667,11 @@
         "host_type": "commercial, privately hauled",
         "source": "DSNY commercial organics requirements page",
         "regulation": "Local Law 146 of 2013"
-      }
+      },
+      "name": "Commercial Organics \u2014 Large Generators (LL146)"
     },
     {
       "id": "CommunityFoodScraps",
-      "label": "Community Food Scraps (Drop-off / Smart Bin)",
       "type": "Waste_Stream",
       "desc": "Food scraps taken to community drop-offs and DSNY Smart Compost Bins. Community sites typically accept fruit and vegetable scraps only \u2014 stricter than curbside, which accepts meat, bones and dairy. Smart Bin tonnage is not reported separately from school-truck tonnage.",
       "detail": {
@@ -680,11 +679,11 @@
         "host_type": "community / nonprofit, public drop-off",
         "source": "DSNY Food Scrap Drop-Off Locations dataset if26-z6xq; DSNY drop-off page",
         "accepted_at_community_sites": "fruit and vegetable scraps only, typically"
-      }
+      },
+      "name": "Community Food Scraps (Drop-off / Smart Bin)"
     },
     {
       "id": "SICF_StatenIsland",
-      "label": "Staten Island Compost Facility",
       "type": "Facility",
       "desc": "DSNY-owned, Denali-operated aerobic composting facility at 450 West Service Road, Staten Island (DSNY page gives ZIP 10313, DEC annual report gives 10314 \u2014 verify ZIP before geocoding). Produces STA-certified compost; bulk sale, free bulk to agencies/nonprofits, and 40-lb giveback bags.",
       "detail": {
@@ -698,11 +697,11 @@
         "technology": "Aerobic composting",
         "source": "DSNY Staten Island Compost Facility page; NYSDEC facility annual report 2024",
         "output": "STA-certified compost"
-      }
+      },
+      "name": "Staten Island Compost Facility"
     },
     {
       "id": "NewtownCreekAD",
-      "label": "Newtown Creek Wastewater Resource Recovery Facility",
       "type": "Facility",
       "desc": "DEP-operated wastewater facility at 329 Greenpoint Avenue, Brooklyn. Anaerobic co-digestion of pre-processed food scraps and fats/oils/grease since 2016, about 250 tonnes per day. Output is biogas / renewable natural gas plus digestate \u2014 NOT finished garden compost.",
       "detail": {
@@ -716,11 +715,11 @@
         "technology": "Anaerobic co-digestion",
         "source": "NYSDEC completed application notice; DEP presentation slides",
         "output": "biogas/RNG + digestate, not compost"
-      }
+      },
+      "name": "Newtown Creek Wastewater Resource Recovery Facility"
     },
     {
       "id": "SoundviewYardCompost",
-      "label": "Soundview Park Yard Waste Compost Facility",
       "type": "Facility",
       "desc": "DSNY-owned, Denali-operated yard-waste-only composting site at Soundview Park, Randall Avenue, Bronx. Seasonal; it does not take food scraps.",
       "detail": {
@@ -731,11 +730,11 @@
         "operational_status": "active",
         "technology": "Aerobic composting, yard waste only",
         "source": "NYSDEC facility annual report 2024"
-      }
+      },
+      "name": "Soundview Park Yard Waste Compost Facility"
     },
     {
       "id": "EarthMatterCommunity",
-      "label": "Earth Matter NY (Governors Island)",
       "type": "Facility",
       "desc": "Community composting site on Governors Island, NYSDEC-registered, up to 600 tonnes per year. Finished compost (over 250 cubic yards per year) goes to Governors Island partners, NYC Parks, GreenThumb community gardens and street trees \u2014 used locally, with no public facility-to-garden consignment ledger.",
       "detail": {
@@ -747,11 +746,11 @@
         "technology": "Aerobic composting, community scale",
         "source": "Earth Matter NY community compost network page",
         "output": "finished compost, local use"
-      }
+      },
+      "name": "Earth Matter NY (Governors Island)"
     },
     {
       "id": "CommunityGarden",
-      "label": "Community Garden",
       "type": "Actor",
       "desc": "A community garden receiving compost for soil building, including via DSNY GetCompost giveback bags and community compost sites. Demand is seasonal and site-specific; no public dataset records tonnes received per garden.",
       "detail": {
@@ -759,11 +758,11 @@
         "scale": "neighbourhood",
         "source": "DSNY GetCompost programme; NYC Parks GreenThumb",
         "demand": "compost, seasonal"
-      }
+      },
+      "name": "Community Garden"
     },
     {
       "id": "GetCompostDistribution",
-      "label": "DSNY GetCompost Giveback",
       "type": "Actor",
       "desc": "DSNY programme returning finished compost in 40-pound bags at six fixed 2026 sites (Bronx 570 Zerega Ave; Brooklyn 459 N Henry St; Manhattan 2442 1st Ave; Queens East 235-69 Hillside Ave; Queens West 77-28 19th Ave; Staten Island 600 West Service Rd) plus pop-ups, and in bulk free to agencies and nonprofits.",
       "detail": {
@@ -771,11 +770,11 @@
         "scale": "city",
         "source": "DSNY Staten Island Compost Facility page; DSNY GetCompost",
         "distribution": "40-lb bags at fixed sites + bulk to agencies/nonprofits"
-      }
+      },
+      "name": "DSNY GetCompost Giveback"
     },
     {
       "id": "RNG",
-      "label": "Renewable Natural Gas (RNG)",
       "type": "Resource",
       "desc": "Biogas from anaerobic digestion, purified to pipeline-quality renewable natural gas for the gas grid (the Newtown Creek route). WARM electricity-offset factors do not apply to RNG-to-grid displacement \u2014 do not substitute them.",
       "detail": {
@@ -783,11 +782,11 @@
         "market_demand": "grid gas",
         "quality_grade": "pipeline quality after purification",
         "source": "DEP / WM CORe commentary on Newtown Creek biogas"
-      }
+      },
+      "name": "Renewable Natural Gas (RNG)"
     },
     {
       "id": "ZeroWasteActOrganics",
-      "label": "Zero Waste Act \u2014 Mandatory Curbside Organics",
       "type": "Constraint",
       "desc": "Citywide mandatory curbside organics programme: at least 30 sanitation districts by 2 Oct 2023, all districts by 7 Oct 2024. Weekly collection on the recycling day. Enforcement fines were possible from 1 Apr 2025, with a pause and low-level resumption in 2026 \u2014 do not model enforcement as continuous.",
       "detail": {
@@ -796,11 +795,11 @@
         "jurisdiction": "New York City",
         "effective_date": "2024-10-07",
         "source": "NYC Admin Code 16-308.1 (Intro 244-A); DSNY curbside page; IBO Apr 2026"
-      }
+      },
+      "name": "Zero Waste Act \u2014 Mandatory Curbside Organics"
     },
     {
       "id": "CommercialWasteZones",
-      "label": "Commercial Waste Zones (LL199)",
       "type": "Constraint",
       "desc": "Commercial waste zoning under Local Law 199 of 2019: 20 zones, up to three competitively selected carters each, citywide completion targeted 31 Dec 2027. Carter GPS and tonnage reporting is contractual; its public-release status is unstated, so it is not modelled as open data here.",
       "detail": {
@@ -809,7 +808,8 @@
         "jurisdiction": "New York City",
         "source": "DSNY commercial waste zones programme; Local Law 199 of 2019",
         "zones": 20
-      }
+      },
+      "name": "Commercial Waste Zones (LL199)"
     }
   ],
   "edges": [
