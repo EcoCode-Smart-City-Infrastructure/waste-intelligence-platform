@@ -70,6 +70,14 @@
   </div>
   <p class="muted small" style="margin:0 0 .6rem">Basemap: CARTO Dark Matter (supplied as a Kepler custom style, no token needed) is the default; pick another style in Kepler's base-map control, or paste a Mapbox token to unlock the Mapbox styles (Dark, Light, Muted, Satellite), which show a blank canvas without a token. A pasted token is stored only in this browser's localStorage and is sent only to Mapbox when a Mapbox style is chosen — never to the repo or any EcoCode server. Demo bin positions are the app's seeded demo fleet, labelled as such; they are not live sensor locations. No picture was attached to the request, so this page replicates the existing app's dashboard facets (fleet, routes, tonnage, forecasting, knowledge graph) — send the screenshot if a specific layout was meant and it will be matched.</p>
   <p class="muted small" id="activeBasemap" style="margin:0 0 .6rem">Active basemap: checking…</p>
+  <div class="card" id="mapDiag" style="margin:0 0 .6rem">
+    <h2 style="margin-bottom:.4rem">Basemap diagnostics (temporary panel)</h2>
+    <p class="muted small" id="diagGlobals">Checking map libraries…</p>
+    <p class="muted small" id="diagCanvas">Checking canvases…</p>
+    <p class="muted small" id="diagLog">Error log:</p>
+    <button class="btn" id="diagRawTest">Run raw MapLibre test</button>
+    <div id="diagRawMap" style="display:none;width:100%;height:240px;margin-top:.6rem;border:1px solid #dbe3dc;border-radius:10px"></div>
+  </div>
 
   <div id="kepler-wrap">
     <div id="kepler-root"></div>
@@ -100,6 +108,6 @@
 <script src="https://unpkg.com/styled-components@5.3.11/dist/styled-components.min.js"></script>
 <script src="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/kepler.gl@3.0.0/umd/keplergl.min.js"></script>
-<script src="kepler.js?v=7"></script>
+<script src="kepler.js?v=8"></script>
 </body>
 </html>

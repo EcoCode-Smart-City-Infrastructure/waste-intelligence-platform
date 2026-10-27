@@ -258,6 +258,7 @@ async function loadDataIntoKepler(attempt) {
     if (bm) { const st = (inst2.mapStyle && inst2.mapStyle.styleType) || 'unknown'; bm.textContent = 'Active basemap in Kepler state: ' + st + ' · datasets: ' + n + ' · layers: ' + layers; }
     if (!window.__bmPoll) { window.__bmPoll = setInterval(() => { try { const inst3 = mapInstance(); const el = $('#activeBasemap'); if (inst3 && el) { const st3 = (inst3.mapStyle && inst3.mapStyle.styleType) || 'unknown'; const n3 = inst3.visState && inst3.visState.datasets ? Object.keys(inst3.visState.datasets).length : 0; const l3 = inst3.visState ? (inst3.visState.layers || []).length : 0; el.textContent = 'Active basemap in Kepler state: ' + st3 + ' · datasets: ' + n3 + ' · layers: ' + l3; } } catch (e) {} }, 2000); }
     renderKpis(tonnage);
+    runDiagCensus();
   }, 600);
 }
 
@@ -316,6 +317,51 @@ $('#exportConfig')?.addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'waste-intelligence-kepler-config.json'; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+});
+
+/* ---------- basemap diagnostics (v=8, temporary) ---------- */
+function diagLog(msg) {
+  try {
+    const el = $('#diagLog'); if (!el) return;
+    const all = (el.dataset.log ? el.dataset.log.split('\n') : []).concat([new Date().toISOString().slice(11, 19) + ' ' + msg]).slice(-30);
+    el.dataset.log = all.join('\n');
+    el.innerHTML = 'Error log:<br>' + all.map(l => esc(l)).join('<br>');
+  } catch (e) {}
+}
+window.addEventListener('error', (e) => {
+  try {
+    if (e.target && (e.target.src || e.target.href)) diagLog('RESOURCE FAILED: ' + (e.target.src || e.target.href));
+    else if (e.message) diagLog('PAGE ERROR: ' + e.message + (e.filename ? ' @ ' + e.filename.split('/').pop() + ':' + e.lineno : ''));
+  } catch (err) {}
+}, true);
+window.addEventListener('unhandledrejection', (e) => { try { diagLog('UNHANDLED REJECTION: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason))); } catch (err) {} });
+function runDiagCensus() {
+  try {
+    const ml = window.maplibregl;
+    const mb = window.mapboxgl;
+    const g = $('#diagGlobals');
+    if (g) g.textContent = 'Libraries — maplibregl: ' + (ml ? ('present' + (ml.version ? ' v' + ml.version : '')) : 'MISSING') + ' · mapboxgl: ' + (mb ? ('present' + (mb.version ? ' v' + mb.version : '')) : 'MISSING') + ' · KeplerGl: ' + (window.KeplerGl ? 'present' : 'MISSING');
+    const canvases = Array.from(document.querySelectorAll('canvas')).map(c => (c.className || '(no class)') + ' ' + c.width + 'x' + c.height + ' attr, ' + c.clientWidth + 'x' + c.clientHeight + ' px').join(' | ');
+    const maps = 'map containers — .maplibregl-map: ' + document.querySelectorAll('.maplibregl-map').length + ' · .mapboxgl-map: ' + document.querySelectorAll('.mapboxgl-map').length + ' · .maplibregl-canvas: ' + document.querySelectorAll('.maplibregl-canvas').length + ' · .mapboxgl-canvas: ' + document.querySelectorAll('.mapboxgl-canvas').length;
+    const c = $('#diagCanvas');
+    if (c) c.textContent = 'Canvases (' + document.querySelectorAll('canvas').length + '): ' + (canvases || 'none') + ' — ' + maps;
+  } catch (e) { diagLog('CENSUS FAILED: ' + e.message); }
+}
+$('#diagRawTest')?.addEventListener('click', () => {
+  runDiagCensus();
+  const box = $('#diagRawMap'); if (!box) return;
+  box.style.display = 'block';
+  if (!window.maplibregl) { diagLog('RAW TEST: maplibregl global missing — cannot run.'); return; }
+  if (window.__rawMap) { try { window.__rawMap.remove(); } catch (e) {} }
+  try {
+    const m = new window.maplibregl.Map({ container: box, style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', center: [-73.94, 40.73], zoom: 11 });
+    window.__rawMap = m;
+    let done = false;
+    m.on('load', () => { if (!done) { done = true; diagLog('RAW TEST: map loaded (style + tiles OK at MapLibre level).'); } });
+    m.on('error', (e) => { if (!done) { done = true; diagLog('RAW TEST ERROR: ' + (e && e.error ? e.error.message : JSON.stringify(e))); } });
+    setTimeout(() => { if (!done) { done = true; diagLog('RAW TEST: no load/error after 20 s — style or tiles stalled.'); } }, 20000);
+    diagLog('RAW TEST: started (CARTO dark style, NYC).');
+  } catch (e) { diagLog('RAW TEST THREW: ' + e.message); }
 });
 
 /* ---------- boot ---------- */
