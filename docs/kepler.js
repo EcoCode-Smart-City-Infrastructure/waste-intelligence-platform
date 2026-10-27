@@ -159,13 +159,13 @@ function buildConfig() {
       },
       mapState: { latitude: 40.73, longitude: -73.94, zoom: 10.2, pitch: 45, bearing: 0, dragRotate: true, isSplit: false },
       mapStyle: {
-        // Kepler's built-in 'dark-matter' (CARTO Dark Matter, no token).
-        // Do NOT use 'dark'/'light'/'muted' here: those are mapbox:// styles
-        // that render a blank canvas without a Mapbox token (verified live
-        // twice). Custom mapStyles dict entries were also removed: a custom
-        // id did not produce tiles either, and offering it in the picker
-        // would only offer another blank choice.
-        styleType: 'dark-matter',
+        // Token-free default via the component's mapStyles prop (see
+        // mountKepler): Kepler's saved-config mapStyles dict alone did NOT
+        // register a custom style in live verification (three blank
+        // canvases: custom id, built-in 'dark', built-in 'dark-matter').
+        // Built-in 'dark'/'light'/'muted' are mapbox:// styles that blank
+        // without a Mapbox token, so they are never the default here.
+        styleType: 'carto_dark_matter',
         topLayerGroups: {}, visibleLayerGroups: { label: true, road: true, border: true, building: true, water: true, land: true, '3d building': false },
         threeDBuildingColor: [9, 17, 24],
         mapStyles: {}
@@ -203,6 +203,12 @@ function createStore() {
                    : window.Redux.createStore(reducers, {});
 }
 
+/* Custom basemaps, supplied as a component prop (Kepler's documented route
+   for additional styles). CARTO's GL styles are public and need no token. */
+const CUSTOM_MAP_STYLES = [
+  { id: 'carto_dark_matter', label: 'CARTO Dark Matter (no token)', url: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json' },
+  { id: 'carto_positron', label: 'CARTO Positron (no token)', url: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json' }
+];
 function mountKepler() {
   const token = (() => { try { return localStorage.getItem('wip_mapbox_token') || ''; } catch (e) { return ''; } })();
   const tokenInput = $('#mapboxToken'); if (tokenInput && token) tokenInput.value = token;
@@ -214,7 +220,7 @@ function mountKepler() {
       window.addEventListener('resize', onR); return () => window.removeEventListener('resize', onR);
     }, []);
     return e(window.ReactRedux.Provider, { store },
-      e(KeplerComp, { id: 'map', mapboxApiAccessToken: token, width: size.w, height: size.h, appName: 'Waste Intelligence', version: 'Kepler 3.0' }));
+      e(KeplerComp, { id: 'map', mapboxApiAccessToken: token, width: size.w, height: size.h, appName: 'Waste Intelligence', version: 'Kepler 3.0', mapStyles: CUSTOM_MAP_STYLES }));
   }
   const rootEl = $('#kepler-root');
   if (window.ReactDOM.createRoot) window.ReactDOM.createRoot(rootEl).render(e(App));
@@ -247,6 +253,8 @@ async function loadDataIntoKepler(attempt) {
     const layers = inst2 && inst2.visState ? (inst2.visState.layers || []).length : 0;
     if (!n) { setStatus('Kepler accepted the data call but reports 0 datasets — try “Reload data”; if it persists, Kepler’s dispatch shape differs from this build and the config export below will show the store state for diagnosis.'); return; }
     hideStatus();
+    const bm = $('#activeBasemap');
+    if (bm) { const st = (inst2.mapStyle && inst2.mapStyle.styleType) || 'unknown'; bm.textContent = 'Active basemap in Kepler state: ' + st + ' · datasets: ' + n + ' · layers: ' + layers; }
     renderKpis(tonnage);
   }, 600);
 }

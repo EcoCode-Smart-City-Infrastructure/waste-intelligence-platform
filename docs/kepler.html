@@ -68,7 +68,8 @@
     <button class="btn" id="saveToken">Save token &amp; reload</button>
     <span class="pill" id="liveBadge">checking…</span>
   </div>
-  <p class="muted small" style="margin:0 0 .6rem">Basemap: CARTO Dark Matter (Kepler's built-in dark-matter style, no token needed) is the default; pick another style in Kepler's base-map control, or paste a Mapbox token to unlock the Mapbox styles (Dark, Light, Muted, Satellite), which show a blank canvas without a token. A pasted token is stored only in this browser's localStorage and is sent only to Mapbox when a Mapbox style is chosen — never to the repo or any EcoCode server. Demo bin positions are the app's seeded demo fleet, labelled as such; they are not live sensor locations. No picture was attached to the request, so this page replicates the existing app's dashboard facets (fleet, routes, tonnage, forecasting, knowledge graph) — send the screenshot if a specific layout was meant and it will be matched.</p>
+  <p class="muted small" style="margin:0 0 .6rem">Basemap: CARTO Dark Matter (supplied as a Kepler custom style, no token needed) is the default; pick another style in Kepler's base-map control, or paste a Mapbox token to unlock the Mapbox styles (Dark, Light, Muted, Satellite), which show a blank canvas without a token. A pasted token is stored only in this browser's localStorage and is sent only to Mapbox when a Mapbox style is chosen — never to the repo or any EcoCode server. Demo bin positions are the app's seeded demo fleet, labelled as such; they are not live sensor locations. No picture was attached to the request, so this page replicates the existing app's dashboard facets (fleet, routes, tonnage, forecasting, knowledge graph) — send the screenshot if a specific layout was meant and it will be matched.</p>
+  <p class="muted small" id="activeBasemap" style="margin:0 0 .6rem">Active basemap: checking…</p>
 
   <div id="kepler-wrap">
     <div id="kepler-root"></div>
@@ -98,6 +99,6 @@
 <script src="https://unpkg.com/react-is@18.3.1/umd/react-is.production.min.js"></script>
 <script src="https://unpkg.com/styled-components@5.3.11/dist/styled-components.min.js"></script>
 <script src="https://unpkg.com/kepler.gl@3.0.0/umd/keplergl.min.js"></script>
-<script src="kepler.js?v=5"></script>
+<script src="kepler.js?v=6"></script>
 </body>
 </html>
