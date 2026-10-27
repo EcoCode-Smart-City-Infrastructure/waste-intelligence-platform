@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul13 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul14 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -13,7 +13,7 @@ const fmt = n => (n==null||isNaN(n)?'—':Number(n).toLocaleString(undefined,{ma
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- routing ---------- */
-const VIEWS=['dashboard','live','bins','forecast','graph','contamination','connect','assistant','twin'];
+const VIEWS=['dashboard','live','bins','forecast','graph','contamination','connect','assistant','twin','network'];
 function route(){
   const v=(location.hash||'#dashboard').slice(1).split('?')[0];
   const view=VIEWS.includes(v)?v:'dashboard';

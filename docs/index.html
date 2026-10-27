@@ -26,6 +26,7 @@
     <a href="#connect" data-nav="connect">Connect</a>
     <a href="#assistant" data-nav="assistant">Assistant</a>
     <a href="#twin" data-nav="twin">Digital Twin <span class="pill warn">preview</span></a>
+    <a href="#network" data-nav="network">Collection Network</a>
     <a href="kepler.html">Kepler 3D Map</a>
     <a href="login.html" id="authNavLink">Sign in</a>
     <a href="#" id="authSignOut" hidden>Sign out</a>
@@ -50,6 +51,7 @@
       <p class="dash-side-group">Intelligence</p>
       <nav class="dash-side-nav">
         <a href="#graph">Knowledge Graph</a>
+        <a href="#network">Collection Network</a>
         <a href="#contamination">Contamination</a>
         <a href="#assistant">Assistant</a>
         <a href="kepler.html">Kepler Map</a>
@@ -534,6 +536,69 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
   </div>
   <div class="card"><h2>Bins in this scene</h2><ul id="twinBinList" class="list"></ul></div>
 </section>
+<!-- NETWORK -->
+<section id="view-network" class="view hidden">
+  <h1>Collection Network — live-modelled, not truck GPS</h1>
+  <p class="lede">A generative network built on what is actually published: DSNY section schedules and district-to-facility destinations, plus bins and nodes you add here. Sequences are generated nearest-neighbour from a hub — they are <strong>not</strong> DSNY's route order, and no live truck location is shown, because DSNY does not publish one. Collection events you log are your records; they flow through the knowledge graph into diversion, emissions and resource totals.</p>
+  <div class="card">
+    <h2>1 · Public spine — DSNY schedules &amp; destinations by district</h2>
+    <div class="controls">
+      <label>District code <input id="netDistrict" placeholder="e.g. BKN05"></label>
+      <button class="btn primary" id="netSpineBtn" type="button">Load public spine</button>
+    </div>
+    <p class="muted" id="netSpine">Enter a district code and load it. Frequencies give the collection days per section; vendor assignments give where each stream goes from that district.</p>
+    <div class="tablewrap"><table><thead><tr><th>Section</th><th>Refuse</th><th>Recycling</th><th>Organics</th><th>Bulk</th></tr></thead><tbody id="netSpineTable"></tbody></table></div>
+    <p class="muted small">Sources, live from NYC Open Data: DSNY Frequencies <code>rv63-53db</code> and DSNY Districts With Disposal Vendor Assignments <code>fpv2-r9br</code>. If the load fails, nothing is substituted.</p>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2>2 · Build a sequence</h2>
+      <div class="controls">
+        <label>Stream <select id="netStream"><option value="organics">Organics</option><option value="refuse">Refuse</option><option value="recycling">Recycling</option><option value="paper">Paper</option><option value="mgp">MGP</option></select></label>
+        <label>Process (organics) <select id="netProcess"><option value="AerobicComposting">Aerobic Composting</option><option value="AnaerobicDigestion">Anaerobic Digestion</option></select></label>
+        <label>Borough <select id="netBorough"><option value="">All boroughs</option><option>Manhattan</option><option>Brooklyn</option><option>Queens</option><option>Bronx</option><option>Staten Island</option></select></label>
+        <label>Hub <select id="netHubSelect"></select></label>
+        <label>Tonnes per full node (demo assumption) <input type="number" id="netTonnesPerFull" value="0.5" step="0.1" min="0"></label>
+      </div>
+      <button class="btn primary" id="netBuildBtn" type="button">Build generated sequence</button>
+      <button class="btn" id="netRunBtn" type="button">Run sequence — log a collection event per stop</button>
+      <p class="muted" id="netSeqSummary">Build a sequence first. Stops come from the demo fleet plus your added nodes, in the borough/stream you pick.</p>
+      <ol id="netSeqList"></ol>
+    </div>
+    <div class="card">
+      <h2>Network map — hubs, nodes, generated route</h2>
+      <svg id="netMap" viewBox="0 0 900 520" role="img" aria-label="Collection network map"></svg>
+      <p class="muted small">Squares are hubs (knowledge-graph facilities); dots are collection nodes, coloured by stream. The dashed line is the generated sequence, not a DSNY route. Positions for facilities without lat/lon in kg.json use the borough centre and are flagged approximate in the hub list.</p>
+      <h2>Hubs &amp; spokes</h2><ul class="list" id="netHubs"></ul>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2>3 · Add a node — bin, collection point, hub or distribution point</h2>
+      <form id="netNodeForm" class="form">
+        <label>Node ID <input required id="netNodeId" placeholder="NODE-BK-01"></label>
+        <label>Site / name <input required id="netNodeSite" placeholder="e.g. Community garden, 5th Ave"></label>
+        <label>Kind <select id="netNodeKind"><option value="collection bin">Collection bin</option><option value="collection node">Collection node</option><option value="hub">Hub</option><option value="distribution point">Distribution point</option><option value="garden">Garden</option></select></label>
+        <label>Stream <select id="netNodeStream"><option value="organics">Organics</option><option value="refuse">Refuse</option><option value="recycling">Recycling</option><option value="paper">Paper</option><option value="mgp">MGP</option></select></label>
+        <label>Host <select id="netNodeHost"><option>DSNY</option><option>Private hauler</option><option>Community</option><option>Public</option><option>Private</option></select></label>
+        <label>Borough <select id="netNodeBorough"><option>Manhattan</option><option>Brooklyn</option><option>Queens</option><option>Bronx</option><option>Staten Island</option></select></label>
+        <label>Latitude <input type="number" step="0.0001" id="netNodeLat" placeholder="borough centre if blank"></label>
+        <label>Longitude <input type="number" step="0.0001" id="netNodeLon" placeholder="borough centre if blank"></label>
+        <label>Fill % (bins only) <input type="number" id="netNodeFill" min="0" max="100" value="60"></label>
+        <button class="btn primary" type="submit">Add node (saved in this browser)</button>
+      </form>
+      <p class="muted small">Nodes are saved to this browser's localStorage only — they are your network layer, not a DSNY dataset, and they do not leave the device.</p>
+    </div>
+    <div class="card">
+      <h2>4 · Collection events &amp; what they become</h2>
+      <div class="kpis" id="netKpis"></div>
+      <ul class="list" id="netEvents"></ul>
+      <div class="controls"><button class="btn" id="netExportBtn" type="button">Export nodes + events as JSON</button><button class="btn" id="netClearEventsBtn" type="button">Clear events</button></div>
+      <p class="muted small">Each organics event flows: collected tonnes → diverted tonnes (kg edge diversion rate) → CO₂e and CH₄ avoided (EPA WARM v15, kg edge) → compost tonnes (kg yield) → distribution via the hub's demand actors. Non-organics events log collection + vendor destination only. This is a modelled ledger of events you log, not DSNY telemetry.</p>
+    </div>
+  </div>
+  <div class="card"><h2>All network nodes</h2><ul class="list" id="netNodeList"></ul></div>
+</section>
 </main>
 
 <footer>
@@ -541,8 +606,9 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul13"></script>
+<script src="app.js?v=overhaul14"></script>
 <script src="twin.js?v=twin3"></script>
+<script src="network.js?v=network1"></script>
 <script src="backend.js?v=backend3"></script>
 </body>
 </html>
