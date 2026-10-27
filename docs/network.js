@@ -52,6 +52,7 @@ async function drawLeafletMap(){
   const el = $n('#netMap'); if(!el || !window.L) return false;
   if(!leafletMap){
     leafletMap = window.L.map(el).setView([40.7128,-73.96], 11);
+    setTimeout(()=>{ try{ leafletMap.invalidateSize(); }catch(e){} }, 100);
     leafletLayers = {markers: window.L.layerGroup().addTo(leafletMap)};
     setBasemap();
   }
@@ -307,7 +308,7 @@ async function init(){
     const nodes = loadNodes(); nodes.unshift(node); saveNodes(nodes);
     renderNodes(); drawMap(); e.target.reset();
   });
-  window.addEventListener('hashchange', ()=>{ if((location.hash||'').startsWith('#network')){ renderNodes(); renderEvents(); drawMap(); } });
+  window.addEventListener('hashchange', ()=>{ if((location.hash||'').startsWith('#network')){ renderNodes(); renderEvents(); drawMap(); if(leafletMap) setTimeout(()=>{ try{ leafletMap.invalidateSize(); }catch(e){} }, 100); } });
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
