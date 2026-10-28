@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul33 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul33b parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -1351,7 +1351,7 @@ function wiRenderInsight(bin){
   else if(isFinite(a.toFull)) html=`<p>${esc(bin.id)} is at ${bin.fill}% and fills in about ${Math.round(a.toFull)} hours at the current trend — no urgent action.</p>`;
   else html=`<p>${esc(bin.id)} shows no rising trend at ${bin.fill}% — no urgent action. This is a forecast, not a measurement.</p>`;
   html+=`<div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn primary" type="button" id="nxInsightRoute">Propose a route</button><a class="btn" href="#forecast?bin=${encodeURIComponent(bin.id)}">View details →</a></div><div id="nxInsightProposal"></div>`;
-  el.innerHTML=html;
+  el.innerHTML='<h2>AI Insights &amp; Recommendations</h2>'+html;
   const pb=el.querySelector('#nxInsightRoute');
   if(pb) pb.addEventListener('click', ()=>{
     const pool=[bin, ...fleet.filter(b=>b.fill>=80 && b.id!==bin.id).sort((x,y)=>y.fill-x.fill).slice(0,3)];

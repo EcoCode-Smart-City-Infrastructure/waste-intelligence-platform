@@ -547,7 +547,7 @@ main{display:flex;align-items:flex-start}
 #nxCenter{display:grid;gap:1rem;min-width:0}
 #nxKpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.9rem}
 #nxKpis .ov-kpi{min-width:0;overflow-wrap:anywhere}
-#nxKpis .ov-kpi b{font-size:clamp(1.35rem,2.1vw,1.85rem)}
+#nxKpis .ov-kpi b{font-size:clamp(1.2rem,1.9vw,1.8rem)}
 #nxBottom{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1rem}
 #nxBottom>*{min-width:0}
 #nxRail{display:grid;gap:1rem;align-content:start;position:sticky;top:76px}
