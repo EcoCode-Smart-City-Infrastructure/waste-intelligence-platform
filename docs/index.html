@@ -685,6 +685,20 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
       <p class="muted small">Boards covered: ESP32, ESP8266, Arduino Uno, Nano 33 IoT, Raspberry Pi Pico W (MicroPython), STM32 (Arduino core). Sensors covered: HC-SR04 fill, DHT22, MQ-4 methane, HX711 weight, DS18B20, capacitive soil moisture, PIR, NEO-6M GPS, battery voltage. A sensor/board combination the generator cannot wire gets a clearly marked TODO in the code, not invented code.</p>
     </div>
   </div>
+  <div class="card">
+    <h2>5 · Direct Flash — export to the microcontroller itself</h2>
+    <p class="lede">Two real paths, labelled by board. <strong>MicroPython boards</strong> (Pico W, ESP32 MicroPython, ESP8266 MicroPython) flash <em>directly from this page</em> — the generated code is the firmware file, so it is written to the device over USB serial or over WiFi WebREPL, verified, and reset. <strong>Arduino C++ boards</strong> cannot be flashed from a browser (they need a compiler), so their path is a downloaded USB flash package (sketch + arduino-cli script) plus wireless re-flashing via ArduinoOTA, which is now included in every WiFi Arduino sketch generated here.</p>
+    <div class="controls">
+      <label>Transport <select id="flashTransport"><option value="usb">USB — Web Serial (Chrome/Edge)</option><option value="wifi">WiFi — WebREPL WebSocket</option></select></label>
+    </div>
+    <div id="flashWifiFields" style="display:none" class="controls">
+      <label>Device IP <input id="flashDeviceIp" placeholder="e.g. 192.168.1.42"></label>
+      <label>WebREPL password <input type="password" id="flashWebreplPass" placeholder="set on the device with webrepl.start()"></label>
+    </div>
+    <div class="controls"><button class="btn primary" id="flashBtn" type="button">⚡ Flash current design to device (MicroPython)</button><button class="btn" id="flashCppBtn" type="button">Download C++ flash package (USB + OTA)</button></div>
+    <pre id="flashLog" style="white-space:pre-wrap;max-height:300px;overflow:auto">Flash log will appear here. For USB: plug the board in, click Flash, pick its serial port. For WiFi: the board must already run MicroPython with WebREPL started, on the same network as this browser (ws://, so this page must be served over http on a local network or the browser may block mixed content — use USB if WiFi is blocked).</pre>
+    <p class="muted small">Prerequisites, stated plainly: (1) MicroPython must already be installed on the board once (Pico: drag the MicroPython UF2 onto the RPI-RP2 drive; ESP32/ESP8266: flash the MicroPython .bin with esptool once) — after that, this panel updates main.py as often as you like. (2) Web Serial needs Chrome/Edge in a secure context; Safari/Firefox do not support it, and the panel will say so instead of pretending. (3) No credentials are stored by Admin — the sketch file you download is the only place WiFi/MQTT passwords live.</p>
+  </div>
 </section>
 </main>
 
@@ -693,10 +707,10 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul17"></script>
+<script src="app.js?v=overhaul18"></script>
 <script src="twin.js?v=twin3"></script>
 <script src="network.js?v=network3"></script>
-<script src="admin.js?v=admin1"></script>
+<script src="admin.js?v=admin2"></script>
 <script src="backend.js?v=backend3"></script>
 </body>
 </html>
