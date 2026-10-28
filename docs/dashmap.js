@@ -152,7 +152,7 @@ async function init(){
     $d('#dashMapRetry')?.addEventListener('click', ()=>{ inited = false; init(); });
     return;
   }
-  map = window.L.map(el, {preferCanvas:true, zoomControl:true}).setView([40.7128,-74.006], 11);
+  map = window.L.map(el, {zoomControl:true}).setView([40.7128,-74.006], 11);
   layers = {markers: window.L.layerGroup().addTo(map), labels: window.L.layerGroup().addTo(map), base:null, route:null, pulse:null};
   // Default is OpenStreetMap Standard: it is the provider that already
   // proved itself live in the Collection Network map, needs no key, and

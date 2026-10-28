@@ -321,3 +321,20 @@ nav a{white-space:nowrap}
 #nav{position:relative}
 #nav::after{content:"";position:sticky;right:0;top:0;bottom:0;width:28px;flex-shrink:0;background:linear-gradient(90deg,transparent,#0f172a);pointer-events:none}
 @media(max-width:760px){#nav::after{display:none}}
+
+/* ---- Overhaul27: the actual tile-covering bug ----
+   styles.css has a global `canvas` rule (background #0f172a, border,
+   radius) meant for chart canvases. The dashboard/admin maps use
+   Leaflet's canvas renderer, so their markers/route/pulse are drawn on
+   a canvas that sits OVER the tile layer — an opaque dark rectangle
+   hiding every tile while markers (drawn on it) still showed. Fix both
+   ways: never let a map canvas carry a background/border, and stop
+   using the canvas renderer for these maps (SVG, like the proven
+   Collection Network map). */
+#dashLiveMap canvas,#adMap canvas{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+/* Nav flex fix: without min-width:0 the scrolling nav row refused to
+   shrink, so ⌘K/Sign in clipped its last links. Let it flex and scroll
+   internally; the cosmetic fade is removed (it also obscured links). */
+#nav{flex:1 1 auto;min-width:0}
+#nav::after{display:none}
+#authNavLink{flex-shrink:0}
