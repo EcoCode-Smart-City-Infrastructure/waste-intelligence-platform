@@ -356,6 +356,96 @@ function flashCppPackage(){
   a2.href = URL.createObjectURL(b2); a2.download = design.id + '.ino'; a2.click();
   $a('#flashLog').textContent = 'Downloaded ' + design.id + '.ino + ' + design.id + '-flash.sh (arduino-cli USB flash script). Run the script on your machine with the board connected by USB; wireless re-flashes then go via ArduinoOTA network port ' + design.id + '.';
 }
+/* ---------- Install MicroPython (section 6) ----------
+   Pico: BOOTSEL drive write via File System Access (Chrome/Edge), with a
+   manual drag-and-drop download as fallback. ESP: esptool-js in the browser
+   (loaded on demand from unpkg via the page importmap), erase + writeFlash.
+   Firmware fetch: micropython.org -latest files first, then a known-good
+   versioned file. If the site blocks direct page fetches (CORS), the log
+   says so and the user can download + pick the file instead — the install
+   still runs locally, nothing is uploaded to a server. */
+const MP_FAMILIES = {
+  picow: {kind:'uf2', drive:'RPI-RP2', urls:['https://micropython.org/download/rp2-pico-w/rp2-pico-w-latest.uf2','https://micropython.org/resources/firmware/RPI_PICO_W-20250415-v1.25.0.uf2'], page:'https://micropython.org/download/rp2-pico-w/'},
+  pico: {kind:'uf2', drive:'RPI-RP2', urls:['https://micropython.org/download/rp2-pico/rp2-pico-latest.uf2','https://micropython.org/resources/firmware/RPI_PICO-20250415-v1.25.0.uf2'], page:'https://micropython.org/download/rp2-pico/'},
+  pico2w: {kind:'uf2', drive:'RP2350', urls:['https://micropython.org/download/rp2-pico2-w/rp2-pico2-w-latest.uf2','https://micropython.org/resources/firmware/RPI_PICO2_W-20250911-v1.26.1.uf2','https://micropython.org/resources/firmware/RPI_PICO2_W-20250415-v1.25.0.uf2'], page:'https://micropython.org/download/rp2-pico2-w/'},
+  pico2: {kind:'uf2', drive:'RP2350', urls:['https://micropython.org/download/rp2-pico2/rp2-pico2-latest.uf2','https://micropython.org/resources/firmware/RPI_PICO2-20250415-v1.25.0.uf2'], page:'https://micropython.org/download/rp2-pico2/'},
+  esp32: {kind:'bin', address:0x1000, urls:['https://micropython.org/download/ESP32_GENERIC/ESP32_GENERIC-latest.bin','https://micropython.org/resources/firmware/esp32-20250910-v1.26.0.bin'], page:'https://micropython.org/download/ESP32_GENERIC/'},
+  esp32s3: {kind:'bin', address:0x1000, urls:['https://micropython.org/download/ESP32_GENERIC_S3/ESP32_GENERIC_S3-latest.bin','https://micropython.org/resources/firmware/esp32s3-20250910-v1.26.0.bin'], page:'https://micropython.org/download/ESP32_GENERIC_S3/'},
+  esp8266: {kind:'bin', address:0x0, urls:['https://micropython.org/download/esp8266/esp8266-latest.bin','https://micropython.org/resources/firmware/esp8266-20250910-v1.26.0.bin'], page:'https://micropython.org/download/esp8266/'}
+};
+function mpLog(msg){ const el = $a('#mpLog'); if(el){ el.textContent += msg + '\n'; el.scrollTop = el.scrollHeight; } }
+async function mpGetFirmware(fam){
+  const file = $a('#mpFile').files && $a('#mpFile').files[0];
+  if(file){ mpLog('Using your file: ' + file.name + ' (' + file.size + ' bytes).'); return {bytes: new Uint8Array(await file.arrayBuffer()), name: file.name}; }
+  for(const url of fam.urls){
+    try{
+      mpLog('Fetching ' + url + ' …');
+      const r = await fetch(url);
+      if(!r.ok){ mpLog('  HTTP ' + r.status + ' — trying next source.'); continue; }
+      const buf = new Uint8Array(await r.arrayBuffer());
+      if(buf.length < 10000){ mpLog('  File too small (' + buf.length + ' bytes) — not firmware, trying next source.'); continue; }
+      mpLog('  Got ' + buf.length + ' bytes.');
+      return {bytes: buf, name: url.split('/').pop()};
+    }catch(e){ mpLog('  Fetch failed (' + (e.message||e) + ') — trying next source.'); }
+  }
+  return null;
+}
+async function mpDownloadOnly(){
+  const fam = MP_FAMILIES[$a('#mpFamily').value];
+  $a('#mpLog').textContent = '';
+  const fw = await mpGetFirmware(fam);
+  if(!fw){ mpLog('Could not fetch firmware directly (micropython.org may block page fetches). Download it manually from ' + fam.page + ' and pick it with the file input, then click Install.'); return; }
+  const blob = new Blob([fw.bytes], {type:'application/octet-stream'}); const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = fw.name; a.click();
+  mpLog('Downloaded ' + fw.name + ' — for a Pico, drag it onto the ' + (fam.drive||'') + ' drive; for ESP, pick it with the file input and click Install.');
+}
+async function mpInstallPico(fam, fw){
+  if(!('showDirectoryPicker' in window)){ mpLog('File System Access is not available in this browser (needs Chrome/Edge). Use "Download firmware file only" and drag the UF2 onto the ' + fam.drive + ' drive manually.'); return; }
+  mpLog('Pick the ' + fam.drive + ' drive in the folder picker (put the Pico in BOOTSEL mode first: hold BOOTSEL, plug in USB, release).');
+  const dir = await window.showDirectoryPicker({mode:'readwrite'});
+  const handle = await dir.getFileHandle(fw.name, {create:true});
+  const w = await handle.createWritable();
+  await w.write(fw.bytes); await w.close();
+  mpLog('Wrote ' + fw.name + ' (' + fw.bytes.length + ' bytes) to the drive. The drive should disappear as the Pico reboots into MicroPython — unplug and replug USB if the serial port does not appear, then use section 5 Direct Flash to write main.py.');
+}
+async function mpInstallEsp(fam, fw){
+  if(!('serial' in navigator)){ mpLog('Web Serial is not available in this browser. Use Chrome or Edge over HTTPS (or localhost) for ESP flashing, or flash with Python esptool: esptool.py --baud 460800 write_flash ' + (fam.address===0?'0x0':'0x1000') + ' <file>.bin'); return; }
+  mpLog('Loading esptool-js (Espressif\'s browser flasher)…');
+  let mod = null;
+  try{ mod = await import('esptool-js'); }
+  catch(e){
+    mpLog('Import-map load failed (' + (e.message||e) + ') — trying the single-file bundle…');
+    await new Promise((res, rej)=>{ const s = document.createElement('script'); s.src = 'https://unpkg.com/esptool-js/bundle.js'; s.onload = res; s.onerror = ()=>rej(new Error('bundle load failed')); document.head.appendChild(s); });
+    mod = window.ESPLoader ? {ESPLoader: window.ESPLoader, Transport: window.Transport} : null;
+    if(!mod) throw new Error('esptool-js did not expose ESPLoader/Transport after bundle load.');
+  }
+  mpLog('Pick the ESP serial port (hold BOOT on the board if it fails to connect)…');
+  const port = await navigator.serial.requestPort();
+  const transport = new mod.Transport(port, true);
+  const terminal = {clean(){}, writeLine(d){ mpLog('  esptool: ' + d); }, write(d){}};
+  const loader = new mod.ESPLoader({transport, baudrate:115200, terminal});
+  const chip = await loader.main();
+  mpLog('Connected: ' + chip + '. Erasing flash…');
+  await loader.eraseFlash();
+  mpLog('Flashing ' + fw.name + ' (' + fw.bytes.length + ' bytes) at 0x' + fam.address.toString(16) + '…');
+  await loader.writeFlash({fileArray:[{data: fw.bytes, address: fam.address}], flashMode:'dio', flashFreq:'40m', flashSize:'4MB', eraseAll:false, compress:true, reportProgress:(i, written, total)=>{ const p = Math.floor(written/total*100); if(p%25===0) mpLog('  flash ' + p + '%'); }});
+  mpLog('Flash complete. Resetting…');
+  await loader.after('hard_reset');
+  try{ await transport.disconnect(); }catch(e){}
+  mpLog('DONE — MicroPython is installed. Unplug/replug if needed, then use section 5 Direct Flash to write your node design\'s main.py to the board.');
+}
+async function mpInstall(){
+  const fam = MP_FAMILIES[$a('#mpFamily').value];
+  const log = $a('#mpLog'); log.textContent = '';
+  try{
+    mpLog('Installing MicroPython for ' + $a('#mpFamily').selectedOptions[0].text + '…');
+    const fw = await mpGetFirmware(fam);
+    if(!fw){ mpLog('FAILED: could not fetch firmware and no file was picked. Download the firmware from ' + fam.page + ', pick it with the file input above, and click Install again.'); return; }
+    if(fam.kind==='uf2') await mpInstallPico(fam, fw); else await mpInstallEsp(fam, fw);
+  }catch(e){
+    mpLog('INSTALL FAILED: ' + (e.message||e) + ' — check the cable (data cable, not charge-only), the board mode (BOOTSEL for Pico, BOOT held for ESP if needed), and that no other app (Thonny, Arduino IDE, serial monitor) is holding the port.');
+  }
+}
 function init(){
   if(!$a('#view-admin')) return;
   // Sensor checkboxes
@@ -412,6 +502,9 @@ function init(){
     backendSave(cfg); renderBackend(); $a('#admBeSaveNote').textContent = 'Backend URLs saved in this browser (shared with Connect).';
   });
   $a('#admProbeBtn')?.addEventListener('click', probeBackends);
+  $a('#mpInstallBtn')?.addEventListener('click', mpInstall);
+  $a('#mpDownloadBtn')?.addEventListener('click', mpDownloadOnly);
+  $a('#mpFile')?.addEventListener('change', ()=>{ const f = $a('#mpFile').files[0]; if(f) $a('#mpFileNote').textContent = 'File chosen: ' + f.name + ' (' + f.size + ' bytes) — Install will use this instead of fetching.'; });
   $a('#flashBtn')?.addEventListener('click', flashMicroPython);
   $a('#flashCppBtn')?.addEventListener('click', flashCppPackage);
   $a('#flashTransport')?.addEventListener('change', ()=>{

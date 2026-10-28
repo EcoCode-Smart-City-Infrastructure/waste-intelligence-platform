@@ -9,6 +9,13 @@
 <link rel="preconnect" href="https://data.cityofnewyork.us">
 <meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
 <link rel="stylesheet" href="styles.css?v=overhaul11">
+<script type="importmap">
+{"imports": {
+  "esptool-js": "https://unpkg.com/esptool-js@0.7.0/lib/index.js",
+  "pako": "https://unpkg.com/pako@2.1.0/dist/pako.esm.mjs",
+  "atob-lite": "https://unpkg.com/atob-lite@2.0.0/atob-browser.js"
+}}
+</script>
 </head>
 <body>
 <a class="skip-link" href="#views">Skip to content</a>
@@ -697,7 +704,30 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
     </div>
     <div class="controls"><button class="btn primary" id="flashBtn" type="button">⚡ Flash current design to device (MicroPython)</button><button class="btn" id="flashCppBtn" type="button">Download C++ flash package (USB + OTA)</button></div>
     <pre id="flashLog" style="white-space:pre-wrap;max-height:300px;overflow:auto">Flash log will appear here. For USB: plug the board in, click Flash, pick its serial port. For WiFi: the board must already run MicroPython with WebREPL started, on the same network as this browser (ws://, so this page must be served over http on a local network or the browser may block mixed content — use USB if WiFi is blocked).</pre>
-    <p class="muted small">Prerequisites, stated plainly: (1) MicroPython must already be installed on the board once (Pico: drag the MicroPython UF2 onto the RPI-RP2 drive; ESP32/ESP8266: flash the MicroPython .bin with esptool once) — after that, this panel updates main.py as often as you like. (2) Web Serial needs Chrome/Edge in a secure context; Safari/Firefox do not support it, and the panel will say so instead of pretending. (3) No credentials are stored by Admin — the sketch file you download is the only place WiFi/MQTT passwords live.</p>
+    <p class="muted small">Prerequisites, stated plainly: (1) MicroPython must already be installed on the board once — use section 6 below to install it from this page. After that, this panel updates main.py as often as you like. (2) Web Serial needs Chrome/Edge in a secure context; Safari/Firefox do not support it, and the panel will say so instead of pretending. (3) No credentials are stored by Admin — the sketch file you download is the only place WiFi/MQTT passwords live.</p>
+  </div>
+  <div class="card">
+    <h2>6 · Install MicroPython — first-time setup, natively from this page</h2>
+    <p class="lede">This is the step section 5 used to assume was already done. <strong>Pico:</strong> put the board in BOOTSEL mode, then this page writes the MicroPython UF2 straight onto the RPI-RP2 / RP2350 drive (File System Access, Chrome/Edge) — or downloads the UF2 for you to drag onto the drive yourself, the classic drag-and-drop path. <strong>ESP32 / ESP8266:</strong> this page runs Espressif's esptool-js in the browser over USB serial — connect, erase, flash the MicroPython .bin, reset — no Python, no Arduino IDE, no separate esptool install. After this, go back to section 5 and flash your node design's main.py.</p>
+    <div class="controls">
+      <label>Device family <select id="mpFamily">
+        <option value="picow">Raspberry Pi Pico W (RP2040, UF2)</option>
+        <option value="pico">Raspberry Pi Pico (RP2040, UF2)</option>
+        <option value="pico2w">Raspberry Pi Pico 2 W (RP2350, UF2)</option>
+        <option value="pico2">Raspberry Pi Pico 2 (RP2350, UF2)</option>
+        <option value="esp32">ESP32 generic (esptool-js, .bin at 0x1000)</option>
+        <option value="esp32s3">ESP32-S3 (esptool-js, .bin at 0x1000)</option>
+        <option value="esp8266">ESP8266 generic (esptool-js, .bin at 0x0)</option>
+      </select></label>
+      <label>Or use your own firmware file <input type="file" id="mpFile" accept=".uf2,.bin"></label>
+    </div>
+    <p class="muted small" id="mpFileNote">No file chosen — Admin will fetch the latest stable MicroPython firmware from micropython.org. If that site blocks direct fetching from a web page (CORS), the log will say so and you can download the file from the link below and pick it with the file input instead — the install itself still runs from this page.</p>
+    <div class="controls">
+      <button class="btn primary" id="mpInstallBtn" type="button">⚡ Install MicroPython on connected device</button>
+      <button class="btn" id="mpDownloadBtn" type="button">Download firmware file only (for manual drag)</button>
+    </div>
+    <p class="muted small">Pico steps: hold BOOTSEL, plug in USB, release BOOTSEL — a drive named RPI-RP2 (Pico/Pico W) or RP2350 (Pico 2) appears. Click Install and pick that drive when asked. The drive disappearing means the board rebooted into MicroPython. ESP steps: plug the board in by USB (hold BOOT if it fails to connect), click Install, pick its serial port, and wait for erase → flash → reset. Firmware is never uploaded to any server by Admin; it goes from micropython.org (or your file) straight to your device.</p>
+    <pre id="mpLog" style="white-space:pre-wrap;max-height:300px;overflow:auto">Install log will appear here.</pre>
   </div>
 </section>
 </main>
@@ -707,10 +737,10 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul19"></script>
+<script src="app.js?v=overhaul20"></script>
 <script src="twin.js?v=twin3"></script>
 <script src="network.js?v=network3"></script>
-<script src="admin.js?v=admin3"></script>
+<script src="admin.js?v=admin4"></script>
 <script src="backend.js?v=backend3"></script>
 </body>
 </html>
