@@ -209,7 +209,10 @@ canvas{background:#0f172a;border-color:#243044}
 .cmdk-box{background:#131c2b;border-color:#243044;color:#e2e8f0}.cmdk-box input{background:#0f172a;border-color:#334155;color:#e2e8f0}#cmdkResults li.sel{background:#1e293b}
 /* Live map containers — fixed height so the map never collapses or blinks */
 #dashLiveMap,#adMap{height:420px;width:100%;background:#0f172a;border:1px solid #334155;border-radius:14px;overflow:hidden;position:relative;z-index:0}
-#dashLiveMap .leaflet-pane,#adMap .leaflet-pane{z-index:1}
+/* NOTE: do NOT flatten Leaflet's internal pane z-indexes here — an
+   earlier override set every pane to z-index 1 and may have hidden
+   tiles under other panes. The container's own z-index 0 stacking
+   context already keeps Leaflet controls below the sticky header. */
 #dashLiveMap .leaflet-top,#dashLiveMap .leaflet-bottom,#adMap .leaflet-top,#adMap .leaflet-bottom{z-index:2}
 #dashLiveMap .leaflet-control-attribution,#adMap .leaflet-control-attribution{background:rgba(15,23,42,.85);color:#94a3b8;font-size:.7rem}
 #dashLiveMap .leaflet-control-attribution a,#adMap .leaflet-control-attribution a{color:#6ee7b7}

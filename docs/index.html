@@ -94,14 +94,15 @@
           <div class="ov-map">
 <section class="dash-card dash-hero" aria-label="City grid">
         <div class="dash-card-head"><h2>Live City Operations Map</h2><span class="pill" id="dashGridBadge">loading map…</span></div>
-        <p class="muted small">A real map (CARTO Dark tiles, OpenStreetMap fallback) — not a schematic grid. Demo fleet markers coloured by fill (green / amber / red); a pink dashed line joins urgent bins; a green pulse travels that route. Tap a marker to open it in Forecasting. Toggle layers to change what the map shows. <span class="pill" id="dashMapStatus">loading map…</span></p>
+        <p class="muted small">A real map (OpenStreetMap Standard tiles by default, CARTO Voyager/Dark optional — CARTO may show watermark tiles without a key) — not a schematic grid. Demo fleet markers coloured by fill (green / amber / red); a pink dashed line joins urgent bins; a green pulse travels that route. Tap a marker to open it in Forecasting. Toggle layers to change what the map shows. <span class="pill" id="dashMapStatus">loading map…</span></p>
         <div class="dash-grid-controls">
           <label><input type="checkbox" id="dashLayerFleet" checked> Fleet</label>
           <label><input type="checkbox" id="dashLayerRoute" checked> Urgent route</label>
           <label><input type="checkbox" id="dashLayerHeat" checked> Fill heat</label>
           <label><input type="checkbox" id="dashLayerLabels" checked> Borough labels</label>
           <button class="btn" id="dashPulseBtn">⏸ Pause pulses</button>
-          <label>Map tiles <select id="dashTile"><option value="voyager">CARTO Voyager (light)</option><option value="carto">CARTO Dark</option><option value="osm">OpenStreetMap</option></select></label>
+          <label>Map tiles <select id="dashTile"><option value="osm">OpenStreetMap (default)</option><option value="voyager">CARTO Voyager</option><option value="carto">CARTO Dark</option></select></label>
+          <button class="btn" id="dashRecentre" type="button">Recentre map</button>
           <label>Replay <input type="range" id="dashReplay" min="0" max="47" value="47" aria-label="Replay the last 48 hours of demo fill history"> <span id="dashReplayLabel">now</span></label>
           <button class="btn" id="dashReplayPlay" type="button">▶ Play replay</button>
         </div>
@@ -750,7 +751,7 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
     <div class="sap-panel">
       <div class="dash-card-head"><h2>Bin Locations</h2><span class="pill">LEGENDS · Bin Locations</span></div>
       <div id="adMap" role="application" aria-label="Admin dashboard bin map"></div>
-      <p class="muted small">Dark map, bin markers coloured by fill. Tap a marker for its forecast. Tiles: CARTO Dark with OpenStreetMap fallback (same validation as the dashboard map).</p>
+      <p class="muted small">Bin markers coloured by fill. Tap a marker for its forecast. Tiles: OpenStreetMap Standard by default (same validation as the dashboard map).</p>
     </div>
     <div class="sap-side-stack">
       <div class="sap-panel">
@@ -797,9 +798,9 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul23"></script>
-<script src="dashmap.js?v=dashmap2"></script>
-<script src="admindash.js?v=admindash2"></script>
+<script src="app.js?v=overhaul24"></script>
+<script src="dashmap.js?v=dashmap3"></script>
+<script src="admindash.js?v=admindash3"></script>
 <script src="twin.js?v=twin3"></script>
 <script src="network.js?v=network3"></script>
 <script src="admin.js?v=admin5"></script>

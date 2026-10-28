@@ -68,7 +68,7 @@ async function renderMap(bins){
   if(!ok || !window.L){ el.innerHTML = '<p class="muted small" style="padding:1rem">Map library failed to load — check connection and reopen this view. The KPIs, incidents and chart below still work.</p>'; return; }
   if(!map){
     map = window.L.map(el, {preferCanvas:true}).setView([40.7128,-74.006], 11);
-    const base = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap contributors &copy; CARTO', subdomains:'abcd'});
+    const base = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap contributors'});
     let errs = 0;
     base.on('tileerror', ()=>{ errs++; if(errs>=5 && !tileSwitched){ tileSwitched = true; map.removeLayer(base); window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap contributors'}).addTo(map); } });
     base.addTo(map);

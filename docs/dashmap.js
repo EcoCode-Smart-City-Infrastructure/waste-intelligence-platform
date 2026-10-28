@@ -38,9 +38,9 @@ function loadLeaflet(){
 function setTiles(kind){
   const L = window.L;
   const defs = {
+    osm: {url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; OpenStreetMap contributors', name:'OpenStreetMap'},
     voyager: {url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO', name:'CARTO Voyager'},
-    carto: {url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO', name:'CARTO Dark'},
-    osm: {url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; OpenStreetMap contributors', name:'OpenStreetMap'}
+    carto: {url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO', name:'CARTO Dark'}
   };
   tileErrors = 0; tileLoads = 0; tileOk = false;
   if(layers.base) map.removeLayer(layers.base);
@@ -149,10 +149,20 @@ async function init(){
   }
   map = window.L.map(el, {preferCanvas:true, zoomControl:true}).setView([40.7128,-74.006], 11);
   layers = {markers: window.L.layerGroup().addTo(map), labels: window.L.layerGroup().addTo(map), base:null, route:null, pulse:null};
-  // Light, high-contrast default: Voyager streets/water are unmistakable
-  // at a glance, unlike the dark tiles that looked blank in overhaul22.
-  setTiles($d('#dashTile')?.value || 'voyager');
+  // Default is OpenStreetMap Standard: it is the provider that already
+  // proved itself live in the Collection Network map, needs no key, and
+  // shows streets/water unmistakably. CARTO (Voyager/Dark) is offered as
+  // an option, but in the overhaul23 check its tiles came back as
+  // watermark/placeholder images for anonymous requests — if you pick
+  // CARTO and see watermark tiles, switch back to OpenStreetMap.
+  setTiles($d('#dashTile')?.value || 'osm');
   $d('#dashTile')?.addEventListener('change', ()=>{ switched = false; setTiles($d('#dashTile').value); });
+  $d('#dashRecentre')?.addEventListener('click', ()=>{
+    try{ map.invalidateSize(); }catch(e){}
+    const bins = fleetNow();
+    if(bins.length){ try{ map.fitBounds(window.L.latLngBounds(bins.map(b=>[b.lat,b.lon])), {padding:[24,24]}); }catch(e){} }
+    render();
+  });
   render();
   setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 150);
   inited = true;
