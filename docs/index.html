@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://data.cityofnewyork.us">
 <meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
-<link rel="stylesheet" href="styles.css?v=overhaul28">
+<link rel="stylesheet" href="styles.css?v=overhaul29">
 <script type="importmap">
 {"imports": {
   "esptool-js": "https://unpkg.com/esptool-js@0.7.0/lib/index.js",
@@ -197,6 +197,20 @@
         <div class="dash-card-head"><h2>Latest live tonnage</h2><span class="pill" id="liveBadge">checking…</span></div>
         <div class="tablewrap"><table id="dashTonnage"><thead><tr><th>Month</th><th>Borough</th><th>Refuse (t)</th><th>Paper (t)</th><th>MGP (t)</th><th>Organics (t)</th></tr></thead><tbody></tbody></table></div>
         <p class="muted small">Source: DSNY Monthly Tonnage Data, dataset <code>ebb7-mvp5</code> on data.cityofnewyork.us. If live data cannot be reached, this table shows the labelled sample and the badge says so.</p>
+      </section>
+
+      <section class="dash-card" aria-label="Waste Intelligence Network — how every tool connects">
+        <div class="dash-card-head"><h2>Waste Intelligence Network — how every tool connects</h2><span class="pill">one ecosystem, not twelve pages</span></div>
+        <p class="muted small">One data spine, in order: published city data becomes a fleet, the fleet gets a forecast, the forecast drives a collection network, logged collections flow through the knowledge graph into diversion and emissions, and the admin dashboard watches the whole thing. Every step below is a live link — nothing here is a diagram alone.</p>
+        <div class="eco-flow">
+          <a class="btn" href="#live">1 · Live NYC Data</a><span class="eco-arrow" aria-hidden="true">→</span>
+          <a class="btn" href="#bins">2 · Bins &amp; Routes</a><span class="eco-arrow" aria-hidden="true">→</span>
+          <a class="btn" href="#forecast">3 · Forecasting</a><span class="eco-arrow" aria-hidden="true">→</span>
+          <a class="btn" href="#network">4 · Collection Network</a><span class="eco-arrow" aria-hidden="true">→</span>
+          <a class="btn" href="#graph">5 · Knowledge Graph</a><span class="eco-arrow" aria-hidden="true">→</span>
+          <a class="btn" href="#admindash">6 · Admin Dashboard</a>
+        </div>
+        <p class="muted small">Around that spine: <a href="#contamination">Contamination</a> keeps the wrong materials out of the streams, <a href="#connect">Connect</a> + <a href="#admin">Admin Settings</a> pair the real platform backends and design the sensor nodes that report into it, <a href="#twin">Digital Twin</a> previews the same fleet in 3D, and the <a href="#assistant">Assistant</a> explains, diagnoses and stages actions across all of them — read-only, with your approval before anything changes.</p>
       </section>
     </div>
   </div>
@@ -807,7 +821,7 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul28"></script>
+<script src="app.js?v=overhaul29"></script>
 <script src="dashmap.js?v=dashmap6"></script>
 <script src="admindash.js?v=admindash6"></script>
 <script src="twin.js?v=twin3"></script>

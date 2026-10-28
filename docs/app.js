@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul28 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul29 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -1012,8 +1012,34 @@ function wiInitNavMenu(){
   $$('#nav a').forEach(a=>a.addEventListener('click', ()=>{ if(window.innerWidth<=760) close(); }));
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') close(); });
 }
+/* Overhaul29 ecosystem links: every view names its neighbours in the
+   data flow, so no tool reads as a standalone page. Additive only —
+   no view, card or control is removed or moved. */
+function wiInitEcoLinks(){
+  const LINKS = {
+    dashboard:[['#live','Live NYC Data'],['#bins','Bins & Routes'],['#forecast','Forecasting'],['#network','Collection Network'],['#graph','Knowledge Graph'],['#admindash','Admin Dashboard']],
+    live:[['#dashboard','Dashboard'],['#bins','Bins & Routes'],['#network','Collection Network'],['#graph','Knowledge Graph']],
+    bins:[['#forecast','Forecasting'],['#network','Collection Network'],['#admin','Design a node'],['#connect','Connect backends'],['#admindash','Admin Dashboard']],
+    forecast:[['#bins','Bins & Routes'],['#network','Collection Network'],['#graph','Knowledge Graph'],['#assistant','Ask the assistant']],
+    graph:[['#network','Collection Network'],['#forecast','Forecasting'],['#bins','Bins & Routes'],['#assistant','Ask the assistant']],
+    contamination:[['#bins','Bins & Routes'],['#connect','Backend YOLO'],['#assistant','Ask the assistant']],
+    connect:[['#admin','Admin pairing'],['#bins','Platform bins'],['#forecast','Backend forecast'],['#graph','Platform KG'],['#assistant','Copilot']],
+    assistant:[['#dashboard','Dashboard'],['#bins','Bins & Routes'],['#graph','Knowledge Graph'],['#network','Collection Network'],['#connect','Connect']],
+    twin:[['#bins','Bins & Routes'],['#forecast','Forecasting'],['#network','Collection Network'],['#dashboard','Dashboard']],
+    network:[['#admin','Design a node'],['#bins','Bins & Routes'],['#graph','Knowledge Graph'],['#admindash','Admin Dashboard'],['#forecast','Forecasting']],
+    admin:[['#network','Collection Network'],['#connect','Connect'],['#bins','Bins & Routes'],['#admindash','Admin Dashboard']],
+    admindash:[['#bins','Manage bins'],['#network','Collection Network'],['#dashboard','Dashboard'],['#forecast','Forecasting']]
+  };
+  Object.entries(LINKS).forEach(([view, links])=>{
+    const sec = document.getElementById('view-'+view); if(!sec || sec.querySelector('.eco-links')) return;
+    const nav = document.createElement('nav'); nav.className = 'eco-links'; nav.setAttribute('aria-label','Related in this ecosystem');
+    nav.innerHTML = '<span>In this ecosystem</span>' + links.map(([h,t])=>`<a href="${h}">${t} →</a>`).join('');
+    const anchor = sec.querySelector('.lede') || sec.querySelector('h1');
+    if(anchor) anchor.insertAdjacentElement('afterend', nav); else sec.prepend(nav);
+  });
+}
 function wiInitCmdK(){
-  wiInitNavMenu(); wiInitNavMore();
+  wiInitNavMenu(); wiInitNavMore(); wiInitEcoLinks();
   $('#cmdkBtn')?.addEventListener('click',cmdkOpen);
   $('#cmdkInput')?.addEventListener('input',cmdkRender);
   $('#cmdkInput')?.addEventListener('keydown',e=>{

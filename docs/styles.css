@@ -352,3 +352,48 @@ nav a{white-space:nowrap}
 .nav-more-menu a:hover{background:#22c55e;color:#0b1220}
 @media(min-width:761px){#nav .nav-more-link{display:none}}
 @media(max-width:760px){.nav-more-wrap{display:none}}
+
+/* ---- Overhaul29: one cohesive, responsive ecosystem shell ----
+   Nothing is removed: every view, card, table and control stays, but
+   they now share one layout contract so mobile reads like desktop
+   (same order, same content, panes sized to the viewport):
+   - main never scrolls sideways: wide tables scroll inside their own
+     wrapper, code blocks wrap/scroll, charts and SVGs scale to width.
+   - every grid collapses in the same order (2-col -> 1-col, KPIs
+     4 -> 2 on phones) instead of each view breaking differently.
+   - controls stack with full-width inputs on phones, 44px targets.
+   - the ecosystem chip bar (injected by app.js) is the visible
+     interconnection: every view names its neighbours in the data flow. */
+main{overflow-x:clip}
+.view h1{font-size:clamp(1.35rem,3.5vw,1.7rem)}
+.eco-links{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;margin:.8rem 0 0;padding:.6rem .8rem;background:#131c2b;border:1px solid #243044;border-radius:12px}
+.eco-links span{font-size:.8rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em}
+.eco-links a{color:#e2e8f0;text-decoration:none;background:#1e293b;border:1px solid #334155;border-radius:999px;padding:.45rem .8rem;font-size:.85rem;white-space:nowrap}
+.eco-links a:hover{background:#22c55e;color:#0b1220;border-color:#22c55e}
+.eco-flow{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin:.6rem 0}
+.eco-flow a{white-space:nowrap}
+.eco-flow .eco-arrow{color:#fb923c;font-weight:800}
+.tablewrap,.sap-tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+#admFirmware,#flashLog,#mpLog,#view-twin pre{overflow-x:auto;overflow-wrap:anywhere;max-width:100%}
+#fcChart{width:100%;height:auto}
+#kgSvg,#flowSvg,#loopSvg,#dashForecastSvg,#dashDonutSvg,#adHourSvg{width:100%;height:auto}
+@media(max-width:900px){
+  .grid2,.sap-ad-grid,.ov-middle,.ov-charts,.kg-flow-wrap{grid-template-columns:1fr}
+  .dash-grid{grid-template-columns:repeat(12,1fr)}
+  .dash-span6,.dash-span4{grid-column:span 12}
+}
+@media(max-width:760px){
+  .kpis{grid-template-columns:repeat(2,1fr);gap:.6rem}
+  .kpis>div{padding:.7rem}
+  .controls label,.form label{flex:1 1 150px}
+  .controls input,.controls select,.form input,.form select{width:100%;min-width:0}
+  .card{padding:.8rem}
+  #netMap{height:320px}
+  #twinCanvasWrap{min-height:300px}
+  .eco-links a{min-height:44px;display:inline-flex;align-items:center}
+  .dash-top-actions{width:100%}
+  .dash-search{flex:1}
+  .dash-search input{min-width:0}
+  .loop-gallery{grid-template-columns:1fr 1fr}
+  .chatbox{height:320px}
+}
