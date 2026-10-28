@@ -374,17 +374,34 @@ const MP_FAMILIES = {
   esp8266: {kind:'bin', address:0x0, urls:['https://micropython.org/download/esp8266/esp8266-latest.bin','https://micropython.org/resources/firmware/esp8266-20250910-v1.26.0.bin'], page:'https://micropython.org/download/esp8266/'}
 };
 function mpLog(msg){ const el = $a('#mpLog'); if(el){ el.textContent += msg + '\n'; el.scrollTop = el.scrollHeight; } }
+function mpLooksLikeFirmware(fam, buf){
+  if(fam.kind==='uf2'){
+    // UF2 blocks start with magic 'UF2\n' (0x55 0x46 0x32 0x0A)
+    return buf.length > 512 && buf[0]===0x55 && buf[1]===0x46 && buf[2]===0x32 && buf[3]===0x0A;
+  }
+  // ESP firmware images start with magic byte 0xE9
+  return buf.length > 100000 && buf[0]===0xE9;
+}
 async function mpGetFirmware(fam){
   const file = $a('#mpFile').files && $a('#mpFile').files[0];
-  if(file){ mpLog('Using your file: ' + file.name + ' (' + file.size + ' bytes).'); return {bytes: new Uint8Array(await file.arrayBuffer()), name: file.name}; }
+  if(file){
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    mpLog('Using your file: ' + file.name + ' (' + bytes.length + ' bytes).');
+    if(!mpLooksLikeFirmware(fam, bytes)) mpLog('  WARNING: this file does not look like ' + (fam.kind==='uf2' ? 'a UF2 (expected UF2 magic)' : 'an ESP firmware image (expected 0xE9 magic)') + ' — it may be an HTML error page saved as firmware. Double-check the file before installing.');
+    return {bytes, name: file.name};
+  }
   for(const url of fam.urls){
     try{
       mpLog('Fetching ' + url + ' …');
       const r = await fetch(url);
       if(!r.ok){ mpLog('  HTTP ' + r.status + ' — trying next source.'); continue; }
       const buf = new Uint8Array(await r.arrayBuffer());
-      if(buf.length < 10000){ mpLog('  File too small (' + buf.length + ' bytes) — not firmware, trying next source.'); continue; }
-      mpLog('  Got ' + buf.length + ' bytes.');
+      if(!mpLooksLikeFirmware(fam, buf)){
+        const head = [...buf.slice(0, 40)].map(b=>b>=32 && b<127 ? String.fromCharCode(b) : '.').join('');
+        mpLog('  REJECTED ' + buf.length + ' bytes — not firmware (starts: "' + head + '"). Trying next source.');
+        continue;
+      }
+      mpLog('  Got valid firmware: ' + buf.length + ' bytes.');
       return {bytes: buf, name: url.split('/').pop()};
     }catch(e){ mpLog('  Fetch failed (' + (e.message||e) + ') — trying next source.'); }
   }
@@ -399,28 +416,34 @@ async function mpDownloadOnly(){
   a.href = URL.createObjectURL(blob); a.download = fw.name; a.click();
   mpLog('Downloaded ' + fw.name + ' — for a Pico, drag it onto the ' + (fam.drive||'') + ' drive; for ESP, pick it with the file input and click Install.');
 }
-async function mpInstallPico(fam, fw){
-  if(!('showDirectoryPicker' in window)){ mpLog('File System Access is not available in this browser (needs Chrome/Edge). Use "Download firmware file only" and drag the UF2 onto the ' + fam.drive + ' drive manually.'); return; }
-  mpLog('Pick the ' + fam.drive + ' drive in the folder picker (put the Pico in BOOTSEL mode first: hold BOOTSEL, plug in USB, release).');
-  const dir = await window.showDirectoryPicker({mode:'readwrite'});
+async function mpInstallPico(fam, fw, dir){
+  if(!dir){
+    if(!('showDirectoryPicker' in window)){ mpLog('File System Access is not available in this browser (needs Chrome/Edge). Use "Download firmware file only" and drag the UF2 onto the ' + fam.drive + ' drive manually.'); return; }
+    mpLog('Pick the ' + fam.drive + ' drive in the folder picker (put the Pico in BOOTSEL mode first: hold BOOTSEL, plug in USB, release).');
+    dir = await window.showDirectoryPicker({mode:'readwrite'});
+  }
   const handle = await dir.getFileHandle(fw.name, {create:true});
   const w = await handle.createWritable();
   await w.write(fw.bytes); await w.close();
   mpLog('Wrote ' + fw.name + ' (' + fw.bytes.length + ' bytes) to the drive. The drive should disappear as the Pico reboots into MicroPython — unplug and replug USB if the serial port does not appear, then use section 5 Direct Flash to write main.py.');
 }
-async function mpInstallEsp(fam, fw){
+async function mpLoadEsptool(){
+  const candidates = [];
+  try{ return await import('esptool-js'); }catch(e){ mpLog('Import-map esptool-js load failed (' + (e.message||e) + ') — trying esm.sh…'); }
+  try{ return await import('https://esm.sh/esptool-js@0.7.0'); }catch(e){ mpLog('esm.sh load failed (' + (e.message||e) + ') — trying the single-file bundle…'); }
+  await new Promise((res, rej)=>{ const s = document.createElement('script'); s.src = 'https://unpkg.com/esptool-js/bundle.js'; s.onload = res; s.onerror = ()=>rej(new Error('bundle load failed')); document.head.appendChild(s); });
+  const g = window.esptooljs || window.esptool || window;
+  if(g.ESPLoader && g.Transport) return {ESPLoader: g.ESPLoader, Transport: g.Transport};
+  throw new Error('esptool-js did not expose ESPLoader/Transport after bundle load.');
+}
+async function mpInstallEsp(fam, fw, port){
   if(!('serial' in navigator)){ mpLog('Web Serial is not available in this browser. Use Chrome or Edge over HTTPS (or localhost) for ESP flashing, or flash with Python esptool: esptool.py --baud 460800 write_flash ' + (fam.address===0?'0x0':'0x1000') + ' <file>.bin'); return; }
-  mpLog('Loading esptool-js (Espressif\'s browser flasher)…');
-  let mod = null;
-  try{ mod = await import('esptool-js'); }
-  catch(e){
-    mpLog('Import-map load failed (' + (e.message||e) + ') — trying the single-file bundle…');
-    await new Promise((res, rej)=>{ const s = document.createElement('script'); s.src = 'https://unpkg.com/esptool-js/bundle.js'; s.onload = res; s.onerror = ()=>rej(new Error('bundle load failed')); document.head.appendChild(s); });
-    mod = window.ESPLoader ? {ESPLoader: window.ESPLoader, Transport: window.Transport} : null;
-    if(!mod) throw new Error('esptool-js did not expose ESPLoader/Transport after bundle load.');
+  if(!port){
+    mpLog('Pick the ESP serial port (hold BOOT on the board if it fails to connect)…');
+    port = await navigator.serial.requestPort();
   }
-  mpLog('Pick the ESP serial port (hold BOOT on the board if it fails to connect)…');
-  const port = await navigator.serial.requestPort();
+  mpLog('Loading esptool-js (Espressif\'s browser flasher)…');
+  const mod = await mpLoadEsptool();
   const transport = new mod.Transport(port, true);
   const terminal = {clean(){}, writeLine(d){ mpLog('  esptool: ' + d); }, write(d){}};
   const loader = new mod.ESPLoader({transport, baudrate:115200, terminal});
@@ -439,11 +462,26 @@ async function mpInstall(){
   const log = $a('#mpLog'); log.textContent = '';
   try{
     mpLog('Installing MicroPython for ' + $a('#mpFamily').selectedOptions[0].text + '…');
+    // Pick the device FIRST, while the click gesture is fresh — browsers
+    // reject pickers/ports requested after long async work (fetching).
+    let device = null;
+    if(fam.kind==='uf2'){
+      if(!('showDirectoryPicker' in window)){ mpLog('File System Access is not available in this browser (needs Chrome/Edge). Use "Download firmware file only" and drag the UF2 onto the ' + fam.drive + ' drive manually.'); return; }
+      mpLog('Pick the ' + fam.drive + ' drive in the folder picker (put the Pico in BOOTSEL mode first: hold BOOTSEL, plug in USB, release).');
+      device = await window.showDirectoryPicker({mode:'readwrite'});
+    } else {
+      if(!('serial' in navigator)){ mpLog('Web Serial is not available in this browser. Use Chrome or Edge over HTTPS (or localhost).'); return; }
+      mpLog('Pick the ESP serial port (hold BOOT on the board if it fails to connect)…');
+      device = await navigator.serial.requestPort();
+    }
     const fw = await mpGetFirmware(fam);
-    if(!fw){ mpLog('FAILED: could not fetch firmware and no file was picked. Download the firmware from ' + fam.page + ', pick it with the file input above, and click Install again.'); return; }
-    if(fam.kind==='uf2') await mpInstallPico(fam, fw); else await mpInstallEsp(fam, fw);
+    if(!fw){ mpLog('FAILED: could not fetch a valid firmware file and no file was picked. Download the firmware from ' + fam.page + ', pick it with the file input above, and click Install again.'); return; }
+    if(fam.kind==='uf2') await mpInstallPico(fam, fw, device); else await mpInstallEsp(fam, fw, device);
   }catch(e){
-    mpLog('INSTALL FAILED: ' + (e.message||e) + ' — check the cable (data cable, not charge-only), the board mode (BOOTSEL for Pico, BOOT held for ESP if needed), and that no other app (Thonny, Arduino IDE, serial monitor) is holding the port.');
+    const msg = e.message||String(e);
+    if(msg.includes('showDirectoryPicker') && msg.includes('not allowed')) mpLog('INSTALL FAILED: this browser/platform blocked the folder picker (automated or non-secure contexts block it). In a normal Chrome/Edge window it works — otherwise use "Download firmware file only" and drag the UF2 onto the drive manually.');
+    else if(msg.includes('No port selected')) mpLog('INSTALL CANCELLED: no serial port was selected. Click Install again and pick the board\'s port.');
+    else mpLog('INSTALL FAILED: ' + msg + ' — check the cable (data cable, not charge-only), the board mode (BOOTSEL for Pico, BOOT held for ESP if needed), and that no other app (Thonny, Arduino IDE, serial monitor) is holding the port.');
   }
 }
 function init(){

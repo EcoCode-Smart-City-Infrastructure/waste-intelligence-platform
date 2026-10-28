@@ -4,8 +4,8 @@
    the app's labelled sample data when unreachable. No personal data, no
    citizen data, and no Groq key are cached: keys live in localStorage only
    and are never in a cacheable response. Bump CACHE on every shell change. */
-const CACHE='wip-shell-overhaul20';
-const SHELL=['./index.html','./styles.css?v=overhaul11','./app.js?v=overhaul20','./twin.js?v=twin3','./network.js?v=network3','./admin.js?v=admin4','./backend.js?v=backend3','./kg.json','./loops.json','./manifest.json','./icon.svg'];
+const CACHE='wip-shell-overhaul21';
+const SHELL=['./index.html','./styles.css?v=overhaul11','./app.js?v=overhaul21','./twin.js?v=twin3','./network.js?v=network3','./admin.js?v=admin5','./backend.js?v=backend3','./kg.json','./loops.json','./manifest.json','./icon.svg'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{
