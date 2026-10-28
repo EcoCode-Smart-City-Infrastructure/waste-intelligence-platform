@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://data.cityofnewyork.us">
 <meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
-<link rel="stylesheet" href="styles.css?v=overhaul11">
+<link rel="stylesheet" href="styles.css?v=overhaul22">
 <script type="importmap">
 {"imports": {
   "esptool-js": "https://unpkg.com/esptool-js@0.7.0/lib/index.js",
@@ -35,6 +35,7 @@
     <a href="#twin" data-nav="twin">Digital Twin <span class="pill warn">preview</span></a>
     <a href="#network" data-nav="network">Collection Network</a>
     <a href="#admin" data-nav="admin">Admin Settings</a>
+    <a href="#admindash" data-nav="admindash">Admin Dashboard</a>
     <a href="kepler.html">Kepler 3D Map</a>
     <a href="login.html" id="authNavLink">Sign in</a>
     <a href="#" id="authSignOut" hidden>Sign out</a>
@@ -61,6 +62,7 @@
         <a href="#graph">Knowledge Graph</a>
         <a href="#network">Collection Network</a>
         <a href="#admin">Admin Settings</a>
+        <a href="#admindash">Admin Dashboard</a>
         <a href="#contamination">Contamination</a>
         <a href="#assistant">Assistant</a>
         <a href="kepler.html">Kepler Map</a>
@@ -91,8 +93,8 @@
         <div class="ov-middle">
           <div class="ov-map">
 <section class="dash-card dash-hero" aria-label="City grid">
-        <div class="dash-card-head"><h2>Live City Operations Map</h2><span class="pill" id="dashGridBadge">demo fleet · live tonnage where available</span></div>
-        <p class="muted small">A 2D interactive grid — not a 3D rendering and not a phased loop. Pulses travel the urgent route; tap a bin dot to open it in Forecasting. Toggle layers to change what the grid shows.</p>
+        <div class="dash-card-head"><h2>Live City Operations Map</h2><span class="pill" id="dashGridBadge">loading map…</span></div>
+        <p class="muted small">A real map (CARTO Dark tiles, OpenStreetMap fallback) — not a schematic grid. Demo fleet markers coloured by fill (green / amber / red); a pink dashed line joins urgent bins; a green pulse travels that route. Tap a marker to open it in Forecasting. Toggle layers to change what the map shows. <span class="pill" id="dashMapStatus">loading map…</span></p>
         <div class="dash-grid-controls">
           <label><input type="checkbox" id="dashLayerFleet" checked> Fleet</label>
           <label><input type="checkbox" id="dashLayerRoute" checked> Urgent route</label>
@@ -102,7 +104,7 @@
           <label>Replay <input type="range" id="dashReplay" min="0" max="47" value="47" aria-label="Replay the last 48 hours of demo fill history"> <span id="dashReplayLabel">now</span></label>
           <button class="btn" id="dashReplayPlay" type="button">▶ Play replay</button>
         </div>
-        <svg id="dashGridSvg" viewBox="0 0 600 340" role="img" aria-label="Interactive NYC bin grid"></svg>
+        <div id="dashLiveMap" role="application" aria-label="Live City Operations Map — NYC bins on a real map"></div>
         <p class="muted small" id="dashGridNote"></p>
         <div class="whatif"><span class="pill warn">Simulated</span>
           <label>Add vehicles <select id="whatifVehicles"><option>1</option><option>2</option><option>3</option></select></label>
@@ -730,6 +732,63 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
     <pre id="mpLog" style="white-space:pre-wrap;max-height:300px;overflow:auto">Install log will appear here.</pre>
   </div>
 </section>
+<!-- ADMIN DASHBOARD — SAP Smart City layout, Waste Intelligence data -->
+<section id="view-admindash" class="view hidden">
+  <p class="ov-crumb">Operations <span aria-hidden="true">›</span> Admin Dashboard</p>
+  <h1>Smart City — Waste Management</h1>
+  <p class="lede">Admin dashboard in the SAP Smart City layout: filter bar, live map, fill and waste KPIs, bin overview, incidents, and waste by hour. Every panel is computed from the demo fleet, the Collection Network nodes, and the demo fill history in this browser — filters re-filter everything, and incident actions persist here.</p>
+  <div class="sap-ad-filters" aria-label="Dashboard filters">
+    <label>Snapshot <select id="adSnapshot"><option value="47">Now</option><option value="24">24 hours ago</option><option value="0">48 hours ago</option></select></label>
+    <label>Region <select id="adRegion"><option value="All">All regions</option></select></label>
+    <label>District <select id="adDistrict"><option value="All">All</option></select></label>
+    <label>Building <select id="adBuilding"><option value="All">All</option></select></label>
+    <label>Bin Type <select id="adBinType"><option value="All">All bins</option><option value="urgent">Urgent (≥80%)</option><option value="watch">Watch (60–79%)</option><option value="ok">OK (&lt;60%)</option></select></label>
+    <button class="btn" id="adResetInc" type="button">Reset incident actions</button>
+  </div>
+  <div class="sap-ad-grid">
+    <div class="sap-panel">
+      <div class="dash-card-head"><h2>Bin Locations</h2><span class="pill">LEGENDS · Bin Locations</span></div>
+      <div id="adMap" role="application" aria-label="Admin dashboard bin map"></div>
+      <p class="muted small">Dark map, bin markers coloured by fill. Tap a marker for its forecast. Tiles: CARTO Dark with OpenStreetMap fallback (same validation as the dashboard map).</p>
+    </div>
+    <div class="sap-side-stack">
+      <div class="sap-panel">
+        <h3>Average Fill Level</h3>
+        <div class="sap-kpi-num" id="adAvgFill">—</div>
+        <div class="sap-fillbar"><i id="adAvgBar" style="width:0%"></i></div>
+        <p class="muted small" id="adAvgSub"></p>
+      </div>
+      <div class="sap-panel">
+        <h3>Current Waste</h3>
+        <div class="sap-kpi-num" id="adWaste">—</div>
+        <p class="muted small" id="adWasteSub"></p>
+      </div>
+      <div class="sap-panel">
+        <h3>Bins Overview</h3>
+        <div class="sap-bins-row">
+          <div><b id="adTotalBins">—</b><span>Total Bins</span></div>
+          <div><b id="adOutOrder">—</b><span>Out of order</span></div>
+          <div><b id="adNodes">—</b><span>Network nodes</span></div>
+        </div>
+        <p class="muted small">Out of order = bins at 95% or above in the current filter. Network nodes = user-added Collection Network nodes in this browser. <a href="#bins">Manage Bins →</a></p>
+      </div>
+    </div>
+  </div>
+  <div class="sap-ad-grid">
+    <div class="sap-panel">
+      <div class="dash-card-head"><h2>Bin Incidents</h2><span class="pill" id="adIncCount">—</span></div>
+      <div class="sap-tablewrap"><table><thead><tr><th>Ticket</th><th>Title</th><th>Type</th><th>Reported</th><th>Status</th><th>Action</th></tr></thead><tbody id="adIncidents"></tbody></table></div>
+      <p class="muted small">Incidents are derived from fleet state (urgent fill, ≥95% out-of-order flag, forecast to full, feed status) — not invented sensor faults. Resolve / Under actions save in this browser only.</p>
+    </div>
+    <div class="sap-panel">
+      <h2>Waste Generated</h2>
+      <p class="muted small">By the hour · mean fill across the fleet</p>
+      <svg id="adHourSvg" viewBox="0 0 500 160" role="img" aria-label="Waste generated by hour"></svg>
+      <p class="muted small" id="adHourNote"></p>
+      <p class="muted small"><span style="color:#22c55e">— Actual volume</span> &nbsp; <span style="color:#94a3b8">- - Forecasted volume</span></p>
+    </div>
+  </div>
+</section>
 </main>
 
 <footer>
@@ -737,7 +796,9 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul21"></script>
+<script src="app.js?v=overhaul22"></script>
+<script src="dashmap.js?v=dashmap1"></script>
+<script src="admindash.js?v=admindash1"></script>
 <script src="twin.js?v=twin3"></script>
 <script src="network.js?v=network3"></script>
 <script src="admin.js?v=admin5"></script>

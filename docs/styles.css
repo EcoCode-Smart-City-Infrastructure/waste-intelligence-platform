@@ -171,3 +171,89 @@ body{background:linear-gradient(180deg,#eef4ec 0%,#f4f6f3 22%,#fdf8ec 100%)}
 #ovTrendSvg{width:100%;height:auto}
 @media (max-width:900px){.ov-kpis{grid-template-columns:repeat(2,1fr)}.ov-middle,.ov-charts{grid-template-columns:1fr}}
 @media (max-width:640px){.ov-kpi b{font-size:1.6rem}}
+
+/* ========== Unifying design system — SAP Smart City dark ops theme ==========
+   Reference: the SAP Smart City Waste Management dashboard (dark navy
+   panels, white headings, orange KPI numbers, green map dots/lines).
+   Applied app-wide so every view shares one theme instead of the old
+   mix of light-green pages + dark dashboard cards. Functionality is
+   unchanged; only tokens and surfaces move. */
+:root{--bg:#0b1220;--ink:#e2e8f0;--muted:#94a3b8;--green:#22c55e;--green2:#6ee7b7;--amber:#f59e0b;--red:#f87171;--card:#131c2b;--line:#243044}
+body{background:#0b1220;color:var(--ink)}
+a{color:#6ee7b7}
+.top{background:linear-gradient(90deg,#0f172a,#1e293b 70%,#0f172a);border-bottom:1px solid #243044}
+nav a{color:#cbd5e1}nav a.active,nav a:hover{background:#22c55e;color:#0b1220}
+main{max-width:1240px}
+h1,h2,h3{color:#f1f5f9}
+.card{background:#131c2b;border-color:#243044;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.card .muted,.muted{color:#94a3b8}
+.controls input,.controls select,.form input,.form select{background:#0f172a;border-color:#334155;color:#e2e8f0}
+.controls input::placeholder,.form input::placeholder{color:#64748b}
+.btn{background:#1e293b;color:#e2e8f0;border-color:#334155}.btn.primary{background:#22c55e;color:#0b1220;border-color:#22c55e}
+.pill{background:#0f172a;color:#6ee7b7}.pill.warn{background:#422006;color:#fcd34d}.pill.bad{background:#450a0a;color:#fca5a5}
+.kpis>div{background:#131c2b;border-color:#243044}
+table{color:var(--ink)}th{color:#94a3b8}th,td{border-bottom-color:#1e293b}
+.bar{background:#1e293b}.bar i{background:#22c55e}
+.chatbox{background:#0f172a;border-color:#243044}.msg{background:#1e293b}.msg.me{background:#14532d}
+.whatif{background:#1e293b;border-color:#b7791f}
+.role-bar{background:#131c2b;border-color:#243044}.role-bar button{background:#0f172a;border-color:#334155;color:#e2e8f0}.role-bar button.active{background:#22c55e;color:#0b1220;border-color:#22c55e}
+.ops-brief{background:linear-gradient(135deg,#131c2b,#1e293b);border-color:#243044}
+.dash-side{background:#131c2b;border:1px solid #243044}
+.dash-card{background:#131c2b;border-color:#243044}
+footer{color:#94a3b8}
+canvas{background:#0f172a;border-color:#243044}
+#flowMetrics .kpis{grid-template-columns:repeat(4,1fr)}
+.flow-step{background:#0f172a;border-color:#243044}
+.kg-hero{background:linear-gradient(120deg,#131c2b,#0f172a 45%,#1e293b)}
+.kg-ring-hub,.kg-ring-seg{background:#0f172a;border-color:#334155;color:#e2e8f0}
+.cmdk-box{background:#131c2b;border-color:#243044;color:#e2e8f0}.cmdk-box input{background:#0f172a;border-color:#334155;color:#e2e8f0}#cmdkResults li.sel{background:#1e293b}
+/* Live map containers — fixed height so the map never collapses or blinks */
+#dashLiveMap,#adMap{height:420px;width:100%;background:#0f172a;border:1px solid #334155;border-radius:14px;overflow:hidden;position:relative;z-index:0}
+#dashLiveMap .leaflet-pane,#adMap .leaflet-pane{z-index:1}
+#dashLiveMap .leaflet-top,#dashLiveMap .leaflet-bottom,#adMap .leaflet-top,#adMap .leaflet-bottom{z-index:2}
+#dashLiveMap .leaflet-control-attribution,#adMap .leaflet-control-attribution{background:rgba(15,23,42,.85);color:#94a3b8;font-size:.7rem}
+#dashLiveMap .leaflet-control-attribution a,#adMap .leaflet-control-attribution a{color:#6ee7b7}
+#dashLiveMap .leaflet-popup-content-wrapper,#adMap .leaflet-popup-content-wrapper{background:#131c2b;color:#e2e8f0;border:1px solid #334155}
+#dashLiveMap .leaflet-popup-content a,#adMap .leaflet-popup-content a{color:#6ee7b7}
+.sap-map-label{color:#f1f5f9;font-weight:700;font-size:.85rem;text-shadow:0 1px 4px #000,0 0 2px #000;white-space:nowrap}
+/* SAP Admin Dashboard */
+.sap-ad-filters{display:flex;gap:.8rem;flex-wrap:wrap;align-items:end;background:#131c2b;border:1px solid #243044;border-radius:16px;padding:1rem;margin:1rem 0}
+.sap-ad-filters label{display:flex;flex-direction:column;font-size:.8rem;font-weight:700;color:#94a3b8;gap:.25rem}
+.sap-ad-filters select{background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:9px;padding:.55rem .7rem;min-width:150px}
+.sap-ad-grid{display:grid;grid-template-columns:2fr 1fr;gap:.9rem;margin:1rem 0}
+.sap-panel{background:#131c2b;border:1px solid #243044;border-radius:16px;padding:1rem;color:#e2e8f0}
+.sap-panel h2{margin-top:0;font-size:1.05rem}
+.sap-panel h3{font-size:.85rem;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8;margin:.2rem 0 .6rem}
+.sap-kpi-num{font-size:2.4rem;font-weight:800;color:#fb923c;line-height:1.1}
+.sap-kpi-num.green{color:#22c55e}
+.sap-side-stack{display:grid;gap:.9rem}
+.sap-fillbar{height:12px;background:#1e293b;border-radius:99px;overflow:hidden;margin:.5rem 0}.sap-fillbar i{display:block;height:100%;background:#22c55e}
+.sap-bins-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;text-align:center}
+.sap-bins-row b{display:block;font-size:1.9rem;color:#fb923c}
+.sap-bins-row span{font-size:.8rem;color:#94a3b8}
+.sap-tablewrap{overflow-x:auto}.sap-tablewrap table{font-size:.9rem}.sap-tablewrap td{white-space:normal}
+#adHourSvg{width:100%;height:auto;background:#0f172a;border:1px solid #243044;border-radius:12px}
+/* Mobile + desktop performance: one scrollable nav row, stacked grids,
+   44px touch targets, smaller map on phones, no layout thrash from
+   animations on small screens. Leaflet/Three still load lazily per view. */
+@media(max-width:900px){
+  .sap-ad-grid{grid-template-columns:1fr}
+  .ov-middle,.ov-charts{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .top{flex-wrap:nowrap;padding:.6rem .7rem;gap:.6rem}
+  .brand span:last-child{display:none}
+  nav{margin-left:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:.2rem}
+  nav::-webkit-scrollbar{display:none}
+  nav a{white-space:nowrap;padding:.55rem .7rem}
+  main{padding:1rem .6rem 2rem}
+  h1{font-size:1.35rem}
+  .btn,nav a,.role-bar button{min-height:44px;display:inline-flex;align-items:center}
+  #dashLiveMap,#adMap{height:320px}
+  .ov-kpis{grid-template-columns:repeat(2,1fr)}
+  .sap-bins-row{grid-template-columns:repeat(3,1fr)}
+  .sap-kpi-num{font-size:1.9rem}
+  .dash-side-nav{grid-template-columns:repeat(2,1fr)}
+  .view.view-in{animation:none}
+}
+@media(prefers-reduced-motion:reduce){.view.view-in,.dash-grid-pulse,.dash-grid-route,.flow-edge{animation:none}}

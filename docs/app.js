@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul21 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul22 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -13,7 +13,7 @@ const fmt = n => (n==null||isNaN(n)?'—':Number(n).toLocaleString(undefined,{ma
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- routing ---------- */
-const VIEWS=['dashboard','live','bins','forecast','graph','contamination','connect','assistant','twin','network','admin'];
+const VIEWS=['dashboard','live','bins','forecast','graph','contamination','connect','assistant','twin','network','admin','admindash'];
 function route(){
   const v=(location.hash||'#dashboard').slice(1).split('?')[0];
   const view=VIEWS.includes(v)?v:'dashboard';
@@ -21,6 +21,7 @@ function route(){
   const activeEl=$('#view-'+view); if(activeEl){activeEl.classList.remove('view-in'); void activeEl.offsetWidth; activeEl.classList.add('view-in');}
   $$('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.nav===view));
   if(view==='forecast') drawForecast();
+  if(view==='dashboard' && window.wipDashMap) window.wipDashMap.init();
   if(view==='graph' && kgData) drawGraph();
   if(view==='assistant') wiInitAssistant();
   if(view==='twin' && typeof wiInitTwin==='function') wiInitTwin();
@@ -823,6 +824,11 @@ function dashFill(b){
   return pt?pt.fill:b.fill;
 }
 function dashGrid(){
+  // Live map replaces the old SVG grid: delegate rendering to dashmap.js.
+  // The old SVG rebuild on every replay tick was the blink; the map
+  // updates markers in place instead. Fallback below only runs if the
+  // map script failed to load and an SVG is present (it is not, by design).
+  if(window.wipDashMap){ if(window.wipDashMap.inited) window.wipDashMap.render(); else window.wipDashMap.init(); return; }
   const svg=$('#dashGridSvg'); if(!svg) return;
   const showFleet=$('#dashLayerFleet')?.checked!==false, showRoute=$('#dashLayerRoute')?.checked!==false, showHeat=$('#dashLayerHeat')?.checked!==false, showLabels=$('#dashLayerLabels')?.checked!==false;
   let streets='';
