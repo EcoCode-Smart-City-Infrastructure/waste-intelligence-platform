@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul31 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul32 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -1046,6 +1046,111 @@ function wiInitEcoLinks(){
     nav.insertAdjacentElement('afterend', drop);
   });
 }
+
+// ---------- Overhaul 32: dashboard restructure (DOM moves only; every render
+// target keeps its id, so all existing render functions keep working) ----------
+function wiInitInfoBtn(btn, target){
+  if(!btn || !target) return;
+  btn.addEventListener('click', ()=>{
+    const open = target.classList.toggle('hidden') === false;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+}
+function wiInitDashboard32(){
+  const dash = document.getElementById('view-dashboard'); if(!dash || dash.dataset.ov32) return; dash.dataset.ov32 = '1';
+  const $ = (sel, root)=> (root||document).querySelector(sel);
+  // Generic info-icon toggles declared in HTML (map card).
+  document.querySelectorAll('[data-info-target]').forEach(btn=>{
+    wiInitInfoBtn(btn, document.getElementById(btn.dataset.infoTarget));
+  });
+  const ov = $('.ov', dash); if(!ov) return;
+  const hero = $('.dash-hero', dash);
+  // (a) Layout tool moves into the map card, in the description slot, with its
+  // own info icon: full description hidden, one minimal line shown.
+  const layout = $('section[aria-label="Generate a layout"]', dash);
+  if(hero && layout){
+    layout.classList.add('layout-in-hero');
+    const desc = $('p.muted', layout);
+    if(desc){
+      desc.id = 'layoutDesc'; desc.classList.add('hidden');
+      const mini = document.createElement('p'); mini.className = 'muted small'; mini.id = 'layoutMini';
+      mini.textContent = 'Describe a layout goal, preview it, then apply.';
+      desc.insertAdjacentElement('beforebegin', mini);
+      const h2 = $('h2', layout);
+      const btn = document.createElement('button'); btn.className = 'info-btn'; btn.type = 'button';
+      btn.textContent = 'ⓘ'; btn.title = 'About this tool'; btn.setAttribute('aria-label','About this tool'); btn.setAttribute('aria-expanded','false');
+      if(h2) h2.insertAdjacentElement('afterend', btn);
+      wiInitInfoBtn(btn, desc);
+    }
+    hero.appendChild(layout);
+  }
+  // (b) Annotations: honest-limit paragraph behind an info icon (form + list stay).
+  const anno = $('section[aria-label="Annotations"]', dash);
+  if(anno){
+    const desc = $('p.muted', anno);
+    const h2 = $('h2', anno);
+    if(desc && h2){
+      desc.id = 'annoDesc'; desc.classList.add('hidden');
+      const btn = document.createElement('button'); btn.className = 'info-btn'; btn.type = 'button';
+      btn.textContent = 'ⓘ'; btn.title = 'Honest limit of this tool'; btn.setAttribute('aria-label','Honest limit of this tool'); btn.setAttribute('aria-expanded','false');
+      h2.insertAdjacentElement('afterend', btn);
+      wiInitInfoBtn(btn, desc);
+    }
+  }
+  // (c) Ops brief: brief body always visible; its how-it-works note sits behind
+  // an info icon (the brief itself is never hidden).
+  const ops = $('.ops-brief', dash);
+  if(ops){
+    const h2 = $('h2', ops);
+    const note = document.createElement('p'); note.className = 'muted small hidden'; note.id = 'opsDesc';
+    note.textContent = 'Generated on this load from live tonnage and the demo fleet. Figures labelled as forecasts are forecasts, not measurements.';
+    if(h2){
+      const btn = document.createElement('button'); btn.className = 'info-btn'; btn.type = 'button';
+      btn.textContent = 'ⓘ'; btn.title = 'How this brief works'; btn.setAttribute('aria-label','How this brief works'); btn.setAttribute('aria-expanded','false');
+      h2.insertAdjacentElement('afterend', note);
+      h2.insertAdjacentElement('afterend', btn);
+      wiInitInfoBtn(btn, note);
+    }
+  }
+  // (d) Tonnage hub: one cohesive display under the map row, built by moving
+  // (not copying) the five existing tonnage elements, each clearly delineated.
+  const charts = $('.ov-charts', ov);
+  const tonnageChart = charts ? $('section', charts) : null; // first ov-chart = tonnage by borough
+  const grid = $('.dash-grid', ov);
+  const byId = (id)=> document.getElementById(id);
+  const cardOf = (el)=> el ? el.closest('section') : null;
+  const waveCard = cardOf(byId('dashWaveBars'));
+  const donutCard = cardOf(byId('dashDonutSvg'));
+  const vertCard = cardOf(byId('dashTonnageBars'));
+  const latestSec = cardOf(byId('dashTonnage'));
+  const parts = [latestSec, tonnageChart, vertCard, waveCard, donutCard].filter(Boolean);
+  if(parts.length && charts){
+    const hub = document.createElement('section'); hub.className = 'dash-card tonnage-hub'; hub.setAttribute('aria-label','Live tonnage — one display');
+    hub.innerHTML = '<div class="dash-card-head"><h2>Live tonnage — every view, one display</h2><span class="pill">latest month · DSNY feed when reachable</span></div>';
+    parts.forEach((part, i)=>{
+      const wrap = document.createElement('div'); wrap.className = 'th-sec';
+      const tag = document.createElement('span'); tag.className = 'th-tag'; tag.textContent = 'Part ' + (i+1) + ' of ' + parts.length;
+      wrap.appendChild(tag); wrap.appendChild(part); hub.appendChild(wrap);
+    });
+    charts.insertAdjacentElement('beforebegin', hub);
+  }
+  // (e) Network card: collapsed by default behind a clickable mini-infographic
+  // (the 6-step spine as one line); expanding reveals the full card, links intact.
+  const net = $('section[aria-label="Waste Intelligence Network — how every tool connects"]', dash);
+  if(net && !net.querySelector('.net-summary')){
+    const steps = [...net.querySelectorAll('.eco-flow a')].map(a=>a.textContent.replace(/^\d+\s*·\s*/,'').trim()).filter(Boolean);
+    const flow = (steps.length ? steps : ['Live Data','Bins','Forecasting','Network','Knowledge Graph','Admin Dashboard']);
+    const sum = document.createElement('button'); sum.className = 'net-summary'; sum.type = 'button'; sum.setAttribute('aria-expanded','false');
+    sum.innerHTML = '<span class="net-summary-title">🗺 How every tool connects — tap to expand</span><span class="net-spine">' + flow.map((t,i)=> (i ? '<span class="net-arrow">→</span>' : '') + '<span class="net-step">' + t + '</span>').join('') + '</span>';
+    net.classList.add('net-card');
+    net.prepend(sum);
+    net.classList.add('net-collapsed');
+    sum.addEventListener('click', ()=>{
+      const open = net.classList.toggle('net-collapsed') === false;
+      sum.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
+}
 function wiInitCmdK(){
   wiInitNavMenu(); wiInitNavMore(); wiInitEcoLinks();
   $('#cmdkBtn')?.addEventListener('click',cmdkOpen);
@@ -1159,7 +1264,7 @@ window.WIPLayout={intents:LAYOUT_INTENTS, cards:LAYOUT_CARDS, generate:wiLayoutG
 
 /* ---------- boot ---------- */
 try{renderBins(); loadDashboard(); loadLive(); loadKG(); route(); wiInitRoles();}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · BOOT ERROR: '+e.message;}
-try{wiInitCmdK(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK ERROR: '+e.message;}
+try{wiInitDashboard32(); wiInitCmdK(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK ERROR: '+e.message;}
 try{wiInitAnno(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Anno bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Anno ERROR: '+e.message;}
 try{wiInitLayout(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Layout bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Layout ERROR: '+e.message;}
 

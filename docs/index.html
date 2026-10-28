@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://data.cityofnewyork.us">
 <meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
-<link rel="stylesheet" href="styles.css?v=overhaul31">
+<link rel="stylesheet" href="styles.css?v=overhaul32">
 <script type="importmap">
 {"imports": {
   "esptool-js": "https://unpkg.com/esptool-js@0.7.0/lib/index.js",
@@ -102,8 +102,9 @@
         <div class="ov-middle">
           <div class="ov-map">
 <section class="dash-card dash-hero" aria-label="City grid">
-        <div class="dash-card-head"><h2>Live City Operations Map</h2><span class="pill" id="dashGridBadge">loading map…</span></div>
-        <p class="muted small">A real map (OpenStreetMap Standard tiles by default, CARTO Voyager/Dark optional — CARTO may show watermark tiles without a key) — not a schematic grid. Demo fleet markers coloured by fill (green / amber / red); a pink dashed line joins urgent bins; a green pulse travels that route. Tap a marker to open it in Forecasting. Toggle layers to change what the map shows. <span class="pill" id="dashMapStatus">loading map…</span></p>
+        <div class="dash-card-head"><h2>Live City Operations Map</h2><span class="pill" id="dashGridBadge">loading map…</span><span class="pill" id="dashMapStatus">loading map…</span><button class="info-btn" type="button" data-info-target="dashMapDesc" aria-label="About this map" aria-expanded="false" title="About this map">ⓘ</button></div>
+        <p class="muted small" id="dashMapMini">Real OSM map · demo fleet markers · tap a marker for its forecast.</p>
+        <p class="muted small hidden" id="dashMapDesc">A real map (OpenStreetMap Standard tiles by default, CARTO Voyager/Dark optional — CARTO may show watermark tiles without a key) — not a schematic grid. Demo fleet markers coloured by fill (lime / burnt orange / deep red); an orange dashed line joins urgent bins; a lime pulse travels that route. Tap a marker to open it in Forecasting. Toggle layers to change what the map shows.</p>
         <div class="dash-grid-controls">
           <label><input type="checkbox" id="dashLayerFleet" checked> Fleet</label>
           <label><input type="checkbox" id="dashLayerRoute" checked> Urgent route</label>
@@ -821,7 +822,7 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul31"></script>
+<script src="app.js?v=overhaul32"></script>
 <script src="dashmap.js?v=dashmap7"></script>
 <script src="admindash.js?v=admindash7"></script>
 <script src="twin.js?v=twin3"></script>

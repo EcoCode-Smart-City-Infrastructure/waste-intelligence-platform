@@ -473,3 +473,54 @@ nav a.active,nav a:hover{background:#B7FF2E;color:#0b1220}
   .eco-drop-list a{display:flex;justify-content:space-between;align-items:center;min-height:44px;padding:.6rem 1rem;color:#e2e8f0;text-decoration:none;border-top:1px solid #243044}
   .eco-drop-list a:hover{background:#B7FF2E;color:#0b1220}
 }
+
+/* ---------- Overhaul 32: dashboard restructure ----------
+   Order (flex, DOM untouched except the JS moves in wiInitDashboard32):
+   map row -> KPI HUD -> tonnage hub -> trend/hours -> role bars ->
+   ops brief -> grid -> network infographic -> annotations at the foot. */
+.hidden{display:none!important}
+.info-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;min-width:28px;border-radius:50%;border:1px solid #334155;background:#1e293b;color:#B7FF2E;font-size:1rem;cursor:pointer;vertical-align:middle;margin-left:.4rem}
+section.card h2,.ops-brief h2{display:inline-block;vertical-align:middle}
+.ov{display:flex;flex-direction:column}
+.ov-middle{order:2}
+.ov-kpis{order:3}
+.tonnage-hub{order:4}
+.ov-charts{order:5}
+.ov>.role-bar{order:6}
+.ov>.ops-brief{order:7}
+.ov>.dash-grid{order:8}
+.ov>.net-card{order:9}
+.ov>section[aria-label="Annotations"]{order:10}
+/* KPI HUD: one panel, hairline dividers, all four data points delineated. */
+#view-dashboard .ov-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:rgba(183,255,46,.18);border:1px solid rgba(183,255,46,.16);border-radius:18px;overflow:hidden;padding:0}
+#view-dashboard .ov-kpis .ov-kpi{background:#0c1411;border:0;border-radius:0;box-shadow:none;margin:0}
+/* Hero: mini line + full description + layout tool share the description slot. */
+.ov-map .dash-hero #dashMapMini{order:3}
+.ov-map .dash-hero #dashMapDesc{order:3}
+.ov-map .dash-hero .layout-in-hero{order:3;background:rgba(255,255,255,.03);border:1px solid #243044;border-radius:14px;padding:1rem;margin:0}
+.layout-in-hero h2{font-size:1.1rem}
+/* Tonnage hub: moved cards flatten into delineated parts of one display. */
+#view-dashboard .tonnage-hub .dash-card,#view-dashboard .tonnage-hub .ov-chart{background:transparent;border:0;box-shadow:none;border-radius:0;padding:0;margin:0}
+.tonnage-hub .th-sec{border-top:1px solid #243044;padding-top:1rem;margin-top:1rem}
+.th-tag{display:inline-block;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#B7FF2E;margin-bottom:.5rem}
+/* Trend + hours row: two columns now that tonnage left the row. */
+#view-dashboard .ov-charts{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:900px){#view-dashboard .ov-charts{grid-template-columns:1fr}}
+/* Network card: collapsed behind a clickable mini-infographic spine. */
+.net-summary{display:flex;flex-direction:column;gap:.5rem;width:100%;text-align:left;background:transparent;border:0;color:#fff;cursor:pointer;padding:0}
+.net-summary-title{font-size:1.1rem;font-weight:800}
+.net-spine{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center}
+.net-step{background:#1e293b;border:1px solid #334155;border-radius:999px;padding:.35rem .7rem;font-size:.85rem;color:#e2e8f0}
+.net-arrow{color:#FF7A1A;font-weight:800}
+.net-card.net-collapsed>:not(.net-summary){display:none}
+
+/* ---------- Overhaul 32 fix: .ov holds only kpis/middle/charts; the rest of
+   the dashboard lives in .dash-main, so foot ordering belongs there. ---------- */
+.dash-main{display:flex;flex-direction:column;min-width:0}
+.dash-main>.dash-top{order:1}
+.dash-main>.ov{order:2}
+.dash-main>.role-bar{order:3}
+.dash-main>.ops-brief{order:4}
+.dash-main>.dash-grid{order:5}
+.dash-main>.net-card{order:6}
+.dash-main>section[aria-label="Annotations"]{order:7}
