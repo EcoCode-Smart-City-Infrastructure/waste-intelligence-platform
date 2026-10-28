@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://data.cityofnewyork.us">
 <meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
-<link rel="stylesheet" href="styles.css?v=overhaul32">
+<link rel="stylesheet" href="styles.css?v=overhaul33">
 <script type="importmap">
 {"imports": {
   "esptool-js": "https://unpkg.com/esptool-js@0.7.0/lib/index.js",
@@ -24,35 +24,16 @@
     <div><strong>Waste Intelligence</strong><span>NYC operations · EcoCode Smart City</span></div>
   </div>
   <button class="btn" id="navToggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav">☰ Menu</button>
-  <nav id="nav" aria-label="Sections">
-    <a href="#dashboard" data-nav="dashboard">Dashboard</a>
-    <a href="#live" data-nav="live">Live NYC Data</a>
-    <a href="#bins" data-nav="bins">Bins &amp; Routes</a>
-    <a href="#forecast" data-nav="forecast">Forecasting</a>
-    <a href="#graph" data-nav="graph">Knowledge Graph</a>
-    <a href="#contamination" data-nav="contamination">Contamination</a>
-    <a href="#connect" data-nav="connect">Connect</a>
-    <a href="#assistant" data-nav="assistant">Assistant</a>
-    <a href="#twin" data-nav="twin">Digital Twin <span class="pill warn">preview</span></a>
-    <a href="#network" data-nav="network">Collection Network</a>
-    <a href="#admin" data-nav="admin" class="nav-more-link">Admin Settings</a>
-    <a href="#admindash" data-nav="admindash" class="nav-more-link">Admin Dashboard</a>
-    <a href="kepler.html" class="nav-more-link">Kepler 3D Map</a>
-    <a href="#" id="authSignOut" hidden>Sign out</a>
-  </nav>
-  <div class="nav-more-wrap">
-    <button class="btn" id="navMoreBtn" type="button" aria-label="More sections" aria-expanded="false" aria-controls="navMoreMenu">More ▾</button>
-    <div class="nav-more-menu" id="navMoreMenu" hidden>
-      <a href="#admin">Admin Settings</a>
-      <a href="#admindash">Admin Dashboard</a>
-      <a href="kepler.html">Kepler 3D Map</a>
-    </div>
-  </div>
+  <input id="nxSearch" type="search" placeholder="Search bins, routes, locations, or ask AI…" aria-label="Search the platform">
+  <span class="nx-clock" id="nxClock">—</span>
+  <span id="nxBellSlot"></span>
   <button class="btn" id="cmdkBtn" type="button" aria-label="Open command palette">⌘K</button>
   <a class="btn" href="login.html" id="authNavLink">Sign in</a>
+  <a class="btn" href="#" id="authSignOut" hidden>Sign out</a>
 </header>
 
 <main>
+<aside class="nx-side" id="nxSide" aria-label="Workspaces"><nav id="nav" aria-label="Workspaces"></nav><div class="nx-side-foot"><span class="pill" id="dashSideLive">checking…</span> <span class="muted small" id="dashSideUrgent"></span><p class="muted small">Demo fleet · static Pages · no live sensors</p></div></aside>
 <div class="radiant-band" aria-hidden="true"></div>
 <!-- DASHBOARD — dark operations layout (sidebar + card grid, waste data only) -->
 <section id="view-dashboard" class="view">
@@ -79,11 +60,11 @@
       </nav>
       <p class="dash-side-group">Account</p>
       <nav class="dash-side-nav"><a href="login.html">Sign in</a></nav>
-      <div class="dash-side-status"><span class="pill" id="dashSideLive">checking…</span><span class="muted small" id="dashSideUrgent"></span></div>
+      
     </aside>
     <div class="dash-main">
       <div class="dash-top">
-        <div><p class="ov-crumb">Operations <span aria-hidden="true">›</span> City Overview</p><h1>City Overview</h1><p class="dash-sub">NYC waste operations — live city data where it exists, demo fleet where the backend is not running, every number labelled with its source.</p></div>
+        <div><p class="ov-crumb">Operations <span aria-hidden="true">›</span> City Overview</p><h1>Smart City Waste Intelligence</h1><p class="dash-sub">NYC waste operations — live city data where it exists, demo fleet where the backend is not running, every number labelled with its source.</p></div>
         <div class="dash-top-actions">
           <label class="dash-search">🔍 <input id="dashSearch" placeholder="Search bins or sites… (Enter)"></label>
           <a class="dash-icon" href="#bins" title="Urgent bins">🔔 <span id="dashBellCount">0</span></a>
@@ -111,14 +92,14 @@
           <label><input type="checkbox" id="dashLayerHeat" checked> Fill heat</label>
           <label><input type="checkbox" id="dashLayerLabels" checked> Borough labels</label>
           <button class="btn" id="dashPulseBtn">⏸ Pause pulses</button>
-          <label>Map tiles <select id="dashTile"><option value="osm">OpenStreetMap (default)</option><option value="voyager">CARTO Voyager</option><option value="carto">CARTO Dark</option></select></label>
+          <label>Map tiles <select id="dashTile"><option value="osm">OpenStreetMap (default)</option><option value="voyager">CARTO Voyager</option><option value="carto">CARTO Dark</option><option value="esri">Esri Satellite</option></select></label>
           <button class="btn" id="dashRecentre" type="button">Recentre map</button>
           <label>Replay <input type="range" id="dashReplay" min="0" max="47" value="47" aria-label="Replay the last 48 hours of demo fill history"> <span id="dashReplayLabel">now</span></label>
           <button class="btn" id="dashReplayPlay" type="button">▶ Play replay</button>
         </div>
         <div id="dashLiveMap" role="application" aria-label="Live City Operations Map — NYC bins on a real map"></div>
         <p class="muted small" id="dashGridNote"></p>
-        <div class="whatif"><span class="pill warn">Simulated</span>
+        <div class="whatif" id="nxWhatIf"><span class="pill warn">Simulated</span>
           <label>Add vehicles <select id="whatifVehicles"><option>1</option><option>2</option><option>3</option></select></label>
           <button class="btn" id="whatifBtn" type="button">Simulate 4 hours</button>
           <p class="muted small" id="whatifOut">Assumption: 1 vehicle clears 1 urgent bin per 30 minutes, starting now. This is an illustrative simulation, not a live forecast — live state is unchanged.</p>
@@ -822,8 +803,8 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul32"></script>
-<script src="dashmap.js?v=dashmap7"></script>
+<script src="app.js?v=overhaul33"></script>
+<script src="dashmap.js?v=dashmap8"></script>
 <script src="admindash.js?v=admindash7"></script>
 <script src="twin.js?v=twin3"></script>
 <script src="network.js?v=network3"></script>

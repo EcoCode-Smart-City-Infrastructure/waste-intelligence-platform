@@ -45,7 +45,8 @@ function setTiles(kind){
   const defs = {
     osm: {url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; OpenStreetMap contributors', name:'OpenStreetMap'},
     voyager: {url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO', name:'CARTO Voyager'},
-    carto: {url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO', name:'CARTO Dark'}
+    carto: {url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO', name:'CARTO Dark'},
+    esri: {url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics', name:'Esri Satellite'}
   };
   tileErrors = 0; tileLoads = 0; tileOk = false;
   if(layers.base) map.removeLayer(layers.base);
@@ -72,6 +73,7 @@ function fleetNow(){
   return fl.map(b=>({...b, _fill: fillFn(b)}));
 }
 function render(){
+  if(map){ try{ map.invalidateSize(); }catch(e){} }
   if(!map || !layers) return;
   const showFleet = $d('#dashLayerFleet')?.checked!==false;
   const showRoute = $d('#dashLayerRoute')?.checked!==false;
@@ -91,6 +93,7 @@ function render(){
       else{
         m = window.L.circleMarker([b.lat,b.lon], {...style, _binId:b.id});
         m.bindPopup(`<strong>${escD(b.id)}</strong><br>${escD(b.site)}, ${escD(b.borough)}<br>Fill ${b._fill}%<br><a href="#forecast?bin=${encodeURIComponent(b.id)}">Open forecast →</a>`);
+        m.on('click', ()=>{ try{ if(window.wiSelectBin) window.wiSelectBin(b.id, b); }catch(e){} });
         m.addTo(layers.markers);
       }
       m.setPopupContent(`<strong>${escD(b.id)}</strong><br>${escD(b.site)}, ${escD(b.borough)}<br>Fill ${b._fill}%<br><a href="#forecast?bin=${encodeURIComponent(b.id)}">Open forecast →</a>`);
@@ -102,6 +105,16 @@ function render(){
   if(showRoute && urgent.length>1){
     layers.route = window.L.polyline(urgent.map(b=>[b.lat,b.lon]), {color:'#FF7A1A', weight:3, dashArray:'12 8', opacity:0.9}).addTo(map);
   }
+  try{
+    if(!layers.custom) layers.custom = window.L.layerGroup().addTo(map);
+    layers.custom.clearLayers();
+    const routes = JSON.parse(localStorage.getItem('wip_custom_routes')||'[]');
+    const fl = (typeof fleet !== 'undefined') ? fleet : (window.wipFleet ? window.wipFleet() : []);
+    routes.forEach(r=>{
+      const pts = (r.bins||[]).map(id=>fl.find(x=>x.id===id)).filter(Boolean).map(x=>[x.lat,x.lon]);
+      if(pts.length>=2) window.L.polyline(pts, {color:'#45C8FF', weight:3, dashArray:'8 6', opacity:0.9}).bindTooltip(r.name||'Custom route').addTo(layers.custom);
+    });
+  }catch(e){}
   layers.labels.clearLayers();
   if(showLabels){
     Object.entries(BORO_C).forEach(([name, ll])=>{

@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul32 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul33 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -93,6 +93,10 @@ async function loadDashboard(){
   $('#dashTonnage tbody').innerHTML=agg.map(r=>`<tr><td>${esc(agg.month)}</td><td>${esc(r.borough)}</td><td>${fmt(r.refuse)}</td><td>${fmt(r.paper)}</td><td>${fmt(r.mgp)}</td><td>${fmt(r.organics)}</td></tr>`).join('');
   try{dashRender(agg, live);}catch(e){console.warn('Dashboard grid failed, table still available:',e);}
   try{renderOverview(agg, live);}catch(e){console.warn('City overview failed, rest of dashboard still available:',e);}
+  window.wipLastUpdated=Date.now();
+  try{wiRenderRail();}catch(e){}
+  try{wiRenderSustain();}catch(e){}
+  try{wiRenderCustomRoutes();}catch(e){}
 }
 
 /* ---------- live data ---------- */
@@ -576,8 +580,9 @@ function wiContext(){
 }
 function wiDemoAnswer(q){
   const l=q.toLowerCase();
+  if((/add|create|build/.test(l)) && /route/.test(l)) return "Route adding is for signed-in operators, saved locally in this browser with no backend verification: use the Add route form in the dashboard's Collection Routes card, or ask the floating assistant to propose one and confirm it. "+(wiIsSignedIn()?"You are signed in, so a confirmed route saves right away.":"Sign in first (demo-grade local sign-in) — unsigned visitors can view routes but not add them.")+" Other changes (deleting bins, actuating systems) are still not done from chat.";
   if(l.includes('groq')||l.includes('secret')||l.includes('api key')) return "Security model: a repo secret is never in this browser bundle and cannot power live chat. It is only used inside a GitHub Actions workflow to refresh docs/ai-briefing.json. Live chat needs a Groq key you paste in the Connect card above, stored only in this browser's localStorage and sent only to api.groq.com. With no key, I answer from the built-in demo knowledge base in this page.";
-  if(l.includes('delete')||l.includes('remove a bin')||l.includes('change the route')||l.includes('modify')||l.includes('actuat')) return "I won't change bins or routes directly — this assistant is read-only, mirroring the platform copilot's guardrails (no write / delete / actuate actions). To change something, use the [Bins & Routes](#bins) view yourself, or the [Forecasting](#forecast) view for a bin. I can explain what a change would do first, if you like.";
+  if(l.includes('delete')||l.includes('remove a bin')||l.includes('modify')||l.includes('actuat')) return "I won't delete bins or actuate systems — this assistant is read-only for those actions, mirroring the platform copilot's guardrails. The one exception is adding routes: signed-in operators can add a route from the dashboard's Collection Routes form or by confirming an AI proposal, saved locally with no backend verification. To change anything else, use the [Bins & Routes](#bins) view yourself, or the [Forecasting](#forecast) view for a bin. I can explain what a change would do first, if you like.";
   if(l.includes('urgent')||l.includes('bin')){
     const urgent=fleet.filter(b=>b.fill>=80);
     return `Demo fleet right now: ${fleet.length} bins, average fill ${Math.round(fleet.reduce((s,b)=>s+b.fill,0)/fleet.length)}%. Urgent bins (>=80%): ${urgent.length?urgent.map(b=>`${b.id} at ${b.site} (${b.fill}%)`).join(', '):'none'}. Open [Bins & Routes](#bins) to collect one, or [Forecasting](#forecast) to see when a bin will fill. These are demo bins — the hub API returns no bins — not live sensor readings.`;
@@ -644,6 +649,11 @@ async function wiAsk(){
     return;
   }
   if(wiStageFromChat(q)){wiAddMsg('assistant','Staged, not executed: see the Staged actions card above. Approve it to run it, or discard it. Nothing has changed yet.'); return;}
+  if(/add|create|build/i.test(q) && /route/i.test(q)){
+    const bins=wiParseRouteBins(q);
+    if(!bins.length){ wiAddMsg('assistant','Which bins should the route cover? Name bin IDs (e.g. BIN-MA-101), say “urgent bins”, or select a bin first. Routes save locally for signed-in operators, with no backend verification.'); return; }
+    const holder=document.createElement('div'); $('#wiChat').appendChild(holder); wiProposeRoute(bins,'ai',holder); return;
+  }
   const backend=$('#wiChatBackend').value; const model=$('#wiGroqModel').value; localStorage.setItem('wi_chat_backend',backend); localStorage.setItem('wi_groq_model',model);
   const key=localStorage.getItem('wi_groq_key');
   if(/show (me )?your (groq )?key|what is (the|my) (groq )?key|reveal.*key|print.*secret/i.test(q)){wiAddMsg('assistant','I will not reveal a saved key or secret value — not in chat, not in the app, and not in any file. If you need to replace it, paste a new key in the Connect card above (it overwrites the old one in this browser only).'); return;}
@@ -784,31 +794,31 @@ function dashRender(agg, live){
   const totals={refuse:0,paper:0,mgp:0,organics:0};
   agg.forEach(r=>{totals.refuse+=r.refuse; totals.paper+=r.paper; totals.mgp+=r.mgp; totals.organics+=r.organics;});
   const totalT=totals.refuse+totals.paper+totals.mgp+totals.organics;
-  $('#dashWaveTotal').textContent=fmt(totalT)+' t';
-  $('#dashWaveBadge').textContent=live?('LIVE · '+agg.month):'SAMPLE · live feed unreachable';
-  $('#dashWaveNote').textContent=live?`Latest month in the DSNY feed (${agg.month}), all boroughs combined. Bars are borough totals.`:'Live feed unreachable — this is the labelled sample, not live tonnage.';
+  ($('#dashWaveTotal')||{}).textContent=fmt(totalT)+' t';
+  ($('#dashWaveBadge')||{}).textContent=live?('LIVE · '+agg.month):'SAMPLE · live feed unreachable';
+  ($('#dashWaveNote')||{}).textContent=live?`Latest month in the DSNY feed (${agg.month}), all boroughs combined. Bars are borough totals.`:'Live feed unreachable — this is the labelled sample, not live tonnage.';
   const maxB=Math.max(...agg.map(r=>r.refuse+r.paper+r.mgp+r.organics),1);
-  $('#dashWaveBars').innerHTML=agg.map(r=>{const t=r.refuse+r.paper+r.mgp+r.organics; return `<i style="--h:${Math.max(12,Math.round(t/maxB*100))}%;height:${Math.max(12,Math.round(t/maxB*100))}%" title="${esc(r.borough)}: ${fmt(t)} t"></i>`;}).join('');
+  ($('#dashWaveBars')||{}).innerHTML=agg.map(r=>{const t=r.refuse+r.paper+r.mgp+r.organics; return `<i style="--h:${Math.max(12,Math.round(t/maxB*100))}%;height:${Math.max(12,Math.round(t/maxB*100))}%" title="${esc(r.borough)}: ${fmt(t)} t"></i>`;}).join('');
   const streams=[['Refuse',totals.refuse,'#FF2E3F'],['Paper',totals.paper,'#45C8FF'],['MGP',totals.mgp,'#FF7A1A'],['Organics',totals.organics,'#B7FF2E']];
   let off=0; const C=2*Math.PI*80;
   $('#dashDonutSvg').innerHTML=streams.map(([name,v,color])=>{const frac=totalT?v/totalT:0, dash=frac*C, gap=C-dash; const el=`<circle cx="100" cy="100" r="80" fill="none" stroke="${color}" stroke-width="26" stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}"/>`; off+=dash; return el;}).join('');
   $('#dashDonutCentre').innerHTML=`${fmt(totalT)} t<br><span style="font-size:.8rem;font-weight:400;color:#94a3b8">total tonnage</span>`;
   $('#dashDonutLegend').innerHTML='<div class="dash-legend">'+streams.map(([name,v,color])=>`<div><span style="background:${color}"></span>${name}: ${fmt(v)} t (${totalT?Math.round(v/totalT*100):0}%)</div>`).join('')+'</div>';
-  $('#dashHeatDots').innerHTML=fleet.map(b=>`<button style="background:${dashStatusColor(b.fill)}" title="${esc(b.id)} — ${esc(b.site)}, ${esc(b.borough)} · ${b.fill}%" aria-label="${esc(b.id)} ${b.fill} percent" data-bin="${b.id}"></button>`).join('');
+  ($('#dashHeatDots')||{}).innerHTML=fleet.map(b=>`<button style="background:${dashStatusColor(b.fill)}" title="${esc(b.id)} — ${esc(b.site)}, ${esc(b.borough)} · ${b.fill}%" aria-label="${esc(b.id)} ${b.fill} percent" data-bin="${b.id}"></button>`).join('');
   $$('#dashHeatDots [data-bin]').forEach(btn=>btn.addEventListener('click',()=>{location.hash='#forecast?bin='+btn.dataset.bin;}));
   const healthy=fleet.length?Math.round(fleet.filter(b=>b.fill<80).length/fleet.length*100):0;
   const organicsShare=totalT?Math.round(totals.organics/totalT*100):0;
   const rings=[['Healthy bins',healthy,'#B7FF2E'],['Live feed',live?100:0,'#45C8FF'],['Organics share',organicsShare,'#FF7A1A']];
-  $('#dashRings').innerHTML=rings.map(([name,v,color])=>{const circ=2*Math.PI*34; return `<div class="dash-ring"><svg viewBox="0 0 90 90"><circle cx="45" cy="45" r="34" fill="none" stroke="#334155" stroke-width="9"/><circle cx="45" cy="45" r="34" fill="none" stroke="${color}" stroke-width="9" stroke-dasharray="${(v/100*circ).toFixed(1)} ${circ.toFixed(1)}" stroke-linecap="round"/></svg><b>${v}%</b><span>${name}</span></div>`;}).join('');
-  $('#dashRingsNote').textContent='Healthy = bins below 80% fill. Live feed = DSNY tonnage reachable on this load. Organics share = organics tonnes ÷ total tonnes.';
-  $('#dashTonnageBars').innerHTML=agg.map(r=>{const t=r.refuse+r.paper+r.mgp+r.organics; return `<div><i style="height:${Math.max(10,Math.round(t/maxB*110))}px"></i><span>${fmt(t)} t<br>${esc(r.borough)}</span></div>`;}).join('');
+  ($('#dashRings')||{}).innerHTML=rings.map(([name,v,color])=>{const circ=2*Math.PI*34; return `<div class="dash-ring"><svg viewBox="0 0 90 90"><circle cx="45" cy="45" r="34" fill="none" stroke="#334155" stroke-width="9"/><circle cx="45" cy="45" r="34" fill="none" stroke="${color}" stroke-width="9" stroke-dasharray="${(v/100*circ).toFixed(1)} ${circ.toFixed(1)}" stroke-linecap="round"/></svg><b>${v}%</b><span>${name}</span></div>`;}).join('');
+  ($('#dashRingsNote')||{}).textContent='Healthy = bins below 80% fill. Live feed = DSNY tonnage reachable on this load. Organics share = organics tonnes ÷ total tonnes.';
+  ($('#dashTonnageBars')||{}).innerHTML=agg.map(r=>{const t=r.refuse+r.paper+r.mgp+r.organics; return `<div><i style="height:${Math.max(10,Math.round(t/maxB*110))}px"></i><span>${fmt(t)} t<br>${esc(r.borough)}</span></div>`;}).join('');
   const top=urgent.length?[...urgent].sort((a,b)=>b.fill-a.fill)[0]:fleet[0];
   if(top){
     const pts=historyFor(top), maxF=100, minF=0;
     const X=(i)=>20+i/(pts.length-1)*480, Y=(v)=>160-(v-minF)/(maxF-minF)*140;
     const line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.fill).toFixed(1)}`).join(' ');
-    $('#dashForecastSvg').innerHTML=`<path d="${line} L${X(pts.length-1).toFixed(1)},160 L20,160 Z" fill="rgba(183,255,46,.18)" stroke="none"/><path d="${line}" fill="none" stroke="#B7FF2E" stroke-width="2.5"/>`;
-    $('#dashForecastNote').innerHTML=`<strong>${esc(top.id)}</strong> — ${esc(top.site)}, ${esc(top.borough)} · now ${top.fill}%. History is the demo fill series used by Forecasting. <a href="#forecast?bin=${top.id}">Open full forecast →</a>`;
+    ($('#dashForecastSvg')||{}).innerHTML=`<path d="${line} L${X(pts.length-1).toFixed(1)},160 L20,160 Z" fill="rgba(183,255,46,.18)" stroke="none"/><path d="${line}" fill="none" stroke="#B7FF2E" stroke-width="2.5"/>`;
+    ($('#dashForecastNote')||{}).innerHTML=`<strong>${esc(top.id)}</strong> — ${esc(top.site)}, ${esc(top.borough)} · now ${top.fill}%. History is the demo fill series used by Forecasting. <a href="#forecast?bin=${top.id}">Open full forecast →</a>`;
   }
   $('#dashSideLive').textContent=live?('LIVE · '+agg.month):'SAMPLE · feed unreachable';
   $('#dashSideUrgent').textContent=urgent.length?`${urgent.length} urgent bin${urgent.length===1?'':'s'}`:'No urgent bins';
@@ -873,10 +883,10 @@ $('#dashSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter'){const v=$('
 /* ---------- Round 1 overhaul: roles, saved views, Ops Brief, staged actions ---------- */
 const ROLES={
  dispatcher:{brief:'Dispatcher: exceptions first — urgent bins, the city grid, and the route layer.',order:['Urgent bins','Fleet fill by borough','Live tonnage','Tonnage by borough','Forecast trend','Tonnage mix','Fill heatmap','At a glance','The loop']},
- depot:{brief:'Depot manager: capacity first — fleet fill, live tonnage, and tonnage by borough.',order:['Fleet fill by borough','Live tonnage','Tonnage by borough','Urgent bins','Forecast trend','Fill heatmap','At a glance','Tonnage mix','The loop']},
- analyst:{brief:'Analyst: evidence first — forecast trend, tonnage mix, and the loop.',order:['Forecast trend','Tonnage mix','Live tonnage','Tonnage by borough','Fleet fill by borough','Urgent bins','Fill heatmap','At a glance','The loop']},
- executive:{brief:'Executive: the city in one screen — live tonnage, tonnage by borough, and the brief above.',order:['Live tonnage','Tonnage by borough','Tonnage mix','Urgent bins','Fleet fill by borough','Forecast trend','Fill heatmap','At a glance','The loop']},
- crew:{brief:'Field crew: your bins first — urgent bins and the fill heatmap, nothing else in the way.',order:['Urgent bins','Fill heatmap','Fleet fill by borough','Live tonnage','Forecast trend','Tonnage by borough','Tonnage mix','At a glance','The loop']},
+ depot:{brief:'Depot manager: capacity first — fleet fill, live tonnage, and tonnage by borough.',order:['Collection Routes','Waste Composition','Sustainability Impact','Recent Alerts','Forecasting']},
+ analyst:{brief:'Analyst: evidence first — forecast trend, tonnage mix, and the loop.',order:['Forecasting','Waste Composition','Sustainability Impact','Recent Alerts','Collection Routes']},
+ executive:{brief:'Executive: the city in one screen — live tonnage, tonnage by borough, and the brief above.',order:['Waste Composition','Sustainability Impact','Recent Alerts','Collection Routes','Forecasting']},
+ crew:{brief:'Field crew: your bins first — urgent bins and the fill heatmap, nothing else in the way.',order:['Collection Routes','Recent Alerts','Forecasting','Waste Composition','Sustainability Impact']},
 };
 function wiRole(){try{return localStorage.getItem('wip_role')||'dispatcher';}catch(e){return 'dispatcher';}}
 function wiApplyRole(role){
@@ -1082,7 +1092,6 @@ function wiInitDashboard32(){
       if(h2) h2.insertAdjacentElement('afterend', btn);
       wiInitInfoBtn(btn, desc);
     }
-    hero.appendChild(layout);
   }
   // (b) Annotations: honest-limit paragraph behind an info icon (form + list stay).
   const anno = $('section[aria-label="Annotations"]', dash);
@@ -1111,28 +1120,6 @@ function wiInitDashboard32(){
       h2.insertAdjacentElement('afterend', btn);
       wiInitInfoBtn(btn, note);
     }
-  }
-  // (d) Tonnage hub: one cohesive display under the map row, built by moving
-  // (not copying) the five existing tonnage elements, each clearly delineated.
-  const charts = $('.ov-charts', ov);
-  const tonnageChart = charts ? $('section', charts) : null; // first ov-chart = tonnage by borough
-  const grid = $('.dash-grid', ov);
-  const byId = (id)=> document.getElementById(id);
-  const cardOf = (el)=> el ? el.closest('section') : null;
-  const waveCard = cardOf(byId('dashWaveBars'));
-  const donutCard = cardOf(byId('dashDonutSvg'));
-  const vertCard = cardOf(byId('dashTonnageBars'));
-  const latestSec = cardOf(byId('dashTonnage'));
-  const parts = [latestSec, tonnageChart, vertCard, waveCard, donutCard].filter(Boolean);
-  if(parts.length && charts){
-    const hub = document.createElement('section'); hub.className = 'dash-card tonnage-hub'; hub.setAttribute('aria-label','Live tonnage — one display');
-    hub.innerHTML = '<div class="dash-card-head"><h2>Live tonnage — every view, one display</h2><span class="pill">latest month · DSNY feed when reachable</span></div>';
-    parts.forEach((part, i)=>{
-      const wrap = document.createElement('div'); wrap.className = 'th-sec';
-      const tag = document.createElement('span'); tag.className = 'th-tag'; tag.textContent = 'Part ' + (i+1) + ' of ' + parts.length;
-      wrap.appendChild(tag); wrap.appendChild(part); hub.appendChild(wrap);
-    });
-    charts.insertAdjacentElement('beforebegin', hub);
   }
   // (e) Network card: collapsed by default behind a clickable mini-infographic
   // (the 6-step spine as one line); expanding reveals the full card, links intact.
@@ -1205,13 +1192,13 @@ function wiInitAnno(){
    deliberate opposite of opaque algorithmic reshuffling: the user asks,
    sees the proposed order, and approves it. */
 const LAYOUT_INTENTS=[
-  {id:'urgent', label:'Urgent response', keywords:['urgent','route','response','emergency','dispatch','critical'], order:['Urgent bins','Fleet fill by borough','Live tonnage','Forecast trend','Tonnage by borough','Tonnage mix','Fill heatmap','At a glance','The loop']},
-  {id:'executive', label:'Executive summary', keywords:['executive','summary','overview','management','briefing','board'], order:['Live tonnage','Tonnage by borough','Tonnage mix','Urgent bins','Fleet fill by borough','Forecast trend','Fill heatmap','At a glance','The loop']},
-  {id:'analyst', label:'Analyst evidence', keywords:['analyst','evidence','forecast','trend','data','analysis'], order:['Forecast trend','Tonnage mix','Live tonnage','Tonnage by borough','Fleet fill by borough','Urgent bins','Fill heatmap','At a glance','The loop']},
-  {id:'crew', label:'Field crew focus', keywords:['crew','field','collection','driver','route crew','on the road'], order:['Urgent bins','Fill heatmap','Fleet fill by borough','Live tonnage','Forecast trend','Tonnage by borough','Tonnage mix','At a glance','The loop']},
-  {id:'depot', label:'Depot capacity', keywords:['depot','capacity','fleet','yard'], order:['Fleet fill by borough','Live tonnage','Tonnage by borough','Urgent bins','Forecast trend','Fill heatmap','At a glance','Tonnage mix','The loop']},
+  {id:'urgent', label:'Urgent response', keywords:['urgent','route','response','emergency','dispatch','critical'], order:['Recent Alerts','Collection Routes','Forecasting','Waste Composition','Sustainability Impact']},
+  {id:'executive', label:'Executive summary', keywords:['executive','summary','overview','management','briefing','board'], order:['Waste Composition','Sustainability Impact','Recent Alerts','Collection Routes','Forecasting']},
+  {id:'analyst', label:'Analyst evidence', keywords:['analyst','evidence','forecast','trend','data','analysis'], order:['Forecasting','Waste Composition','Sustainability Impact','Recent Alerts','Collection Routes']},
+  {id:'crew', label:'Field crew focus', keywords:['crew','field','collection','driver','route crew','on the road'], order:['Collection Routes','Recent Alerts','Forecasting','Waste Composition','Sustainability Impact']},
+  {id:'depot', label:'Depot capacity', keywords:['depot','capacity','fleet','yard'], order:['Collection Routes','Waste Composition','Sustainability Impact','Recent Alerts','Forecasting']},
 ];
-const LAYOUT_CARDS=['Urgent bins','Fleet fill by borough','Live tonnage','Tonnage by borough','Forecast trend','Tonnage mix','Fill heatmap','At a glance','The loop'];
+const LAYOUT_CARDS=['Collection Routes','Waste Composition','Forecasting','Sustainability Impact','Recent Alerts'];
 function wiLayoutGenerate(goal){
   const g=(goal||'').toLowerCase();
   let best=null, bestScore=0;
@@ -1228,8 +1215,8 @@ function wiLayoutGenerate(goal){
   return {order:order, reason:`Matched intent "${best.label}" from your words (${best.keywords.filter(k=>g.includes(k)).join(', ')}). Card order below is the proposal — nothing has moved yet.`, intent:best.label};
 }
 function wiApplyLayoutOrder(order){
-  const grid=document.querySelector('.dash-grid'); if(!grid) return;
-  const cards=$$('.dash-grid .dash-card');
+  const grid=document.querySelector('#nxBottom')||document.querySelector('.dash-grid'); if(!grid) return;
+  const cards=[...grid.children];
   cards.forEach(card=>{
     const h=card.querySelector('h2')?.textContent||'';
     const idx=order.findIndex(o=>h.startsWith(o));
@@ -1264,7 +1251,7 @@ window.WIPLayout={intents:LAYOUT_INTENTS, cards:LAYOUT_CARDS, generate:wiLayoutG
 
 /* ---------- boot ---------- */
 try{renderBins(); loadDashboard(); loadLive(); loadKG(); route(); wiInitRoles();}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · BOOT ERROR: '+e.message;}
-try{wiInitDashboard32(); wiInitCmdK(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK ERROR: '+e.message;}
+try{wiInitDashboard32(); wiInitNexus(); wiInitCmdK(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK ERROR: '+e.message;}
 try{wiInitAnno(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Anno bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Anno ERROR: '+e.message;}
 try{wiInitLayout(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Layout bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Layout ERROR: '+e.message;}
 
@@ -1283,6 +1270,7 @@ function renderOverview(agg, live){
   $('#ovKpiOrganics').textContent=orgShare+'%';
   $('#ovKpiOrganicsSub').textContent=live?`of live tonnage · ${agg.month}`:'of sample tonnage · live feed unreachable';
   $('#ovKpiTonnage').textContent=fmt(totalT)+' t';
+  const bk=$('#ovKpiBins'); if(bk) bk.textContent=fleet.length;
   $('#ovKpiTonnageSub').textContent=live?`latest month · LIVE · ${agg.month}`:'latest month · SAMPLE · live feed unreachable';
   const top=urgent[0]||fleet[0];
   const alerts=[];
@@ -1307,3 +1295,333 @@ function renderOverview(agg, live){
   const maxH=Math.max(...hours.filter(x=>x.h!==Infinity).map(x=>x.h),1);
   $('#ovHoursBars').innerHTML=hours.length?hours.map(({b,h})=>`<div class="ov-bar-row"><span>${esc(b.id)}</span><span class="bar"><i class="${b.fill>=90?'high':''}" style="width:${h===Infinity?8:Math.max(8,Math.round(h/maxH*100))}%"></i></span><span>${h===Infinity?'steady':'~'+Math.round(h)+' h'}</span></div>`).join(''):'<p class="muted small">No urgent bins right now.</p>';
 }
+
+/* ---------- Overhaul 33: Nexus shell, contextual rail, bubble, custom routes ---------- */
+function wiIsSignedIn(){ try{ return !!JSON.parse(sessionStorage.getItem('wi-session-v1')||'null'); }catch(e){ return false; } }
+function wiOrderBins(bins){ if(!bins || bins.length<2) return (bins||[]).slice(); const rem=bins.slice(), order=[rem.shift()]; while(rem.length){ let best=0, bd=1e9; rem.forEach((c,i)=>{ const d=haversine(order[order.length-1],c); if(d<bd){bd=d;best=i;} }); order.push(rem.splice(best,1)[0]); } return order; }
+function wiRouteKm(order){ let d=0; for(let i=1;i<order.length;i++) d+=haversine(order[i-1],order[i]); return d; }
+function wiLoadCustomRoutes(){ try{ return JSON.parse(localStorage.getItem('wip_custom_routes')||'[]'); }catch(e){ return []; } }
+function wiSaveCustomRoutes(a){ try{ localStorage.setItem('wip_custom_routes', JSON.stringify(a)); }catch(e){} }
+function wiSelectedBin(){ return window.wipSelectedBin || fleet.filter(b=>b.fill>=80).sort((a,b)=>b.fill-a.fill)[0] || fleet[0] || null; }
+function wiSelectBin(id, fallback){
+  const b = fleet.find(x=>x.id===id) || (fallback ? {id:fallback.id, site:fallback.site, borough:fallback.borough, fill:fallback._fill!=null?fallback._fill:fallback.fill, lat:fallback.lat, lon:fallback.lon} : null);
+  if(!b) return;
+  window.wipSelectedBin = b; wiRenderRail();
+  if(window.innerWidth<=900){ const rail=document.getElementById('nxRail'); if(rail) rail.scrollIntoView({block:'nearest', behavior:'smooth'}); }
+}
+function wiRailSvg(bin){
+  const pts=historyFor(bin); const n=pts.length;
+  const X=i=>20 + (n>1 ? i/(n-1)*480 : 240), Y=f=>160 - f/100*140;
+  let line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.fill).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 520 180" role="img" aria-label="Fill history of ${esc(bin.id)}"><path d="${line} L${X(n-1).toFixed(1)},160 L20,160 Z" fill="rgba(69,200,255,.16)" stroke="none"/><path d="${line}" fill="none" stroke="#45C8FF" stroke-width="2.5"/></svg>`;
+}
+function wiRenderRail(){
+  const rail=document.getElementById('nxRailBin'); if(!rail) return;
+  const bin=wiSelectedBin(); if(!bin){ rail.innerHTML='<p class="muted">No bin selected.</p>'; return; }
+  const a=analyse(historyFor(bin)); const st=statusOf(bin.fill);
+  const statusText = st==='urgent' ? 'Urgent' : st==='watch' ? 'Watch' : 'Healthy';
+  const statusClass = st==='urgent' ? 'bad' : st==='watch' ? 'warn' : '';
+  let ev=[]; try{ ev=JSON.parse(localStorage.getItem('wip_network_events')||'[]').filter(e=>e.nodeId===bin.id); }catch(e){}
+  rail.innerHTML = `<div class="dash-card-head"><h2>${esc(bin.id)}</h2><span class="pill ${statusClass}">${statusText} · ${bin.fill}%</span></div>
+    <p class="muted small">${esc(bin.site)}, ${esc(bin.borough)}</p>
+    <div class="bar"><i class="${st==='urgent'?'high':st==='watch'?'mid':''}" style="width:${bin.fill}%"></i></div>
+    <p class="muted small">Fill ${bin.fill}% · slope ${a.slope>=0?'+':''}${a.slope.toFixed(2)}/h · R² ${a.r2.toFixed(2)} · ${isFinite(a.toFull)?'fills in about '+Math.round(a.toFull)+' hours':'no rising trend'} · ${a.z>2?'⚠ anomaly (z '+a.z.toFixed(2)+')':'no anomaly'}. History is the demo fill series, not live sensor readings.</p>
+    <div class="nx-tabs" role="tablist"><button type="button" class="btn nx-tab sel" data-tab="hist">Fill History</button><button type="button" class="btn nx-tab" data-tab="coll">Collections</button><button type="button" class="btn nx-tab" data-tab="det">Details</button></div>
+    <div class="nx-pane" data-pane="hist">${wiRailSvg(bin)}<p class="muted small">48-hour demo fill series for this bin (same series Forecasting uses).</p></div>
+    <div class="nx-pane hidden" data-pane="coll">${ev.length?'<ul>'+ev.map(e=>`<li>${esc(new Date(e.at).toLocaleString())} · ${esc(e.stream)} · ${fmt(e.tonnes)} t → ${esc(e.destination||'—')}</li>`).join('')+'</ul>':'<p class="muted small">No logged collections for this bin yet. Log one in Collection Network; collection history comes from logged events, not from live telemetry.</p>'}</div>
+    <div class="nx-pane hidden" data-pane="det"><p class="muted small">Site: ${esc(bin.site)}<br>Borough: ${esc(bin.borough)}<br>Fill: ${bin.fill}%<br>Status: ${statusText}<br>Coordinates: ${bin.lat!=null?bin.lat.toFixed(4):'—'}, ${bin.lon!=null?bin.lon.toFixed(4):'—'}</p><p class="muted small">Sensor data tab intentionally omitted: no live sensor feed exists for this bin. The history above is the demo series.</p></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap"><a class="btn primary" href="#forecast?bin=${encodeURIComponent(bin.id)}">Open full forecast →</a><button class="btn" type="button" id="nxRailAddRoute">Add this bin to a route</button></div>`;
+  rail.querySelectorAll('.nx-tab').forEach(btn=>btn.addEventListener('click', ()=>{
+    rail.querySelectorAll('.nx-tab').forEach(b=>b.classList.toggle('sel', b===btn));
+    rail.querySelectorAll('.nx-pane').forEach(p=>p.classList.toggle('hidden', p.dataset.pane!==btn.dataset.tab));
+  }));
+  const addBtn=rail.querySelector('#nxRailAddRoute');
+  if(addBtn) addBtn.addEventListener('click', ()=>{
+    wiRenderCustomRoutes([bin.id]);
+    const card=document.getElementById('nxRoutesCard'); if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+  wiRenderInsight(bin);
+}
+function wiRenderInsight(bin){
+  const el=document.getElementById('nxRailInsight'); if(!el || !bin) return;
+  const a=analyse(historyFor(bin));
+  let html='';
+  if(bin.fill>=80) html=`<p><strong>${esc(bin.id)} is urgent now at ${bin.fill}%.</strong> Add it to a route before it overflows.</p>`;
+  else if(isFinite(a.toFull) && a.toFull<=24) html=`<p><strong>${esc(bin.id)} is likely to overflow in about ${Math.round(a.toFull)} hours</strong> (slope ${a.slope>=0?'+':''}${a.slope.toFixed(2)}/h, R² ${a.r2.toFixed(2)}). Consider adding it to a route for early collection.</p>`;
+  else if(isFinite(a.toFull)) html=`<p>${esc(bin.id)} is at ${bin.fill}% and fills in about ${Math.round(a.toFull)} hours at the current trend — no urgent action.</p>`;
+  else html=`<p>${esc(bin.id)} shows no rising trend at ${bin.fill}% — no urgent action. This is a forecast, not a measurement.</p>`;
+  html+=`<div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn primary" type="button" id="nxInsightRoute">Propose a route</button><a class="btn" href="#forecast?bin=${encodeURIComponent(bin.id)}">View details →</a></div><div id="nxInsightProposal"></div>`;
+  el.innerHTML=html;
+  const pb=el.querySelector('#nxInsightRoute');
+  if(pb) pb.addEventListener('click', ()=>{
+    const pool=[bin, ...fleet.filter(b=>b.fill>=80 && b.id!==bin.id).sort((x,y)=>y.fill-x.fill).slice(0,3)];
+    wiProposeRoute(pool, 'ai', el.querySelector('#nxInsightProposal'));
+  });
+}
+function wiRenderSustain(){
+  const el=document.getElementById('nxSustainBody'); if(!el) return;
+  let ev=[]; try{ ev=JSON.parse(localStorage.getItem('wip_network_events')||'[]'); }catch(e){}
+  const t=ev.reduce((s,e)=>s+(e.tonnes||0),0), d=ev.reduce((s,e)=>s+(e.diverted||0),0),
+        c=ev.reduce((s,e)=>s+(e.co2||0),0), m=ev.reduce((s,e)=>s+(e.ch4||0),0), r=ev.reduce((s,e)=>s+(e.resource||0),0);
+  el.innerHTML = `<div class="nx-metrics"><div><b>${fmt(t)} t</b><span>Collected (logged)</span></div><div><b>${fmt(d)} t</b><span>Diverted (modelled)</span></div><div><b>${fmt(c)} MTCO₂e</b><span>Avoided vs landfill (WARM v15, modelled)</span></div><div><b>${fmt(m)} kg</b><span>Methane avoided (modelled)</span></div><div><b>${fmt(r)} t</b><span>Compost / resource out (modelled)</span></div></div>
+    <p class="muted small">${ev.length?ev.length+' collection event(s) logged. All impact figures are modelled WARM v15 estimates from logged events — not verified facility outcomes. Energy recovered (MWh) and trees equivalent are not computed by this platform and are not shown.':'No collections logged yet — log one in Collection Network and these modelled WARM v15 figures will populate. Nothing here is a verified outcome.'}</p>`;
+}
+function wiRenderCustomRoutes(preselect){
+  const list=document.getElementById('nxRoutesList'); if(!list) return;
+  const urgent=fleet.filter(b=>b.fill>=80).sort((a,b)=>b.fill-a.fill);
+  const uo=wiOrderBins(urgent); const ukm=wiRouteKm(uo);
+  let html='';
+  if(uo.length>=2) html+=`<p><strong>Urgent route:</strong> ${uo.map(b=>esc(b.id)).join(' → ')} · ${uo.length} stops · ${ukm.toFixed(1)} km straight-line · about ${Math.round(ukm/22*60+uo.length*6)} min at city pace + 6 min per stop. <a href="#bins">Build it in Bins &amp; Routes →</a></p>`;
+  else if(uo.length===1) html+=`<p><strong>Urgent route:</strong> ${esc(uo[0].id)} only — one urgent bin, no route to build yet.</p>`;
+  else html+=`<p class="muted small">No urgent bins right now — the urgent route appears when a bin reaches 80%.</p>`;
+  const custom=wiLoadCustomRoutes();
+  if(custom.length){
+    html+='<ul>'+custom.map(r=>`<li><strong>${esc(r.name)}</strong> — ${r.bins.join(' → ')} · ${r.bins.length} stops · ${esc(r.source||'manual')} · ${esc(new Date(r.created).toLocaleDateString())} ${wiIsSignedIn()?`<button class="btn" data-del-route="${r.id}" type="button">Delete</button>`:''}</li>`).join('')+'</ul>';
+  } else html+='<p class="muted small">No custom routes saved yet.</p>';
+  list.innerHTML=html;
+  list.querySelectorAll('[data-del-route]').forEach(btn=>btn.addEventListener('click', ()=>{
+    wiSaveCustomRoutes(wiLoadCustomRoutes().filter(r=>r.id!==btn.dataset.delRoute));
+    wiRenderCustomRoutes(); if(window.wipDashMap) window.wipDashMap.render();
+  }));
+  const form=document.getElementById('nxRouteFormWrap'); if(!form) return;
+  if(!wiIsSignedIn()){
+    form.innerHTML='<p class="muted small">Adding routes is for signed-in operators: <a href="login.html">Sign in</a> to add a route. Routes save in this browser only, with no backend verification, until backend hosting is live.</p>';
+    return;
+  }
+  const pre=new Set(preselect||[]);
+  form.innerHTML=`<label style="display:block;margin:.5rem 0">Route name <input id="nxRouteName" placeholder="e.g. Morning Manhattan sweep" style="width:100%"></label>
+    <div id="nxRouteBins" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.3rem">${fleet.map(b=>`<label><input type="checkbox" value="${esc(b.id)}" ${pre.has(b.id)?'checked':''}> ${esc(b.id)} · ${esc(b.site)} (${b.fill}%)</label>`).join('')}</div>
+    <button class="btn primary" type="button" id="nxRouteSave">Save route</button> <span class="muted small" id="nxRouteMsg"></span>
+    <p class="muted small">Stops are ordered by nearest-neighbour, the same math as the route builder. Saved routes are local to this browser and drawn on the map in cloud blue; they are not verified against any backend.</p>`;
+  const saveBtn=form.querySelector('#nxRouteSave');
+  if(saveBtn) saveBtn.addEventListener('click', ()=>{
+    const ids=[...form.querySelectorAll('#nxRouteBins input:checked')].map(i=>i.value);
+    const msg=form.querySelector('#nxRouteMsg');
+    if(ids.length<2){ msg.textContent='Pick at least two bins.'; return; }
+    const bins=wiOrderBins(ids.map(id=>fleet.find(b=>b.id===id)).filter(Boolean));
+    const name=form.querySelector('#nxRouteName').value.trim() || ('Route · '+new Date().toLocaleDateString());
+    const all=wiLoadCustomRoutes(); all.push({id:'R-'+Date.now(), name, bins:bins.map(b=>b.id), created:new Date().toISOString(), source:'manual'});
+    wiSaveCustomRoutes(all); wiRenderCustomRoutes(); if(window.wipDashMap) window.wipDashMap.render();
+    msg.textContent='Saved locally ✓';
+  });
+}
+function wiParseRouteBins(q){
+  const l=q.toLowerCase();
+  const ids=[...q.toUpperCase().matchAll(/BIN-[A-Z]{2}-\d+/g)].map(m=>m[0]);
+  let bins=ids.map(id=>fleet.find(b=>b.id===id)).filter(Boolean);
+  if(!bins.length){
+    if(l.includes('urgent')) bins=fleet.filter(b=>b.fill>=80);
+    else if(l.includes('watch')) bins=fleet.filter(b=>b.fill>=60 && b.fill<80);
+    else if(l.includes('this bin') || l.includes('selected')) { const s=wiSelectedBin(); if(s) bins=[s]; }
+  }
+  return bins;
+}
+function wiProposeRoute(bins, source, container){
+  if(!container) return;
+  if(!bins || !bins.length){ container.innerHTML='<p class="muted small">Which bins? Name bin IDs (e.g. BIN-MA-101), say “urgent bins”, or select a bin first.</p>'; return; }
+  const order=wiOrderBins(bins); const km=wiRouteKm(order);
+  const div=document.createElement('div'); div.className='nx-proposal';
+  div.innerHTML=`<p><strong>Proposed route (local only, no backend check):</strong> ${order.map(b=>esc(b.id)).join(' → ')} · ${order.length} stops · ${km.toFixed(1)} km straight-line · about ${Math.round(km/22*60+order.length*6)} min at city pace + 6 min per stop.</p>
+    <label>Route name <input class="nx-prop-name" value="AI route · ${new Date().toLocaleDateString()}" style="width:100%"></label>
+    <div style="display:flex;gap:.5rem;margin-top:.5rem"><button class="btn primary" type="button" data-confirm>Confirm — save route</button><button class="btn" type="button" data-discard>Discard</button></div>
+    <p class="muted small nx-prop-msg"></p>`;
+  container.innerHTML=''; container.appendChild(div);
+  div.querySelector('[data-discard]').addEventListener('click', ()=>{ div.remove(); });
+  div.querySelector('[data-confirm]').addEventListener('click', ()=>{
+    const msg=div.querySelector('.nx-prop-msg');
+    if(!wiIsSignedIn()){ msg.textContent='Sign in first: route adding is for signed-in operators. Routes save locally, with no backend verification.'; return; }
+    const name=div.querySelector('.nx-prop-name').value.trim() || ('AI route · '+new Date().toLocaleDateString());
+    const all=wiLoadCustomRoutes(); all.push({id:'R-'+Date.now(), name, bins:order.map(b=>b.id), created:new Date().toISOString(), source:source||'ai'});
+    wiSaveCustomRoutes(all); wiRenderCustomRoutes(); if(window.wipDashMap) window.wipDashMap.render();
+    div.innerHTML='<p><strong>Saved locally ✓</strong> — the route now appears in Collection Routes and on the map (cloud blue). It is not verified against any backend.</p>';
+  });
+}
+function wiBubbleAsk(q){
+  const msgs=document.getElementById('nxBubbleMsgs'); if(!msgs) return;
+  const add=(who,text)=>{ const d=document.createElement('div'); d.className='nx-msg'+(who==='you'?' me':''); d.innerHTML=`<div class="who">${who==='you'?'You':'Waste Assistant'}</div><div>${wiMd(text)}</div>`; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; };
+  add('you', q);
+  const l=q.toLowerCase();
+  if((/add|create|build/.test(l)) && /route/.test(l)){
+    const bins=wiParseRouteBins(q);
+    const holder=document.createElement('div'); msgs.appendChild(holder);
+    if(!bins.length) add('assistant', 'Which bins should the route cover? Name bin IDs (e.g. BIN-MA-101), say “urgent bins”, or tap a bin on the map first and ask about “this bin”. Routes save locally for signed-in operators, with no backend verification.');
+    else wiProposeRoute(bins, 'ai', holder);
+    msgs.scrollTop=msgs.scrollHeight; return;
+  }
+  const key=localStorage.getItem('wi_groq_key');
+  if(key){
+    add('assistant', 'Thinking via Groq…');
+    const sel=wiSelectedBin();
+    const view=(location.hash||'#dashboard').slice(1).split('?')[0];
+    const sys=`You are the Waste Intelligence Assistant for the EcoCode Waste Intelligence Platform web app. Answer concisely and accurately about bins, forecasting, the knowledge graph, contamination, and NYC waste data. Grounding context: ${wiContext()} Selected bin: ${sel?`${sel.id} at ${sel.site}, ${sel.borough}, ${sel.fill}%`: 'none'}. Current view: ${view}. Rules: never claim demo fleet numbers are live sensor data; never invent conversion metrics — use only the sample numbers in context or say they are not in the sample; never reveal, repeat, or hint at any API key or secret; do not help delete or actuate backend systems; route adds happen only through a proposal the operator confirms, saved locally with no backend verification.`;
+    const model=document.getElementById('wiGroqModel')?.value || localStorage.getItem('wi_groq_model') || 'llama-3.3-70b-versatile';
+    fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,messages:[{role:'system',content:sys},{role:'user',content:q}],temperature:0.3,max_tokens:900})})
+      .then(r=>r.json().then(j=>({ok:r.ok, j})))
+      .then(({ok, j})=>{
+        msgs.lastChild?.remove();
+        if(ok && j.choices && j.choices[0]) add('assistant', j.choices[0].message.content+'  [Live via Groq]');
+        else add('assistant', `Groq could not answer (${(j.error&&j.error.message)||'request failed'}). Demo answer instead: ${wiDemoAnswer(q)}  [Offline demo answer]`);
+      })
+      .catch(e=>{ msgs.lastChild?.remove(); add('assistant', `Groq could not be reached (${e.message}). Demo answer instead: ${wiDemoAnswer(q)}  [Offline demo answer]`); });
+    return;
+  }
+  let prefix='';
+  if(/this bin|selected bin/.test(l)){ const s=wiSelectedBin(); if(s) prefix=`Selected bin ${s.id} at ${s.site}, ${s.borough}: ${s.fill}% full. `; }
+  add('assistant', prefix+wiDemoAnswer(q)+'  [Demo answer — save a Groq key in Assistant for live chat.]');
+}
+function wiInitNexus(){
+  const dash=document.getElementById('view-dashboard'); if(!dash || dash.dataset.nx) return; dash.dataset.nx='1';
+  const $=(s,r)=>(r||document).querySelector(s), $$=(s,r)=>[...(r||document).querySelectorAll(s)];
+  /* ---- workspace sidebar (replaces the flat header nav) ---- */
+  const nav=$('#nav');
+  const groups=[
+    ['Command Center', [['Dashboard','dashboard','#dashboard'], ['Map View','dashboard','#dashboard','#dashLiveMap']]],
+    ['Operations', [['Bins & Collection Points','bins','#bins'], ['Fleet & Routes','network','#network'], ['Contamination Detection','contamination','#contamination']]],
+    ['Analytics & Intelligence', [['Forecasting','forecast','#forecast'], ['Anomaly Detection','forecast','#forecast'], ['AI Copilot','assistant','#assistant'], ['Reports','admindash','#admindash']]],
+    ['Circular Economy', [['Waste Streams','contamination','#contamination'], ['Knowledge Graph','graph','#graph'], ['Recovery Pathways','graph','#graph'], ['Sustainability Metrics','network','#network']]],
+    ['Digital Twin', [['3D Visualization','twin','#twin'], ['Scenario Simulation','dashboard','#dashboard','#nxWhatIf']]],
+    ['Settings', [['Data Sources','live','#live'], ['API Configuration','connect','#connect'], ['User Management','','login.html'], ['System Health','admindash','#admindash']]],
+  ];
+  if(nav){
+    nav.innerHTML=groups.map(([g,links])=>`<p class="nx-group">${g}</p>`+links.map(([t,v,h,scroll])=>`<a href="${h}" data-nav="${v}"${scroll?` data-nxscroll="${scroll}"`:''}>${t}</a>`).join('')).join('');
+    nav.addEventListener('click', e=>{
+      const a=e.target.closest('a[data-nxscroll]'); if(!a) return;
+      e.preventDefault(); location.hash='#dashboard';
+      const target=a.dataset.nxscroll;
+      setTimeout(()=>{ const el=document.querySelector(target); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); }, 400);
+    });
+  }
+  /* ---- top bar: clock, search, bell ---- */
+  const clock=$('#nxClock');
+  const tick=()=>{ if(!clock) return; const now=new Date();
+    const upd=window.wipLastUpdated ? ` · Updated ${Math.max(0, Math.round((Date.now()-window.wipLastUpdated)/60000))} min ago` : '';
+    clock.textContent=now.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric', year:'numeric'})+' · '+now.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})+upd; };
+  tick(); setInterval(tick, 30000);
+  const search=$('#nxSearch');
+  if(search){
+    const open=()=>{ if(typeof cmdkOpen==='function') cmdkOpen(); };
+    search.addEventListener('focus', open);
+    search.addEventListener('input', ()=>{ open(); const ci=$('#cmdkInput'); if(ci){ ci.value=search.value; ci.dispatchEvent(new Event('input')); } });
+  }
+  const bellSlot=$('#nxBellSlot');
+  const bell=document.querySelector('#view-dashboard .dash-icon[href="#bins"]');
+  if(bellSlot && bell) bellSlot.appendChild(bell);
+  /* ---- dashboard skeleton: center + rail ---- */
+  const main=$('.dash-main', dash); if(!main) return;
+  const nxDash=document.createElement('div'); nxDash.id='nxDash';
+  const center=document.createElement('div'); center.id='nxCenter';
+  const rail=document.createElement('aside'); rail.id='nxRail';
+  rail.innerHTML=`<section class="dash-card" id="nxRailBin"><p class="muted">Loading selected bin…</p></section><section class="dash-card" id="nxRailInsight"><h2>AI Insights &amp; Recommendations</h2><p class="muted">Select a bin on the map to see its insight.</p></section>`;
+  nxDash.appendChild(center); nxDash.appendChild(rail); main.appendChild(nxDash);
+  /* role strip above the KPIs */
+  $$('.role-bar', main).forEach(el=>center.appendChild(el));
+  /* KPI row: Total Bins first, then the four existing KPI cards */
+  const kpis=document.createElement('div'); kpis.id='nxKpis';
+  const binsCard=document.createElement('div'); binsCard.className='ov-kpi';
+  binsCard.innerHTML='<span class="ov-kpi-label">Total Bins</span><b id="ovKpiBins">—</b><span class="ov-kpi-sub">demo fleet bins</span>';
+  kpis.appendChild(binsCard);
+  ['ovKpiFill','ovKpiUrgent','ovKpiTonnage','ovKpiOrganics'].forEach(id=>{
+    const el=document.getElementById(id); if(el && el.parentElement) kpis.appendChild(el.parentElement);
+  });
+  center.appendChild(kpis);
+  /* map card */
+  const hero=$('.dash-hero', dash); if(hero) center.appendChild(hero);
+  const controls=$('.dash-grid-controls', hero);
+  if(controls){
+    const tools=document.createElement('span'); tools.className='nx-map-tools';
+    const mk=(label, fn)=>{ const b=document.createElement('button'); b.className='btn'; b.type='button'; b.textContent=label; b.addEventListener('click', fn); return b; };
+    tools.appendChild(mk('Map', ()=>{ const s=$('#dashTile'); if(s){ s.value='osm'; s.dispatchEvent(new Event('change')); } }));
+    tools.appendChild(mk('Satellite', ()=>{ const s=$('#dashTile'); if(s){ s.value='esri'; s.dispatchEvent(new Event('change')); } }));
+    tools.appendChild(mk('3D', ()=>{ location.hash='#twin'; }));
+    controls.insertBefore(tools, controls.firstChild);
+  }
+  /* bottom row: Routes / Composition / Forecasting / Sustainability / Alerts */
+  const bottom=document.createElement('div'); bottom.id='nxBottom';
+  const routesCard=document.createElement('section'); routesCard.className='dash-card'; routesCard.id='nxRoutesCard';
+  routesCard.innerHTML='<div class="dash-card-head"><h2>Collection Routes</h2></div><div id="nxRoutesList"></div><div id="nxRouteFormWrap"></div><p><a class="btn" href="#network">View all routes →</a></p>';
+  bottom.appendChild(routesCard);
+  const donutCard=$('#dashDonutSvg')?.closest('section');
+  if(donutCard){ const h=donutCard.querySelector('h2'); if(h) h.textContent='Waste Composition'; bottom.appendChild(donutCard); }
+  const trendSec=$('#ovTrendSvg')?.closest('section');
+  if(trendSec){ const h=trendSec.querySelector('h2'); if(h) h.textContent='Forecasting'; bottom.appendChild(trendSec); }
+  const sustainCard=document.createElement('section'); sustainCard.className='dash-card'; sustainCard.id='nxSustainCard';
+  sustainCard.innerHTML='<div class="dash-card-head"><h2>Sustainability Impact</h2></div><div id="nxSustainBody"></div>';
+  bottom.appendChild(sustainCard);
+  const alertsSec=$('.ov-alerts', dash);
+  if(alertsSec){ const h=alertsSec.querySelector('h2'); if(h) h.textContent='Recent Alerts'; bottom.appendChild(alertsSec); }
+  center.appendChild(bottom);
+  /* tools panels below the bottom row (hidden until opened from the toolbar) */
+  const toolsBar=document.createElement('div'); toolsBar.id='nxToolsBar';
+  const tools=document.createElement('div'); tools.id='nxTools';
+  const tonPanel=document.createElement('section'); tonPanel.className='dash-card hidden'; tonPanel.id='nxTonnagePanel';
+  tonPanel.innerHTML='<div class="dash-card-head"><h2>Live tonnage — detail</h2><span class="pill">one display, no repeats</span></div>';
+  const latestSec=$('#dashTonnage')?.closest('section');
+  if(latestSec) tonPanel.appendChild(latestSec);
+  const boroughSec=$('#ovBoroughBars')?.closest('section');
+  if(boroughSec) tonPanel.appendChild(boroughSec);
+  tools.appendChild(tonPanel);
+  const opsSec=$('.ops-brief', dash); if(opsSec){ opsSec.classList.add('hidden'); tools.appendChild(opsSec); }
+  const annoSec=$('section[aria-label="Annotations"]', dash); if(annoSec){ annoSec.classList.add('hidden'); tools.appendChild(annoSec); }
+  const layoutSec=$('section[aria-label="Generate a layout"]', dash); if(layoutSec){ layoutSec.classList.add('hidden'); tools.appendChild(layoutSec); }
+  const netSec=$('.net-card', dash); if(netSec) tools.appendChild(netSec);
+  const toolBtns=[['Tonnage detail', tonPanel], ['Ops brief', opsSec], ['Notes', annoSec], ['Layout', layoutSec], ['Network', netSec]];
+  toolBtns.forEach(([label, sec])=>{
+    if(!sec) return;
+    const b=document.createElement('button'); b.className='btn'; b.type='button'; b.textContent=label;
+    b.addEventListener('click', ()=>{
+      if(sec===netSec){ sec.scrollIntoView({behavior:'smooth', block:'start'}); return; }
+      const opening=sec.classList.contains('hidden');
+      sec.classList.toggle('hidden');
+      if(opening) sec.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+    toolsBar.appendChild(b);
+  });
+  center.appendChild(toolsBar); center.appendChild(tools);
+  /* moves out of the dashboard */
+  const binsSec=document.getElementById('view-bins');
+  if(binsSec){
+    const binsH1=binsSec.querySelector('h1');
+    const fleetCard=$('#dashBoroughBars')?.closest('section');
+    const urgentCard=$('#urgentList')?.closest('section');
+    if(binsH1 && fleetCard){ binsH1.insertAdjacentElement('afterend', fleetCard); if(urgentCard) fleetCard.insertAdjacentElement('afterend', urgentCard); }
+  }
+  const fcSec=document.getElementById('view-forecast');
+  const hoursSec=$('#ovHoursBars')?.closest('section');
+  if(fcSec && hoursSec) fcSec.appendChild(hoursSec);
+  const graphSec=document.getElementById('view-graph');
+  const loopCard=[...document.querySelectorAll('#view-dashboard .dash-card')].find(c=>(c.querySelector('h2')?.textContent||'').startsWith('The loop'));
+  if(graphSec && loopCard) graphSec.appendChild(loopCard);
+  /* dropped visuals: their data lives in the KPI row, borough bars/table, donut, or map */
+  ['dashWaveBars','dashTonnageBars','dashRings','dashHeatDots','dashForecastSvg'].forEach(id=>{
+    const el=document.getElementById(id); const card=el?.closest('section'); if(card) card.remove();
+  });
+  const grid=$('.dash-grid', dash); if(grid) grid.remove();
+  /* floating assistant bubble (every view) */
+  if(!document.getElementById('nxBubbleBtn')){
+    const btn=document.createElement('button'); btn.id='nxBubbleBtn'; btn.type='button'; btn.setAttribute('aria-label','Open Waste Assistant'); btn.textContent='💬';
+    const panel=document.createElement('div'); panel.id='nxBubblePanel'; panel.className='hidden';
+    panel.innerHTML=`<div class="nx-bubble-head"><strong>Waste Assistant</strong><span class="pill" id="nxBubbleMode">Demo</span><button class="btn" type="button" id="nxBubbleClose">✕</button></div>
+      <div class="nx-bubble-msgs" id="nxBubbleMsgs"></div>
+      <div class="nx-bubble-quick"><button type="button" class="btn" data-q="Which bins are most likely to overflow today?">Urgent bins?</button><button type="button" class="btn" data-q="What is the live tonnage?">Live tonnage?</button><button type="button" class="btn" data-q="Tell me about this bin">This bin?</button><button type="button" class="btn" data-q="Propose a route for the urgent bins">Propose a route</button></div>
+      <div class="nx-bubble-input"><input id="nxBubbleInput" placeholder="Ask about any tool or page…" aria-label="Ask the assistant"><button class="btn primary" type="button" id="nxBubbleSend">Send</button></div>
+      <p class="muted small" style="margin:.4rem 0 0">Answers use this page's data (demo where labelled). <a href="#assistant">Open full assistant →</a> for Groq key setup and staged actions.</p>`;
+    document.body.appendChild(btn); document.body.appendChild(panel);
+    const toggle=()=>{ panel.classList.toggle('hidden');
+      const mode=document.getElementById('nxBubbleMode'); if(mode) mode.textContent=localStorage.getItem('wi_groq_key')?'Groq live':'Demo';
+      if(!panel.classList.contains('hidden') && !panel.dataset.greeted){ panel.dataset.greeted='1';
+        const msgs=document.getElementById('nxBubbleMsgs');
+        const d=document.createElement('div'); d.className='nx-msg';
+        d.innerHTML='<div class="who">Waste Assistant</div><div>Hi — I travel with you across every workspace. Ask about bins, routes, forecasting, the knowledge graph, contamination, or live tonnage, on any page. Signed-in operators can also ask me to propose a route, then confirm it to save it locally.</div>';
+        msgs.appendChild(d); } };
+    btn.addEventListener('click', toggle);
+    panel.querySelector('#nxBubbleClose').addEventListener('click', ()=>panel.classList.add('hidden'));
+    const send=()=>{ const inp=document.getElementById('nxBubbleInput'); const q=inp.value.trim(); if(!q) return; inp.value=''; wiBubbleAsk(q); };
+    panel.querySelector('#nxBubbleSend').addEventListener('click', send);
+    panel.querySelector('#nxBubbleInput').addEventListener('keydown', e=>{ if(e.key==='Enter') send(); });
+    panel.querySelectorAll('[data-q]').forEach(b=>b.addEventListener('click', ()=>wiBubbleAsk(b.dataset.q)));
+  }
+  /* initial renders */
+  wiRenderRail(); wiRenderSustain(); wiRenderCustomRoutes();
+  if(typeof route==='function') route();
+}
+

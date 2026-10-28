@@ -524,3 +524,60 @@ section.card h2,.ops-brief h2{display:inline-block;vertical-align:middle}
 .dash-main>.dash-grid{order:5}
 .dash-main>.net-card{order:6}
 .dash-main>section[aria-label="Annotations"]{order:7}
+
+/* ---------- Overhaul 33: Nexus shell ---------- */
+.radiant-band{display:none}
+.top{position:sticky;top:0;z-index:150}
+#nxSearch{flex:1;min-width:0;max-width:560px;background:#0b1220;border:1px solid #334155;border-radius:.6rem;color:#e2e8f0;padding:.6rem .8rem}
+.nx-clock{color:#94a3b8;font-size:.85rem;white-space:nowrap}
+#nxBellSlot{display:flex;align-items:center}
+main{display:flex;align-items:flex-start}
+.view{flex:1;min-width:0}
+.nx-side{width:232px;flex-shrink:0;background:#0f172a;border-right:1px solid #1e293b;padding:.8rem .8rem 1rem;position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto}
+#nxSide #nav{display:block;overflow:visible}
+#nxSide #nav a{display:block;padding:.55rem .7rem;border-radius:.5rem;color:#cbd5e1;text-decoration:none}
+#nxSide #nav a:hover{background:#1e293b}
+#nxSide #nav a.active{background:#B7FF2E;color:#0b1220;font-weight:700}
+.nx-group{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin:1rem 0 .3rem}
+.nx-side-foot{border-top:1px solid #1e293b;margin-top:1rem;padding-top:.8rem}
+#view-dashboard .dash-side{display:none}
+#view-dashboard .dash-shell{display:block}
+#view-dashboard .ov{display:none}
+#nxDash{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:1rem;align-items:start;margin-top:1rem}
+#nxCenter{display:grid;gap:1rem;min-width:0}
+#nxKpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.9rem}
+#nxKpis .ov-kpi{min-width:0;overflow-wrap:anywhere}
+#nxKpis .ov-kpi b{font-size:clamp(1.35rem,2.1vw,1.85rem)}
+#nxBottom{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1rem}
+#nxBottom>*{min-width:0}
+#nxRail{display:grid;gap:1rem;align-content:start;position:sticky;top:76px}
+.nx-tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin:.6rem 0}
+.nx-tab.sel{background:#B7FF2E;color:#0b1220}
+.nx-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+.nx-metrics b{display:block;font-size:1.15rem}
+.nx-metrics span{font-size:.8rem;color:#94a3b8}
+.nx-proposal{border:1px solid #45C8FF;border-radius:.6rem;padding:.7rem;margin-top:.6rem;background:rgba(69,200,255,.08)}
+#nxToolsBar{display:flex;gap:.5rem;flex-wrap:wrap}
+#nxTools{display:grid;gap:1rem}
+.nx-map-tools{display:inline-flex;gap:.4rem;flex-wrap:wrap}
+#nxBubbleBtn{position:fixed;right:18px;bottom:18px;width:56px;height:56px;border-radius:50%;background:#B7FF2E;color:#0b1220;font-size:1.5rem;border:none;cursor:pointer;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+#nxBubblePanel{position:fixed;right:18px;bottom:86px;width:380px;max-width:calc(100vw - 36px);height:520px;max-height:72vh;background:#131c2b;border:1px solid #334155;border-radius:1rem;padding:1rem;z-index:300;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.5)}
+.nx-bubble-head{display:flex;align-items:center;gap:.5rem}
+.nx-bubble-head .btn{margin-left:auto}
+.nx-bubble-msgs{flex:1;overflow-y:auto;display:grid;gap:.6rem;align-content:start;margin:.8rem 0}
+.nx-msg{background:#0b1220;border:1px solid #1e293b;border-radius:.7rem;padding:.6rem .8rem}
+.nx-msg.me{border-color:#B7FF2E}
+.nx-msg .who{font-size:.75rem;color:#94a3b8;margin-bottom:.2rem}
+.nx-bubble-quick{display:flex;gap:.4rem;flex-wrap:wrap}
+.nx-bubble-quick .btn{font-size:.8rem;padding:.35rem .6rem}
+.nx-bubble-input{display:flex;gap:.5rem;margin-top:.6rem}
+.nx-bubble-input input{flex:1;min-width:0;background:#0b1220;border:1px solid #334155;border-radius:.5rem;color:#e2e8f0;padding:.55rem}
+@media(max-width:1500px){#nxBottom{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1100px){#nxDash{grid-template-columns:minmax(0,1fr)}#nxRail{position:static}#nxKpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1000px){#nxBottom{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){
+  .nx-clock,#nxSearch{display:none}
+  #nxSide{position:fixed;left:0;top:60px;bottom:0;z-index:200;transform:translateX(-105%);transition:transform .2s;height:auto}
+  .top.nav-open + main #nxSide{transform:none}
+}
+@media(max-width:640px){#nxBottom{grid-template-columns:minmax(0,1fr)}#nxKpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
