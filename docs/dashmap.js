@@ -20,7 +20,7 @@ const $d = s => document.querySelector(s);
 const escD = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let map = null, layers = null, pulseTimer = null, pulseIdx = 0, tileErrors = 0, tileLoads = 0, tileOk = false, switched = false, inited = false, fitted = false;
 const BORO_C = {Manhattan:[40.7831,-73.9712],Brooklyn:[40.6782,-73.9442],Queens:[40.7282,-73.7949],Bronx:[40.8448,-73.8648],'Staten Island':[40.5795,-74.1502]};
-function colorOf(f){ return f>=80 ? '#f87171' : f>=60 ? '#f59e0b' : '#22c55e'; }
+function colorOf(f){ return f>=80 ? '#FF2E3F' : f>=60 ? '#FF7A1A' : '#B7FF2E'; }
 function status(msg, bad){
   const el = $d('#dashMapStatus'); if(el){ el.textContent = msg; el.className = 'pill' + (bad ? ' bad' : ''); }
   const badge = $d('#dashGridBadge'); if(badge) badge.textContent = msg;
@@ -100,7 +100,7 @@ function render(){
   const urgent = bins.filter(b=>b._fill>=80).sort((a,b)=>b._fill-a._fill);
   if(layers.route) { map.removeLayer(layers.route); layers.route = null; }
   if(showRoute && urgent.length>1){
-    layers.route = window.L.polyline(urgent.map(b=>[b.lat,b.lon]), {color:'#ec4899', weight:3, dashArray:'12 8', opacity:0.9}).addTo(map);
+    layers.route = window.L.polyline(urgent.map(b=>[b.lat,b.lon]), {color:'#FF7A1A', weight:3, dashArray:'12 8', opacity:0.9}).addTo(map);
   }
   layers.labels.clearLayers();
   if(showLabels){
@@ -130,7 +130,7 @@ function render(){
   const paused = $d('#view-dashboard .dash-hero')?.classList.contains('paused');
   if(showRoute && urgent.length>1 && !paused){
     const pts = urgent.map(b=>[b.lat,b.lon]);
-    layers.pulse = window.L.circleMarker(pts[0], {radius:7, color:'#22c55e', weight:2, fillColor:'#22c55e', fillOpacity:1}).addTo(map);
+    layers.pulse = window.L.circleMarker(pts[0], {radius:7, color:'#B7FF2E', weight:2, fillColor:'#B7FF2E', fillOpacity:1}).addTo(map);
     pulseIdx = 0;
     pulseTimer = setInterval(()=>{
       if(!layers.pulse) return;

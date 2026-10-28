@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul29 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul30 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -773,7 +773,7 @@ $('#wiDiagBtn')?.addEventListener('click',wiRunDiagnostics);
 
 /* ---------- dashboard grid + interactive city grid (2D, no 3D, no phased loop) ---------- */
 function dashXY(b){const x=20+((b.lon+74.25)/( -73.70+74.25))*560, y=320-((b.lat-40.50)/(40.90-40.50))*300; return [Math.max(15,Math.min(585,x)),Math.max(15,Math.min(325,y))];}
-function dashStatusColor(f){return f>=80?'#ec4899':f>=60?'#f59e0b':'#22c55e';}
+function dashStatusColor(f){return f>=80?'#FF2E3F':f>=60?'#FF7A1A':'#B7FF2E';}
 function dashRender(agg, live){
   const urgent=fleet.filter(b=>b.fill>=80);
   const avg=fleet.length?fleet.reduce((s,b)=>s+b.fill,0)/fleet.length:0;
@@ -789,7 +789,7 @@ function dashRender(agg, live){
   $('#dashWaveNote').textContent=live?`Latest month in the DSNY feed (${agg.month}), all boroughs combined. Bars are borough totals.`:'Live feed unreachable — this is the labelled sample, not live tonnage.';
   const maxB=Math.max(...agg.map(r=>r.refuse+r.paper+r.mgp+r.organics),1);
   $('#dashWaveBars').innerHTML=agg.map(r=>{const t=r.refuse+r.paper+r.mgp+r.organics; return `<i style="--h:${Math.max(12,Math.round(t/maxB*100))}%;height:${Math.max(12,Math.round(t/maxB*100))}%" title="${esc(r.borough)}: ${fmt(t)} t"></i>`;}).join('');
-  const streams=[['Refuse',totals.refuse,'#64748b'],['Paper',totals.paper,'#2dd4bf'],['MGP',totals.mgp,'#f59e0b'],['Organics',totals.organics,'#22c55e']];
+  const streams=[['Refuse',totals.refuse,'#FF2E3F'],['Paper',totals.paper,'#45C8FF'],['MGP',totals.mgp,'#FF7A1A'],['Organics',totals.organics,'#B7FF2E']];
   let off=0; const C=2*Math.PI*80;
   $('#dashDonutSvg').innerHTML=streams.map(([name,v,color])=>{const frac=totalT?v/totalT:0, dash=frac*C, gap=C-dash; const el=`<circle cx="100" cy="100" r="80" fill="none" stroke="${color}" stroke-width="26" stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}"/>`; off+=dash; return el;}).join('');
   $('#dashDonutCentre').innerHTML=`${fmt(totalT)} t<br><span style="font-size:.8rem;font-weight:400;color:#94a3b8">total tonnage</span>`;
@@ -798,7 +798,7 @@ function dashRender(agg, live){
   $$('#dashHeatDots [data-bin]').forEach(btn=>btn.addEventListener('click',()=>{location.hash='#forecast?bin='+btn.dataset.bin;}));
   const healthy=fleet.length?Math.round(fleet.filter(b=>b.fill<80).length/fleet.length*100):0;
   const organicsShare=totalT?Math.round(totals.organics/totalT*100):0;
-  const rings=[['Healthy bins',healthy,'#22c55e'],['Live feed',live?100:0,'#2dd4bf'],['Organics share',organicsShare,'#f59e0b']];
+  const rings=[['Healthy bins',healthy,'#B7FF2E'],['Live feed',live?100:0,'#45C8FF'],['Organics share',organicsShare,'#FF7A1A']];
   $('#dashRings').innerHTML=rings.map(([name,v,color])=>{const circ=2*Math.PI*34; return `<div class="dash-ring"><svg viewBox="0 0 90 90"><circle cx="45" cy="45" r="34" fill="none" stroke="#334155" stroke-width="9"/><circle cx="45" cy="45" r="34" fill="none" stroke="${color}" stroke-width="9" stroke-dasharray="${(v/100*circ).toFixed(1)} ${circ.toFixed(1)}" stroke-linecap="round"/></svg><b>${v}%</b><span>${name}</span></div>`;}).join('');
   $('#dashRingsNote').textContent='Healthy = bins below 80% fill. Live feed = DSNY tonnage reachable on this load. Organics share = organics tonnes ÷ total tonnes.';
   $('#dashTonnageBars').innerHTML=agg.map(r=>{const t=r.refuse+r.paper+r.mgp+r.organics; return `<div><i style="height:${Math.max(10,Math.round(t/maxB*110))}px"></i><span>${fmt(t)} t<br>${esc(r.borough)}</span></div>`;}).join('');
@@ -807,7 +807,7 @@ function dashRender(agg, live){
     const pts=historyFor(top), maxF=100, minF=0;
     const X=(i)=>20+i/(pts.length-1)*480, Y=(v)=>160-(v-minF)/(maxF-minF)*140;
     const line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.fill).toFixed(1)}`).join(' ');
-    $('#dashForecastSvg').innerHTML=`<path d="${line} L${X(pts.length-1).toFixed(1)},160 L20,160 Z" fill="rgba(34,197,94,.18)" stroke="none"/><path d="${line}" fill="none" stroke="#22c55e" stroke-width="2.5"/>`;
+    $('#dashForecastSvg').innerHTML=`<path d="${line} L${X(pts.length-1).toFixed(1)},160 L20,160 Z" fill="rgba(183,255,46,.18)" stroke="none"/><path d="${line}" fill="none" stroke="#B7FF2E" stroke-width="2.5"/>`;
     $('#dashForecastNote').innerHTML=`<strong>${esc(top.id)}</strong> — ${esc(top.site)}, ${esc(top.borough)} · now ${top.fill}%. History is the demo fill series used by Forecasting. <a href="#forecast?bin=${top.id}">Open full forecast →</a>`;
   }
   $('#dashSideLive').textContent=live?('LIVE · '+agg.month):'SAMPLE · feed unreachable';
@@ -1187,7 +1187,7 @@ function renderOverview(agg, live){
     const pts=historyFor(top);
     const X=i=>20+i/(pts.length-1)*480, Y=v=>160-v/100*140;
     const line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.fill).toFixed(1)}`).join(' ');
-    $('#ovTrendSvg').innerHTML=`<path d="${line} L${X(pts.length-1).toFixed(1)},160 L20,160 Z" fill="rgba(45,212,191,.16)" stroke="none"/><path d="${line}" fill="none" stroke="#2dd4bf" stroke-width="2.5"/>`;
+    $('#ovTrendSvg').innerHTML=`<path d="${line} L${X(pts.length-1).toFixed(1)},160 L20,160 Z" fill="rgba(69,200,255,.16)" stroke="none"/><path d="${line}" fill="none" stroke="#45C8FF" stroke-width="2.5"/>`;
     $('#ovTrendNote').innerHTML=`<strong>${esc(top.id)}</strong> — ${esc(top.site)}, ${esc(top.borough)} · now ${top.fill}%. Demo fill series, same as the Forecasting view.`;
   }
   const hours=urgent.map(b=>{const a=analyse(historyFor(b)); return {b, h:a.toFull};}).sort((x,y)=>(x.h===Infinity?1e9:x.h)-(y.h===Infinity?1e9:y.h));

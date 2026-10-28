@@ -84,7 +84,7 @@ async function renderMap(bins){
   }
   markerLayer.clearLayers();
   bins.forEach(b=>{
-    const col = b._fill>=80 ? '#f87171' : b._fill>=60 ? '#f59e0b' : '#22c55e';
+    const col = b._fill>=80 ? '#FF2E3F' : b._fill>=60 ? '#FF7A1A' : '#B7FF2E';
     window.L.circleMarker([b.lat,b.lon], {radius:6+b._fill/14, color:'#0f172a', weight:1.5, fillColor:col, fillOpacity:0.95})
       .bindPopup(`<strong>${escA(b.id)}</strong><br>${escA(b.site)}, ${escA(b.borough)}<br>Fill ${b._fill}%<br><a href="#forecast?bin=${encodeURIComponent(b.id)}">Open forecast →</a>`)
       .addTo(markerLayer);
@@ -118,7 +118,7 @@ function render(){
   const fc = hours.map((v,i)=> Math.min(100, Math.max(0, last + slope*(i-47))));
   const X = i=>20+i/47*460, Y = v=>140-v/100*120;
   const line = arr => arr.map((v,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
-  $a('#adHourSvg').innerHTML = `<path d="${line(hours)}" fill="none" stroke="#22c55e" stroke-width="2.5"/><path d="${line(fc)}" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>`;
+  $a('#adHourSvg').innerHTML = `<path d="${line(hours)}" fill="none" stroke="#B7FF2E" stroke-width="2.5"/><path d="${line(fc)}" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>`;
   $a('#adHourNote').textContent = 'Green = actual mean fill by hour (demo history, 48 h). Grey dashed = trend extension from the last hour — a guide, not a forecast guarantee.';
   // Incidents, derived from filtered fleet state
   const saved = incidentsLoad();

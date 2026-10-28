@@ -397,3 +397,62 @@ main{overflow-x:clip}
   .loop-gallery{grid-template-columns:1fr 1fr}
   .chatbox{height:320px}
 }
+
+/* ---------- Overhaul 30: Sophisticated HUD (neon palette, fluid scaling) ----------
+   Palette (one meaning everywhere): neon lime #B7FF2E = healthy/positive,
+   neon cloud blue #45C8FF = live/info, neon burnt orange #FF7A1A = watch/warning,
+   deep neon red #FF2E3F = critical/urgent. Status colors are set to the same
+   values in app.js (dashStatusColor, donut, rings, trends) and dashmap.js
+   (markers, route, pulse) so every view reads identically. */
+/* 1. Map card: live map above, title text beneath — flex order only, so the
+   Leaflet node never moves in the DOM and needs no invalidateSize. */
+.ov-map .dash-hero{display:flex;flex-direction:column}
+.ov-map .dash-hero #dashLiveMap{order:1}
+.ov-map .dash-hero .dash-card-head{order:2}
+.ov-map .dash-hero>p.muted{order:3}
+.ov-map .dash-hero .dash-grid-controls{order:4}
+.ov-map .dash-hero #dashGridNote{order:5}
+.ov-map .dash-hero .whatif{order:6}
+/* 2. Vertical tonnage bars: the old fixed 130px box plus bars up to 110px plus
+   two label lines overflowed upward and covered the card title. Let the box
+   grow with its content and give it breathing room above. */
+.dash-bars-v{height:auto;min-height:0;padding-top:.9rem;align-items:flex-end}
+.dash-bars-v>div{min-width:0}
+.dash-bars-v span{overflow-wrap:anywhere}
+.dash-bars-v i{background:#B7FF2E}
+/* 3. Asymmetric chart row + fluid scaling: tonnage leads, trend and hours
+   follow — never three equal squished columns, and every grid child may
+   shrink below its content width instead of forcing the page wide. */
+.ov-charts{grid-template-columns:minmax(0,1.5fr) minmax(0,1.05fr) minmax(0,1.2fr)}
+.ov-chart,.ov-kpi,.ov-alerts,.dash-card{min-width:0}
+.ov-chart h2,.dash-card h2{font-size:clamp(1.1rem,2vw,1.35rem);text-wrap:balance;overflow-wrap:anywhere}
+#view-dashboard .dash-shell>*,#view-dashboard .ov-kpis>*,#view-dashboard .ov-middle>*,#view-dashboard .ov-charts>*,#view-dashboard .dash-grid>*{min-width:0}
+.ov-kpi b{font-size:clamp(1.4rem,4.5vw,2.1rem);overflow-wrap:anywhere}
+.ov-kpi.ov-urgent b{color:#FF2E3F}
+#ovKpiFill{color:#45C8FF}
+#ovKpiOrganics{color:#B7FF2E}
+#ovKpiTonnage{color:#45C8FF}
+@media (max-width:1100px){.ov-charts{grid-template-columns:1fr}}
+@media (max-width:400px){.ov-kpis{grid-template-columns:1fr}}
+/* 4. HUD panels: one deep glass surface, neon-tinted hairline, soft glow. */
+#view-dashboard .dash-card,#view-dashboard .ov-kpi,#view-dashboard .ov-chart,#view-dashboard .ov-alerts{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.01)),#0c1411;border:1px solid rgba(183,255,46,.16);border-radius:18px;box-shadow:0 10px 28px rgba(0,0,0,.38)}
+#view-dashboard .dash-card h2,#view-dashboard .ov-chart h2,#view-dashboard .ov-alerts h2{color:#fff}
+#view-dashboard .dash-card a{color:#45C8FF}
+/* 5. Neon status language across nav, pills, buttons, bars, rings, routes. */
+.dash-side-nav a.active{background:#B7FF2E;color:#0b1220}
+nav a.active,nav a:hover{background:#B7FF2E;color:#0b1220}
+.btn.primary{background:#B7FF2E;border-color:#B7FF2E;color:#0b1220}
+.pill.warn{background:rgba(255,122,26,.18);color:#FF7A1A}
+.pill.bad{background:rgba(255,46,63,.18);color:#FF2E3F}
+#view-dashboard .dash-card .pill.warn{background:rgba(255,122,26,.18);color:#FF7A1A}
+.ov-bar-row .bar{background:#1e293b}
+.ov-bar-row .bar i{background:#B7FF2E}
+.ov-bar-row .bar i.high{background:#FF2E3F}
+.ov-alert-dot.red{background:#FF2E3F}.ov-alert-dot.amber{background:#FF7A1A}.ov-alert-dot.teal{background:#45C8FF}
+.dash-grid-route{stroke:#FF7A1A}
+.dash-grid-pulse{stroke:#B7FF2E}
+.dash-wave i{background:linear-gradient(180deg,#45C8FF,#1d7a4f)}
+.dash-wave i:nth-child(odd){background:linear-gradient(180deg,#B7FF2E,#1d7a4f)}
+.dash-donut-centre{font-size:clamp(.85rem,2.6vw,1rem);max-width:120px;overflow-wrap:anywhere}
+#dashLiveMap{height:clamp(320px,52vw,420px)}
+#dashLiveMap .leaflet-control-attribution a,#dashLiveMap .leaflet-popup-content a,#adMap .leaflet-control-attribution a,#adMap .leaflet-popup-content a{color:#45C8FF}
