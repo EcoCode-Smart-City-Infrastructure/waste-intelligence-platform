@@ -268,3 +268,26 @@ nav a{white-space:nowrap}
   .view.view-in{animation:none}
 }
 @media(prefers-reduced-motion:reduce){.view.view-in,.dash-grid-pulse,.dash-grid-route,.flow-edge{animation:none}}
+
+/* ---- Overhaul25: streamlined navigation (mobile-first, desktop kept) ----
+   Desktop: slimmer header, tighter links, still one scrollable row.
+   Phones (<=760px): the 16-link row is replaced by a compact bar —
+   brand + ☰ Menu + ⌘K — and the links live in a two-column dropdown
+   that only opens on tap, so navigation stops eating the screen.
+   The dashboard sidebar is a duplicate of the top nav, so it is hidden
+   on phones (its urgent count already appears in the dashboard KPIs
+   and the bell icon). No destination is removed anywhere. */
+.top{padding:.55rem .9rem;gap:.7rem}
+.brand strong{font-size:1rem}
+#navToggle{display:none}
+#nav a{padding:.5rem .65rem;font-size:.92rem}
+#cmdkBtn{flex-shrink:0}
+@media(max-width:760px){
+  .top{padding:.5rem .7rem;gap:.5rem}
+  #navToggle{display:inline-flex;align-items:center;min-height:44px;padding:0 .8rem;border:1px solid #243044;background:#131c2b;color:#fff;border-radius:10px;font-size:.95rem;cursor:pointer}
+  #nav{display:none}
+  .top.nav-open #nav{display:grid;grid-template-columns:1fr 1fr;position:absolute;top:100%;left:0;right:0;background:#0f172a;border-bottom:1px solid #243044;padding:.6rem;gap:.25rem;max-height:65vh;overflow-y:auto;z-index:6;margin-left:0}
+  .top.nav-open #nav a{min-height:44px;display:flex;align-items:center;padding:.6rem .8rem;font-size:.95rem}
+  #cmdkBtn{margin-left:auto;min-height:44px}
+  .dash-side{display:none}
+}

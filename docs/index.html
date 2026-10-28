@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://data.cityofnewyork.us">
 <meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
-<link rel="stylesheet" href="styles.css?v=overhaul22">
+<link rel="stylesheet" href="styles.css?v=overhaul25">
 <script type="importmap">
 {"imports": {
   "esptool-js": "https://unpkg.com/esptool-js@0.7.0/lib/index.js",
@@ -23,6 +23,7 @@
   <div class="brand"><span class="logo" aria-hidden="true">♻</span>
     <div><strong>Waste Intelligence</strong><span>NYC operations · EcoCode Smart City</span></div>
   </div>
+  <button class="btn" id="navToggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav">☰ Menu</button>
   <nav id="nav" aria-label="Sections">
     <a href="#dashboard" data-nav="dashboard">Dashboard</a>
     <a href="#live" data-nav="live">Live NYC Data</a>
@@ -39,8 +40,8 @@
     <a href="kepler.html">Kepler 3D Map</a>
     <a href="login.html" id="authNavLink">Sign in</a>
     <a href="#" id="authSignOut" hidden>Sign out</a>
-  <button class="btn" id="cmdkBtn" type="button" aria-label="Open command palette">⌘K</button>
   </nav>
+  <button class="btn" id="cmdkBtn" type="button" aria-label="Open command palette">⌘K</button>
 </header>
 
 <main>
@@ -798,7 +799,7 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul24"></script>
+<script src="app.js?v=overhaul25"></script>
 <script src="dashmap.js?v=dashmap3"></script>
 <script src="admindash.js?v=admindash3"></script>
 <script src="twin.js?v=twin3"></script>

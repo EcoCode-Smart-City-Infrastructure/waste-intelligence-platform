@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul24 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul25 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -989,7 +989,22 @@ function cmdkActivate(i){
   if(it.run==='stage:save'){location.hash='#assistant'; setTimeout(()=>{wiStageAction('Save this view','Saves the current view + role preset to Saved views in this browser. Approve, then name it.','save-view');},50); return;}
   location.hash=it.run;
 }
+function wiInitNavMenu(){
+  // Overhaul25: mobile menu button. Desktop keeps the scrollable row;
+  // on phones the nav is a tap-opened dropdown, closed by any link tap
+  // or Escape, so navigation stops covering the content.
+  const btn = $('#navToggle'), top = document.querySelector('.top');
+  if(!btn || !top) return;
+  const close = ()=>{ top.classList.remove('nav-open'); btn.setAttribute('aria-expanded','false'); };
+  btn.addEventListener('click', ()=>{
+    const open = top.classList.toggle('nav-open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  $$('#nav a').forEach(a=>a.addEventListener('click', ()=>{ if(window.innerWidth<=760) close(); }));
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') close(); });
+}
 function wiInitCmdK(){
+  wiInitNavMenu();
   $('#cmdkBtn')?.addEventListener('click',cmdkOpen);
   $('#cmdkInput')?.addEventListener('input',cmdkRender);
   $('#cmdkInput')?.addEventListener('keydown',e=>{
