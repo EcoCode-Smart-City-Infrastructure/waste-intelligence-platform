@@ -338,3 +338,17 @@ nav a{white-space:nowrap}
 #nav{flex:1 1 auto;min-width:0}
 #nav::after{display:none}
 #authNavLink{flex-shrink:0}
+
+/* ---- Overhaul28: desktop nav that fits outright ----
+   A scrolling row with a hidden scrollbar is not a fix if nobody can
+   tell it scrolls — the last links kept reading as "clipped". So the
+   three least-used links now live in a More menu on desktop (they stay
+   in the full mobile dropdown), and the primary row fits without
+   scrolling at ordinary desktop widths. */
+.nav-more-wrap{position:relative;flex-shrink:0}
+.nav-more-menu{position:absolute;right:0;top:calc(100% + 6px);background:#0f172a;border:1px solid #243044;border-radius:12px;padding:.4rem;min-width:190px;z-index:7;display:grid;gap:.15rem;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.nav-more-menu[hidden]{display:none}
+.nav-more-menu a{color:#cbd5e1;text-decoration:none;padding:.6rem .8rem;border-radius:10px;white-space:nowrap}
+.nav-more-menu a:hover{background:#22c55e;color:#0b1220}
+@media(min-width:761px){#nav .nav-more-link{display:none}}
+@media(max-width:760px){.nav-more-wrap{display:none}}

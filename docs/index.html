@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://data.cityofnewyork.us">
 <meta name="description" content="A fully functional, static web app for the EcoCode Waste Intelligence Platform: live NYC open data, bin fleet and routes, forecasting, knowledge graph, and contamination checks.">
-<link rel="stylesheet" href="styles.css?v=overhaul27">
+<link rel="stylesheet" href="styles.css?v=overhaul28">
 <script type="importmap">
 {"imports": {
   "esptool-js": "https://unpkg.com/esptool-js@0.7.0/lib/index.js",
@@ -35,11 +35,19 @@
     <a href="#assistant" data-nav="assistant">Assistant</a>
     <a href="#twin" data-nav="twin">Digital Twin <span class="pill warn">preview</span></a>
     <a href="#network" data-nav="network">Collection Network</a>
-    <a href="#admin" data-nav="admin">Admin Settings</a>
-    <a href="#admindash" data-nav="admindash">Admin Dashboard</a>
-    <a href="kepler.html">Kepler 3D Map</a>
+    <a href="#admin" data-nav="admin" class="nav-more-link">Admin Settings</a>
+    <a href="#admindash" data-nav="admindash" class="nav-more-link">Admin Dashboard</a>
+    <a href="kepler.html" class="nav-more-link">Kepler 3D Map</a>
     <a href="#" id="authSignOut" hidden>Sign out</a>
   </nav>
+  <div class="nav-more-wrap">
+    <button class="btn" id="navMoreBtn" type="button" aria-label="More sections" aria-expanded="false" aria-controls="navMoreMenu">More ▾</button>
+    <div class="nav-more-menu" id="navMoreMenu" hidden>
+      <a href="#admin">Admin Settings</a>
+      <a href="#admindash">Admin Dashboard</a>
+      <a href="kepler.html">Kepler 3D Map</a>
+    </div>
+  </div>
   <button class="btn" id="cmdkBtn" type="button" aria-label="Open command palette">⌘K</button>
   <a class="btn" href="login.html" id="authNavLink">Sign in</a>
 </header>
@@ -799,9 +807,9 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul27"></script>
-<script src="dashmap.js?v=dashmap5"></script>
-<script src="admindash.js?v=admindash5"></script>
+<script src="app.js?v=overhaul28"></script>
+<script src="dashmap.js?v=dashmap6"></script>
+<script src="admindash.js?v=admindash6"></script>
 <script src="twin.js?v=twin3"></script>
 <script src="network.js?v=network3"></script>
 <script src="admin.js?v=admin5"></script>

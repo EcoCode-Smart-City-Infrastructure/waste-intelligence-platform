@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul27 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul28 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -989,6 +989,15 @@ function cmdkActivate(i){
   if(it.run==='stage:save'){location.hash='#assistant'; setTimeout(()=>{wiStageAction('Save this view','Saves the current view + role preset to Saved views in this browser. Approve, then name it.','save-view');},50); return;}
   location.hash=it.run;
 }
+function wiInitNavMore(){
+  const btn = $('#navMoreBtn'), menu = $('#navMoreMenu');
+  if(!btn || !menu) return;
+  const close = ()=>{ menu.hidden = true; btn.setAttribute('aria-expanded','false'); };
+  btn.addEventListener('click', e=>{ e.stopPropagation(); const open = menu.hidden; menu.hidden = !open; btn.setAttribute('aria-expanded', open ? 'true' : 'false'); });
+  menu.querySelectorAll('a').forEach(a=>a.addEventListener('click', close));
+  document.addEventListener('click', e=>{ if(!menu.hidden && !menu.contains(e.target) && e.target!==btn) close(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') close(); });
+}
 function wiInitNavMenu(){
   // Overhaul25: mobile menu button. Desktop keeps the scrollable row;
   // on phones the nav is a tap-opened dropdown, closed by any link tap
@@ -1004,7 +1013,7 @@ function wiInitNavMenu(){
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') close(); });
 }
 function wiInitCmdK(){
-  wiInitNavMenu();
+  wiInitNavMenu(); wiInitNavMore();
   $('#cmdkBtn')?.addEventListener('click',cmdkOpen);
   $('#cmdkInput')?.addEventListener('input',cmdkRender);
   $('#cmdkInput')?.addEventListener('keydown',e=>{
