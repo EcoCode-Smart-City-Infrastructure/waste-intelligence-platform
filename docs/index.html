@@ -678,7 +678,7 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
       <ol class="list">
         <li>Download the sketch. For Arduino boards: open it in Arduino IDE, install the libraries listed above (Library Manager), select your board + port, put your real WiFi password and MQTT broker in the file, then Upload.</li>
         <li>Or with arduino-cli: <code>arduino-cli compile --fqbn &lt;board&gt; sketch.ino</code> then <code>arduino-cli upload -p &lt;port&gt; --fqbn &lt;board&gt; sketch.ino</code> (board examples: esp32:esp32:esp32, esp8266:esp8266:nodemcuv2, arduino:avr:uno, arduino:mbed_nano:nano33ble — install the matching core first).</li>
-        <li>For Pico W: save the .py as <code>main.py</code> on the Pico with Thonot, set WiFi credentials, and it runs on boot.</li>
+        <li>For Pico W: save the .py as <code>main.py</code> on the Pico with Thonny, set WiFi credentials, and it runs on boot.</li>
         <li>Calibrate before trusting numbers: MQ-4 gas and HX711 weight are uncalibrated in the generated code — calibrate against a known gas source / known weight and set the factor in the sketch.</li>
         <li>Once the node reports, its telemetry should land at the backend URL in section 1 (adjust TELEMETRY_URL / MQTT topic in the sketch to your hub's actual ingestion endpoint).</li>
       </ol>
@@ -707,10 +707,10 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul18"></script>
+<script src="app.js?v=overhaul19"></script>
 <script src="twin.js?v=twin3"></script>
 <script src="network.js?v=network3"></script>
-<script src="admin.js?v=admin2"></script>
+<script src="admin.js?v=admin3"></script>
 <script src="backend.js?v=backend3"></script>
 </body>
 </html>
