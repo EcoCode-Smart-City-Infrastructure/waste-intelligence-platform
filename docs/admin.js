@@ -1,0 +1,339 @@
+/* Admin Settings — backend pairing + personalised node infrastructure.
+   Pairing: reads/writes the SAME browser-local store as Connect
+   (localStorage 'wi_backend': platform, hub, forecasting, copilot,
+   contamination, kg, platformKey, copilotKey). Keys are masked here and
+   are never sent anywhere except to the backend URL you configured.
+   Node designs live in 'wip_node_designs' (this browser only).
+   Firmware is GENERATED IN THIS BROWSER from the design — no server
+   compiles it, no credentials are stored by the app. WiFi/MQTT
+   credentials you type go ONLY into the downloaded sketch file, which
+   you control. Flashing is via Arduino IDE / arduino-cli with that
+   file; this page does not flash hardware over the web (Web Serial
+   cannot flash AVR/ESP firmware from a static page), and that limit
+   is stated in the deploy checklist rather than hidden.
+   Telemetry endpoint: the sketch posts/publishes to the backend URL
+   you configured + '/telemetry' by default — adjust TELEMETRY_URL in
+   the sketch to your hub's actual ingestion endpoint if it differs.
+   Sensor values that need calibration (MQ-4 gas, HX711 weight) are
+   labelled uncalibrated in the sketch until you calibrate them. */
+(function(){
+'use strict';
+const $a = s => document.querySelector(s);
+const $$a = s => [...document.querySelectorAll(s)];
+const escA = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const BORO_A = {Manhattan:[40.7831,-73.9712],Brooklyn:[40.6782,-73.9442],Queens:[40.7282,-73.7949],Bronx:[40.8448,-73.8648],'Staten Island':[40.5795,-74.1502]};
+const BOARDS = {
+  esp32: {label:'ESP32 (WiFi, Arduino C++)', lang:'arduino', wifi:'esp32', pins:{hc_sr04:[5,18], dht22:4, mq4:36, hx711:[19,21], ds18b20:15, soil:34, pir:13, gps:[16,17]}},
+  esp8266: {label:'ESP8266 / NodeMCU (WiFi, Arduino C++)', lang:'arduino', wifi:'esp8266', pins:{hc_sr04:[5,6], dht22:4, mq4:0, hx711:[12,13], ds18b20:14, soil:0, pir:12, gps:[13,15]}},
+  uno: {label:'Arduino Uno (LoRa or serial; WiFi needs a shield/module)', lang:'arduino', wifi:'none', pins:{hc_sr04:[9,10], dht22:2, mq4:0, hx711:[4,5], ds18b20:7, soil:1, pir:8, gps:[10,11]}},
+  nano33: {label:'Arduino Nano 33 IoT (WiFi, Arduino C++)', lang:'arduino', wifi:'nano33', pins:{hc_sr04:[9,10], dht22:2, mq4:0, hx711:[4,5], ds18b20:7, soil:1, pir:8, gps:[10,11]}},
+  pico: {label:'Raspberry Pi Pico W (MicroPython)', lang:'micropython', wifi:'pico', pins:{hc_sr04:[2,3], dht22:4, mq4:26, hx711:[5,6], ds18b20:7, soil:27, pir:8, gps:[0,1]}},
+  stm32: {label:'STM32 / Blue Pill (Arduino core, generic)', lang:'arduino', wifi:'none', pins:{hc_sr04:[9,10], dht22:2, mq4:0, hx711:[4,5], ds18b20:7, soil:1, pir:8, gps:[10,11]}}
+};
+const SENSORS = {
+  hc_sr04: {label:'HC-SR04 ultrasonic — bin fill %', field:'fill_pct', lib:'(none — pulse timing)'},
+  dht22: {label:'DHT22 — temperature + humidity', field:'temperature_c, humidity_pct', lib:'DHT sensor library'},
+  mq4: {label:'MQ-4 gas — methane (uncalibrated ppm estimate)', field:'methane_ppm', lib:'(none — analog read, calibrate!)'},
+  hx711: {label:'HX711 load cell — weight kg (uncalibrated)', field:'weight_kg', lib:'HX711_ADC or HX711 library'},
+  ds18b20: {label:'DS18B20 — temperature (waterproof)', field:'temperature_c', lib:'OneWire + DallasTemperature'},
+  soil: {label:'Capacitive soil moisture — garden/soil %', field:'soil_moisture_pct', lib:'(none — analog read)'},
+  pir: {label:'PIR motion — activity flag', field:'motion', lib:'(none — digital read)'},
+  gps: {label:'NEO-6M GPS — latitude/longitude', field:'latitude, longitude', lib:'TinyGPSPlus'},
+  battery: {label:'Battery voltage divider — battery_v', field:'battery_v', lib:'(none — analog read)'}
+};
+const TEMPLATES = {
+  compost: {name:'Smart Compost Bin', board:'esp32', conn:'mqtt', sensors:['hc_sr04','dht22','mq4'], kind:'collection bin', stream:'organics'},
+  fillbin: {name:'Fill-Level Bin', board:'esp32', conn:'http', sensors:['hc_sr04'], kind:'collection bin', stream:'organics'},
+  garden: {name:'Community Garden Soil Node', board:'pico', conn:'http', sensors:['soil','ds18b20'], kind:'garden', stream:'organics'},
+  methane: {name:'Methane Monitor', board:'esp32', conn:'mqtt', sensors:['mq4','dht22'], kind:'collection node', stream:'organics'},
+  hubnode: {name:'Transfer Hub Node', board:'esp32', conn:'mqtt', sensors:['hx711','hc_sr04','gps'], kind:'hub', stream:'organics'}
+};
+function backendLoad(){ try{ return JSON.parse(localStorage.getItem('wi_backend')||'{}'); }catch(e){ return {}; } }
+function backendSave(cfg){ try{ localStorage.setItem('wi_backend', JSON.stringify(cfg)); }catch(e){} }
+function settingsLoad(){ try{ return Object.assign({tonnesPerFull:0.5, basemap:'osm', stream:'organics', process:'AerobicComposting', retentionDays:90}, JSON.parse(localStorage.getItem('wip_admin_settings')||'{}')); }catch(e){ return {tonnesPerFull:0.5, basemap:'osm', stream:'organics', process:'AerobicComposting', retentionDays:90}; } }
+function designsLoad(){ try{ return JSON.parse(localStorage.getItem('wip_node_designs')||'[]'); }catch(e){ return []; } }
+function designsSave(a){ try{ localStorage.setItem('wip_node_designs', JSON.stringify(a)); }catch(e){} }
+function nodesLoad(){ try{ return JSON.parse(localStorage.getItem('wip_network_nodes')||'[]'); }catch(e){ return []; } }
+function currentDesign(){
+  const sensors = $$a('.admSensor:checked').map(c=>c.value);
+  return {
+    id: ($a('#admNodeId').value||'').trim(), name: ($a('#admNodeName').value||'').trim(),
+    kind: $a('#admKind').value, stream: $a('#admStream').value, host: $a('#admHost').value,
+    borough: $a('#admBorough').value, lat: +$a('#admLat').value || BORO_A[$a('#admBorough').value][0],
+    lon: +$a('#admLon').value || BORO_A[$a('#admBorough').value][1],
+    board: $a('#admBoard').value, conn: $a('#admConn').value, interval: Math.max(10, +$a('#admInterval').value || 300),
+    depthCm: Math.max(10, +$a('#admDepth').value || 80), sensors,
+    ssid: $a('#admSsid').value.trim(), mqttHost: $a('#admMqtt').value.trim(),
+    backend: (backendLoad().platform||backendLoad().hub||'').replace(/\/$/,'')
+  };
+}
+function pinConflicts(d){
+  const used = {}, warn = [];
+  const pins = BOARDS[d.board].pins;
+  d.sensors.forEach(s=>{
+    const p = pins[s]; if(p==null) return;
+    const arr = Array.isArray(p)?p:[p];
+    arr.forEach(x=>{ if(used[x]) warn.push(`${s} shares pin ${x} with ${used[x]} — reassign pins in the sketch before flashing.`); else used[x]=s; });
+  });
+  return warn;
+}
+function genArduino(d){
+  const b = BOARDS[d.board], P = b.pins;
+  const wifiInc = b.wifi==='esp32' ? '#include <WiFi.h>' : b.wifi==='esp8266' ? '#include <ESP8266WiFi.h>' : b.wifi==='nano33' ? '#include <WiFiNINA.h>' : '';
+  const lines = [];
+  lines.push(`// ${d.name||d.id} — generated by Waste Intelligence Admin (browser, no server compile).`);
+  lines.push(`// Board: ${b.label} | Node: ${d.id} | Stream: ${d.stream} | Interval: ${d.interval}s`);
+  lines.push(`// Credentials below are ONLY in this file — never commit it with real passwords.`);
+  lines.push(`// Telemetry: ${d.conn==='mqtt' ? 'MQTT topic waste/nodes/' + d.id + '/telemetry' : (d.backend||'<your-backend>') + '/telemetry'} — adjust to your hub's ingestion endpoint.`);
+  if(d.sensors.includes('mq4')) lines.push('// MQ-4 methane_ppm is an UNCALIBRATED estimate from the analog value — calibrate against a known gas source before trusting it.');
+  if(d.sensors.includes('hx711')) lines.push('// HX711 weight_kg is UNCALIBRATED until you set the calibration factor with a known weight.');
+  lines.push('');
+  if(wifiInc) lines.push(wifiInc);
+  if(d.conn==='mqtt' && b.wifi!=='none') lines.push('#include <PubSubClient.h>');
+  if(d.conn==='http' && b.wifi!=='none') lines.push('#include <HTTPClient.h>');
+  if(d.sensors.includes('dht22')) lines.push('#include <DHT.h>');
+  if(d.sensors.includes('ds18b20')) lines.push('#include <OneWire.h>\n#include <DallasTemperature.h>');
+  if(d.sensors.includes('hx711')) lines.push('#include "HX711.h"  // install the HX711 library first');
+  if(d.sensors.includes('gps')) lines.push('#include <TinyGPSPlus.h>\n#include <SoftwareSerial.h>');
+  lines.push('');
+  lines.push(`const char* NODE_ID = "${d.id}";`);
+  if(b.wifi!=='none'){ lines.push(`const char* WIFI_SSID = "${d.ssid||'YOUR_WIFI_SSID'}";`); lines.push(`const char* WIFI_PASS = "YOUR_WIFI_PASSWORD";`); }
+  if(d.conn==='mqtt'){ lines.push(`const char* MQTT_HOST = "${d.mqttHost||'YOUR_MQTT_BROKER'}";`); lines.push('const int MQTT_PORT = 1883;'); }
+  if(d.conn==='http') lines.push(`const char* TELEMETRY_URL = "${d.backend? d.backend + '/telemetry' : 'http://YOUR_BACKEND/telemetry'}";`);
+  lines.push(`const unsigned long INTERVAL_MS = ${d.interval*1000}UL;`);
+  lines.push(`const float BIN_DEPTH_CM = ${d.depthCm};`);
+  if(d.sensors.includes('dht22')) lines.push(`#define DHTPIN ${P.dht22}\n#define DHTTYPE DHT22\nDHT dht(DHTPIN, DHTTYPE);`);
+  if(d.sensors.includes('hc_sr04')) lines.push(`#define TRIG_PIN ${P.hc_sr04[0]}\n#define ECHO_PIN ${P.hc_sr04[1]}`);
+  if(d.sensors.includes('mq4')) lines.push(`#define MQ4_PIN ${P.mq4}`);
+  if(d.sensors.includes('hx711')) lines.push(`HX711 scale;`);
+  if(d.sensors.includes('ds18b20')) lines.push(`#define ONE_WIRE_BUS ${P.ds18b20}\nOneWire oneWire(ONE_WIRE_BUS);\nDallasTemperature dsTemp(&oneWire);`);
+  if(d.sensors.includes('soil')) lines.push(`#define SOIL_PIN ${P.soil}`);
+  if(d.sensors.includes('pir')) lines.push(`#define PIR_PIN ${P.pir}`);
+  if(d.sensors.includes('gps')) lines.push(`SoftwareSerial gpsSerial(${P.gps[0]}, ${P.gps[1]});\nTinyGPSPlus gps;`);
+  if(d.sensors.includes('battery')) lines.push(`#define BATT_PIN 35  // ESP32 ADC pin — change per board`);
+  if(d.conn==='mqtt' && b.wifi!=='none') lines.push('WiFiClient espClient;\nPubSubClient mqtt(espClient);');
+  lines.push('');
+  lines.push('float readFillPct(){');
+  if(d.sensors.includes('hc_sr04')){
+    lines.push('  digitalWrite(TRIG_PIN, LOW); delayMicroseconds(2); digitalWrite(TRIG_PIN, HIGH); delayMicroseconds(10); digitalWrite(TRIG_PIN, LOW);');
+    lines.push('  long dur = pulseIn(ECHO_PIN, HIGH, 30000); if(dur==0) return -1;');
+    lines.push('  float dist = dur * 0.0343 / 2.0; float fill = (BIN_DEPTH_CM - dist) / BIN_DEPTH_CM * 100.0; return constrain(fill, 0, 100);');
+  } else lines.push('  return -1; // no fill sensor selected');
+  lines.push('}');
+  lines.push('');
+  lines.push('String buildPayload(){');
+  lines.push('  String j = "{";');
+  lines.push('  j += "\\"node_id\\":\\"" + String(NODE_ID) + "\\"";');
+  if(d.sensors.includes('hc_sr04')) lines.push('  j += ",\\"fill_pct\\":" + String(readFillPct(), 1);');
+  if(d.sensors.includes('dht22')) lines.push('  j += ",\\"temperature_c\\":" + String(dht.readTemperature(), 1) + ",\\"humidity_pct\\":" + String(dht.readHumidity(), 1);');
+  if(d.sensors.includes('ds18b20')) lines.push('  dsTemp.requestTemperatures(); j += ",\\"temperature_c\\":" + String(dsTemp.getTempCByIndex(0), 1);');
+  if(d.sensors.includes('mq4')) lines.push('  int mq = analogRead(MQ4_PIN); j += ",\\"methane_raw\\":" + String(mq) + ",\\"methane_ppm\\":" + String(mq * 0.5, 1); // UNCALIBRATED placeholder factor');
+  if(d.sensors.includes('hx711')) lines.push('  j += ",\\"weight_kg\\":" + String(scale.get_units(5), 2); // set scale.set_scale(factor) after calibration');
+  if(d.sensors.includes('soil')) lines.push('  int sv = analogRead(SOIL_PIN); j += ",\\"soil_moisture_pct\\":" + String(map(sv, 4095, 0, 0, 100));');
+  if(d.sensors.includes('pir')) lines.push('  j += ",\\"motion\\":" + String(digitalRead(PIR_PIN));');
+  if(d.sensors.includes('gps')) lines.push('  while(gpsSerial.available()) gps.encode(gpsSerial.read()); if(gps.location.isValid()){ j += ",\\"latitude\\":" + String(gps.location.lat(), 5) + ",\\"longitude\\":" + String(gps.location.lng(), 5); }');
+  else lines.push(`  j += ",\\"latitude\\":${d.lat.toFixed(5)},\\"longitude\\":${d.lon.toFixed(5)}; // fixed node position from Admin`);
+  if(d.sensors.includes('battery')) lines.push('  j += ",\\"battery_v\\":" + String(analogRead(BATT_PIN) * 3.3 / 4095.0 * 2.0, 2);');
+  lines.push('  j += "}"; return j;');
+  lines.push('}');
+  lines.push('');
+  lines.push('void setup(){');
+  lines.push('  Serial.begin(115200);');
+  if(d.sensors.includes('hc_sr04')) lines.push('  pinMode(TRIG_PIN, OUTPUT); pinMode(ECHO_PIN, INPUT);');
+  if(d.sensors.includes('dht22')) lines.push('  dht.begin();');
+  if(d.sensors.includes('ds18b20')) lines.push('  dsTemp.begin();');
+  if(d.sensors.includes('hx711')) lines.push(`  scale.begin(${P.hx711[0]}, ${P.hx711[1]}); scale.tare(); // TODO: scale.set_scale(YOUR_CALIBRATION_FACTOR);`);
+  if(d.sensors.includes('pir')) lines.push('  pinMode(PIR_PIN, INPUT);');
+  if(d.sensors.includes('gps')) lines.push('  gpsSerial.begin(9600);');
+  if(b.wifi!=='none'){ lines.push('  WiFi.begin(WIFI_SSID, WIFI_PASS); while(WiFi.status()!=WL_CONNECTED){ delay(500); Serial.print("."); } Serial.println("\\nWiFi connected");'); }
+  if(d.conn==='mqtt' && b.wifi!=='none') lines.push('  mqtt.setServer(MQTT_HOST, MQTT_PORT);');
+  lines.push('}');
+  lines.push('');
+  lines.push('void loop(){');
+  if(b.wifi!=='none' && d.conn==='mqtt') lines.push('  if(!mqtt.connected()){ while(!mqtt.connected()){ if(mqtt.connect(NODE_ID)) break; delay(2000); } } mqtt.loop();');
+  lines.push('  String payload = buildPayload(); Serial.println(payload);');
+  if(d.conn==='mqtt' && b.wifi!=='none') lines.push(`  mqtt.publish(("waste/nodes/" + String(NODE_ID) + "/telemetry").c_str(), payload.c_str());`);
+  else if(d.conn==='http' && b.wifi!=='none') lines.push('  HTTPClient http; http.begin(TELEMETRY_URL); http.addHeader("Content-Type", "application/json"); int code = http.POST(payload); Serial.println(code); http.end();');
+  else lines.push('  // No network selected: payload goes to Serial only. Attach a radio/WiFi module or log it from a gateway.');
+  lines.push('  delay(INTERVAL_MS);');
+  lines.push('}');
+  return lines.join('\n');
+}
+function genMicroPython(d){
+  const P = BOARDS.pico.pins;
+  const lines = [];
+  lines.push(`# ${d.name||d.id} — Raspberry Pi Pico W, MicroPython. Generated by Waste Intelligence Admin.`);
+  lines.push(`# Credentials below are ONLY in this file — never commit it with real passwords.`);
+  lines.push(`# Telemetry: ${d.conn==='mqtt' ? 'MQTT waste/nodes/' + d.id + '/telemetry' : (d.backend||'<your-backend>') + '/telemetry'} — adjust to your hub.`);
+  lines.push('import network, time, machine');
+  if(d.conn==='mqtt') lines.push('from umqtt.simple import MQTTClient');
+  if(d.conn==='http') lines.push('import urequests');
+  if(d.sensors.includes('dht22')) lines.push('import dht');
+  lines.push('');
+  lines.push(`NODE_ID = "${d.id}"`);
+  lines.push(`WIFI_SSID = "${d.ssid||'YOUR_WIFI_SSID'}"`);
+  lines.push(`WIFI_PASS = "YOUR_WIFI_PASSWORD"`);
+  if(d.conn==='mqtt') lines.push(`MQTT_HOST = "${d.mqttHost||'YOUR_MQTT_BROKER'}"`);
+  if(d.conn==='http') lines.push(`TELEMETRY_URL = "${d.backend? d.backend + '/telemetry' : 'http://YOUR_BACKEND/telemetry'}"`);
+  lines.push(`INTERVAL_S = ${d.interval}`);
+  lines.push(`BIN_DEPTH_CM = ${d.depthCm}`);
+  if(d.sensors.includes('dht22')) lines.push(`dht_sensor = dht.DHT22(machine.Pin(${P.dht22}))`);
+  if(d.sensors.includes('hc_sr04')) lines.push(`trig = machine.Pin(${P.hc_sr04[0]}, machine.Pin.OUT); echo = machine.Pin(${P.hc_sr04[1]}, machine.Pin.IN)`);
+  if(d.sensors.includes('mq4')) lines.push(`mq4 = machine.ADC(${P.mq4})  # UNCALIBRATED — calibrate before trusting ppm`);
+  if(d.sensors.includes('soil')) lines.push(`soil = machine.ADC(${P.soil})`);
+  if(d.sensors.includes('pir')) lines.push(`pir = machine.Pin(${P.pir}, machine.Pin.IN)`);
+  lines.push('');
+  lines.push('def read_fill():');
+  if(d.sensors.includes('hc_sr04')){
+    lines.push('    trig.low(); time.sleep_us(2); trig.high(); time.sleep_us(10); trig.low()');
+    lines.push('    dur = machine.time_pulse_us(echo, 1, 30000)');
+    lines.push('    if dur < 0: return -1');
+    lines.push('    dist = dur * 0.0343 / 2; return max(0, min(100, (BIN_DEPTH_CM - dist) / BIN_DEPTH_CM * 100))');
+  } else lines.push('    return -1');
+  lines.push('');
+  lines.push('def wifi_connect():');
+  lines.push('    wlan = network.WLAN(network.STA_IF); wlan.active(True)');
+  lines.push('    if not wlan.isconnected(): wlan.connect(WIFI_SSID, WIFI_PASS)');
+  lines.push('    for _ in range(20):');
+  lines.push('        if wlan.isconnected(): break');
+  lines.push('        time.sleep(1)');
+  lines.push('    return wlan.isconnected()');
+  lines.push('');
+  lines.push('while True:');
+  lines.push('    payload = {"node_id": NODE_ID}');
+  if(d.sensors.includes('hc_sr04')) lines.push('    payload["fill_pct"] = round(read_fill(), 1)');
+  if(d.sensors.includes('dht22')) lines.push('    try:\n        dht_sensor.measure(); payload["temperature_c"] = dht_sensor.temperature(); payload["humidity_pct"] = dht_sensor.humidity()\n    except Exception as e: print("DHT error", e)');
+  if(d.sensors.includes('mq4')) lines.push('    payload["methane_raw"] = mq4.read_u16()  # UNCALIBRATED');
+  if(d.sensors.includes('soil')) lines.push('    payload["soil_moisture_pct"] = round((65535 - soil.read_u16()) / 65535 * 100, 1)');
+  if(d.sensors.includes('pir')) lines.push('    payload["motion"] = pir.value()');
+  lines.push(`    payload["latitude"] = ${d.lat.toFixed(5)}; payload["longitude"] = ${d.lon.toFixed(5)}`);
+  lines.push('    print(payload)');
+  lines.push('    if wifi_connect():');
+  if(d.conn==='mqtt') lines.push('        try:\n            c = MQTTClient(NODE_ID, MQTT_HOST); c.connect(); c.publish(b"waste/nodes/" + NODE_ID.encode() + b"/telemetry", str(payload).encode()); c.disconnect()\n        except Exception as e: print("MQTT error", e)');
+  else if(d.conn==='http') lines.push('        try:\n            urequests.post(TELEMETRY_URL, json=payload).close()\n        except Exception as e: print("HTTP error", e)');
+  lines.push('    time.sleep(INTERVAL_S)');
+  return lines.join('\n');
+}
+function generateFirmware(){
+  const d = currentDesign();
+  const code = BOARDS[d.board].lang==='micropython' ? genMicroPython(d) : genArduino(d);
+  const warns = pinConflicts(d);
+  const board = BOARDS[d.board];
+  let libNote = 'Libraries: ';
+  if(board.lang==='micropython') libNote += 'built-in network/machine/dht only (umqtt/urequests are in MicroPython firmware or install via mip).';
+  else {
+    const libs = new Set();
+    if(d.sensors.includes('dht22')) libs.add('DHT sensor library');
+    if(d.sensors.includes('ds18b20')) libs.add('OneWire + DallasTemperature');
+    if(d.sensors.includes('hx711')) libs.add('HX711 library');
+    if(d.sensors.includes('gps')) libs.add('TinyGPSPlus');
+    if(d.conn==='mqtt') libs.add('PubSubClient');
+    libNote += libs.size? [...libs].join(', ') + '.' : 'none beyond the board core.';
+  }
+  $a('#admFirmware').textContent = code;
+  $a('#admFirmwareMeta').innerHTML = `<p class="muted small">${escA(libNote)} Board: ${escA(board.label)} · Connectivity: ${escA(d.conn)} · Sensors: ${escA(d.sensors.join(', ')||'none')}.</p>` +
+    (warns.length? `<p class="muted small" style="color:#b42318"><strong>Pin warnings:</strong> ${escA(warns.join(' '))}</p>` : `<p class="muted small">No pin conflicts in the default mapping.</p>`) +
+    `<p class="muted small">Deploy: download the file, open it in Arduino IDE (or Thonot / arduino-cli for Pico — see checklist), set your WiFi/MQTT credentials in the file, install the libraries above, pick the board + port, and upload. This page does not flash hardware.</p>`;
+  return {design:d, code};
+}
+function renderDesigns(){
+  const list = designsLoad();
+  $a('#admDesignList').innerHTML = list.map((x,i)=>`<li><strong>${escA(x.name||x.id)}</strong> — ${escA(x.board)} · ${escA(x.conn)} · ${(x.sensors||[]).join(', ')} · ${escA(x.kind)} <button class="btn" data-load="${i}">Load</button> <button class="btn" data-del="${i}">Delete</button></li>`).join('') || '<li>No saved node designs yet.</li>';
+  $$a('#admDesignList [data-load]').forEach(b=>b.addEventListener('click',()=>{
+    const x = list[+b.dataset.load]; if(!x) return;
+    $a('#admNodeId').value = x.id||''; $a('#admNodeName').value = x.name||''; $a('#admKind').value = x.kind||'collection bin';
+    $a('#admStream').value = x.stream||'organics'; $a('#admHost').value = x.host||'DSNY'; $a('#admBorough').value = x.borough||'Brooklyn';
+    $a('#admLat').value = x.lat||''; $a('#admLon').value = x.lon||''; $a('#admBoard').value = x.board||'esp32'; $a('#admConn').value = x.conn||'mqtt';
+    $a('#admInterval').value = x.interval||300; $a('#admDepth').value = x.depthCm||80;
+    $$a('.admSensor').forEach(c=>c.checked = (x.sensors||[]).includes(c.value));
+    generateFirmware();
+  }));
+  $$a('#admDesignList [data-del]').forEach(b=>b.addEventListener('click',()=>{
+    const all = designsLoad(); all.splice(+b.dataset.del,1); designsSave(all); renderDesigns();
+  }));
+}
+function renderBackend(){
+  const cfg = backendLoad();
+  ['platform','hub','forecasting','copilot','contamination','kg'].forEach(k=>{ const el = $a('#admBe'+k[0].toUpperCase()+k.slice(1)); if(el) el.value = cfg[k]||''; });
+  $a('#admBeStatus').textContent = cfg.platform||cfg.hub ? 'Backend configured in this browser (keys masked, values never shown here).' : 'No backend URLs saved yet — set them here or in Connect; both views share the same browser store.';
+}
+async function probeBackends(){
+  const cfg = backendLoad(); const out = $a('#admProbeOut'); out.textContent = 'Probing…';
+  const checks = [['Platform',cfg.platform],['Hub',cfg.hub],['Forecasting',cfg.forecasting],['KG',cfg.kg],['Copilot',cfg.copilot],['Contamination',cfg.contamination]];
+  const rows = [];
+  for(const [name, base] of checks){
+    if(!base){ rows.push(`${name}: not configured`); continue; }
+    try{
+      const ctrl = new AbortController(); setTimeout(()=>ctrl.abort(), 6000);
+      const r = await fetch(base.replace(/\/$/,'') + '/health', {signal: ctrl.signal});
+      rows.push(`${name}: HTTP ${r.status}`);
+    }catch(e){ rows.push(`${name}: unreachable (${e.name||'error'}) — check URL / CORS / that the service is running`); }
+  }
+  out.innerHTML = rows.map(r=>`<li>${escA(r)}</li>`).join('');
+}
+function init(){
+  if(!$a('#view-admin')) return;
+  // Sensor checkboxes
+  $a('#admSensors').innerHTML = Object.entries(SENSORS).map(([k,v])=>`<label><input type="checkbox" class="admSensor" value="${k}"> ${escA(v.label)} <span class="muted small">(${escA(v.field)}; ${escA(v.lib)})</span></label>`).join('');
+  // Board + template selects
+  $a('#admBoard').innerHTML = Object.entries(BOARDS).map(([k,v])=>`<option value="${k}">${escA(v.label)}</option>`).join('');
+  $a('#admTemplate').innerHTML = '<option value="">— start from blank —</option>' + Object.entries(TEMPLATES).map(([k,v])=>`<option value="${k}">${escA(v.name)}</option>`).join('');
+  renderBackend(); renderDesigns();
+  const st = settingsLoad();
+  $a('#admTonnes').value = st.tonnesPerFull; $a('#admBasemapDef').value = st.basemap; $a('#admStreamDef').value = st.stream; $a('#admProcessDef').value = st.process; $a('#admRetention').value = st.retentionDays;
+  $$a('.admSensor, #admBoard, #admConn, #admInterval, #admDepth, #admNodeId, #admNodeName').forEach(el=>el.addEventListener('change', generateFirmware));
+  $a('#admTemplate')?.addEventListener('change', e=>{
+    const t = TEMPLATES[e.target.value]; if(!t) return;
+    $a('#admNodeName').value = t.name; $a('#admBoard').value = t.board; $a('#admConn').value = t.conn; $a('#admKind').value = t.kind; $a('#admStream').value = t.stream;
+    $$a('.admSensor').forEach(c=>c.checked = t.sensors.includes(c.value));
+    generateFirmware();
+  });
+  $a('#admGenBtn')?.addEventListener('click', generateFirmware);
+  $a('#admDownloadBtn')?.addEventListener('click', ()=>{
+    const {design, code} = generateFirmware(); if(!design.id){ alert('Enter a Node ID first.'); return; }
+    const ext = BOARDS[design.board].lang==='micropython' ? 'py' : 'ino';
+    const blob = new Blob([code], {type:'text/plain'}); const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `${design.id}.${ext}`; a.click();
+  });
+  $a('#admCopyBtn')?.addEventListener('click', async ()=>{
+    const {code} = generateFirmware();
+    try{ await navigator.clipboard.writeText(code); $a('#admCopyNote').textContent = 'Copied to clipboard.'; }catch(e){ $a('#admCopyNote').textContent = 'Copy failed — select the code manually.'; }
+  });
+  $a('#admSaveDesignBtn')?.addEventListener('click', ()=>{
+    const d = currentDesign(); if(!d.id){ alert('Enter a Node ID first.'); return; }
+    const all = designsLoad(); const i = all.findIndex(x=>x.id===d.id);
+    if(i>=0) all[i]=d; else all.unshift(d); designsSave(all); renderDesigns(); generateFirmware();
+  });
+  $a('#admRegisterBtn')?.addEventListener('click', ()=>{
+    const d = currentDesign(); if(!d.id || !d.name){ alert('Enter Node ID and name first.'); return; }
+    const nodes = nodesLoad();
+    if(!nodes.find(x=>x.id===d.id)) nodes.unshift({id:d.id, site:d.name, kind:d.kind, stream:d.stream, host:d.host, borough:d.borough, lat:d.lat, lon:d.lon, fill:60, source:'admin node design (firmware-ready)'});
+    try{ localStorage.setItem('wip_network_nodes', JSON.stringify(nodes)); }catch(e){}
+    $a('#admRegisterNote').textContent = `Registered ${d.id} in Collection Network (this browser). Open #network to see it on the real map; its firmware design is saved in Admin.`;
+  });
+  $a('#admGeoBtn')?.addEventListener('click', async ()=>{
+    const q = ($a('#admAddress').value||'').trim(); const out = $a('#admGeoNote'); if(!q){ out.textContent = 'Enter an address first.'; return; }
+    out.textContent = 'Geocoding via OpenStreetMap Nominatim…';
+    try{
+      const j = await (await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ', New York, NY')}&format=json&limit=1`)).json();
+      if(!j.length){ out.textContent = 'No match — try a street address or place name in NYC.'; return; }
+      $a('#admLat').value = (+j[0].lat).toFixed(5); $a('#admLon').value = (+j[0].lon).toFixed(5);
+      out.textContent = `Found: ${j[0].display_name}`;
+    }catch(e){ out.textContent = 'Geocoding failed — retry.'; }
+  });
+  $a('#admBeSaveBtn')?.addEventListener('click', ()=>{
+    const cfg = backendLoad();
+    ['platform','hub','forecasting','copilot','contamination','kg'].forEach(k=>{ const el = $a('#admBe'+k[0].toUpperCase()+k.slice(1)); if(el) cfg[k] = el.value.trim(); });
+    backendSave(cfg); renderBackend(); $a('#admBeSaveNote').textContent = 'Backend URLs saved in this browser (shared with Connect).';
+  });
+  $a('#admProbeBtn')?.addEventListener('click', probeBackends);
+  $a('#admSettingsSaveBtn')?.addEventListener('click', ()=>{
+    const st = {tonnesPerFull: +$a('#admTonnes').value||0.5, basemap: $a('#admBasemapDef').value, stream: $a('#admStreamDef').value, process: $a('#admProcessDef').value, retentionDays: +$a('#admRetention').value||90};
+    try{ localStorage.setItem('wip_admin_settings', JSON.stringify(st)); }catch(e){}
+    $a('#admSettingsNote').textContent = 'Network defaults saved in this browser. The Collection Network view reads tonnes-per-full and basemap from these defaults on its next load (defaults are applied when you open #network after a reload).';
+  });
+  window.addEventListener('hashchange', ()=>{ if((location.hash||'').startsWith('#admin')){ renderBackend(); renderDesigns(); } });
+  generateFirmware();
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();

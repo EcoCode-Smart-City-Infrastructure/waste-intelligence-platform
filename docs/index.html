@@ -27,6 +27,7 @@
     <a href="#assistant" data-nav="assistant">Assistant</a>
     <a href="#twin" data-nav="twin">Digital Twin <span class="pill warn">preview</span></a>
     <a href="#network" data-nav="network">Collection Network</a>
+    <a href="#admin" data-nav="admin">Admin Settings</a>
     <a href="kepler.html">Kepler 3D Map</a>
     <a href="login.html" id="authNavLink">Sign in</a>
     <a href="#" id="authSignOut" hidden>Sign out</a>
@@ -52,6 +53,7 @@
       <nav class="dash-side-nav">
         <a href="#graph">Knowledge Graph</a>
         <a href="#network">Collection Network</a>
+        <a href="#admin">Admin Settings</a>
         <a href="#contamination">Contamination</a>
         <a href="#assistant">Assistant</a>
         <a href="kepler.html">Kepler Map</a>
@@ -608,6 +610,82 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
   </div>
   <div class="card"><h2>All network nodes</h2><ul class="list" id="netNodeList"></ul></div>
 </section>
+<!-- ADMIN -->
+<section id="view-admin" class="view hidden">
+  <h1>Admin Settings — backend pairing &amp; node infrastructure</h1>
+  <p class="lede">Brainstorm, made concrete: <strong>pair the backend you already run with a UI that designs nodes, then generate the firmware for them in this browser.</strong> Backend URLs here are the same browser-local store as Connect — change them in either place and both views see it. Node designs and firmware are generated locally; nothing is compiled on a server and no WiFi/MQTT password is stored by the app (it goes only into the sketch file you download). Flashing is via Arduino IDE / arduino-cli — this static page cannot flash AVR/ESP hardware, and that limit is stated, not hidden.</p>
+  <div class="card">
+    <h2>1 · Backend pairing — what the platform can actually do</h2>
+    <p class="muted small" id="admBeStatus"></p>
+    <div class="controls">
+      <label>Platform API <input id="admBePlatform" placeholder="https://api.example.com"></label>
+      <label>Hub Flask <input id="admBeHub" placeholder="http://localhost:5000"></label>
+      <label>Forecasting <input id="admBeForecasting" placeholder="http://localhost:8002"></label>
+      <label>Knowledge Graph <input id="admBeKg" placeholder="http://localhost:8003"></label>
+      <label>Copilot <input id="admBeCopilot" placeholder="http://localhost:8004"></label>
+      <label>Contamination <input id="admBeContamination" placeholder="http://localhost:8005"></label>
+    </div>
+    <div class="controls"><button class="btn primary" id="admBeSaveBtn" type="button">Save backend URLs</button><button class="btn" id="admProbeBtn" type="button">Probe /health endpoints</button></div>
+    <p class="muted small" id="admBeSaveNote"></p><ul class="list" id="admProbeOut"></ul>
+    <p class="muted small">Capacity note: the platform's real services are Hub (bins/facilities), Forecasting (:8002), KG (:8003), Copilot (:8004) and Contamination (:8005). If a service is not running, the web app keeps working on its labelled demo/sample data — Admin does not pretend a backend is live. Keys, if you use them, are set in Connect and are masked here.</p>
+  </div>
+  <div class="card">
+    <h2>2 · Network defaults (applied by Collection Network)</h2>
+    <div class="controls">
+      <label>Tonnes per full node <input type="number" step="0.1" id="admTonnes" value="0.5"></label>
+      <label>Default basemap <select id="admBasemapDef"><option value="osm">OpenStreetMap Standard</option><option value="carto-dark">CARTO Dark Matter</option><option value="carto-voyager">CARTO Voyager</option></select></label>
+      <label>Default stream <select id="admStreamDef"><option value="organics">Organics</option><option value="refuse">Refuse</option><option value="recycling">Recycling</option></select></label>
+      <label>Default process <select id="admProcessDef"><option value="AerobicComposting">Aerobic Composting</option><option value="AnaerobicDigestion">Anaerobic Digestion</option></select></label>
+      <label>Event retention (days, note only) <input type="number" id="admRetention" value="90"></label>
+    </div>
+    <button class="btn primary" id="admSettingsSaveBtn" type="button">Save defaults</button>
+    <p class="muted small" id="admSettingsNote"></p>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2>3 · Design a node — personalised infrastructure</h2>
+      <label>Template <select id="admTemplate"></select></label>
+      <form class="form">
+        <label>Node ID <input required id="admNodeId" placeholder="NODE-BK-01"></label>
+        <label>Name <input id="admNodeName" placeholder="e.g. Prospect Park Smart Bin"></label>
+        <label>Kind <select id="admKind"><option value="collection bin">Collection bin</option><option value="collection node">Collection node</option><option value="hub">Hub</option><option value="distribution point">Distribution point</option><option value="garden">Garden</option></select></label>
+        <label>Stream <select id="admStream"><option value="organics">Organics</option><option value="refuse">Refuse</option><option value="recycling">Recycling</option><option value="paper">Paper</option><option value="mgp">MGP</option></select></label>
+        <label>Host <select id="admHost"><option>DSNY</option><option>Private hauler</option><option>Community</option><option>Public</option><option>Private</option></select></label>
+        <label>Borough <select id="admBorough"><option>Manhattan</option><option>Brooklyn</option><option>Queens</option><option>Bronx</option><option>Staten Island</option></select></label>
+        <label>Address (optional) <input id="admAddress" placeholder="e.g. Prospect Park, Brooklyn"></label>
+        <button class="btn" id="admGeoBtn" type="button">Geocode (Nominatim)</button><p class="muted small" id="admGeoNote"></p>
+        <label>Latitude <input type="number" step="any" id="admLat"></label>
+        <label>Longitude <input type="number" step="any" id="admLon"></label>
+        <label>Board / microcontroller <select id="admBoard"></select></label>
+        <label>Connectivity <select id="admConn"><option value="mqtt">WiFi + MQTT</option><option value="http">WiFi + HTTP POST</option><option value="serial">Serial / USB only (no network)</option></select></label>
+        <label>WiFi SSID (goes into sketch only, not stored) <input id="admSsid" placeholder="YOUR_WIFI_SSID"></label>
+        <label>MQTT broker (goes into sketch only) <input id="admMqtt" placeholder="YOUR_MQTT_BROKER"></label>
+        <label>Report interval (seconds, min 10) <input type="number" id="admInterval" value="300" min="10"></label>
+        <label>Bin depth (cm, for fill %) <input type="number" id="admDepth" value="80" min="10"></label>
+      </form>
+      <h3>Microsensors</h3><div id="admSensors" class="form"></div>
+      <div class="controls"><button class="btn primary" id="admGenBtn" type="button">Generate firmware</button><button class="btn" id="admSaveDesignBtn" type="button">Save design</button><button class="btn" id="admRegisterBtn" type="button">Register in Collection Network</button></div>
+      <p class="muted small" id="admRegisterNote"></p>
+      <h3>Saved designs</h3><ul class="list" id="admDesignList"></ul>
+    </div>
+    <div class="card">
+      <h2>4 · Firmware — generated natively, deploy it yourself</h2>
+      <div id="admFirmwareMeta"></div>
+      <pre id="admFirmware" style="white-space:pre-wrap;max-height:600px;overflow:auto"></pre>
+      <div class="controls"><button class="btn primary" id="admDownloadBtn" type="button">Download sketch (.ino / .py)</button><button class="btn" id="admCopyBtn" type="button">Copy code</button></div>
+      <p class="muted small" id="admCopyNote"></p>
+      <h3>Deploy checklist</h3>
+      <ol class="list">
+        <li>Download the sketch. For Arduino boards: open it in Arduino IDE, install the libraries listed above (Library Manager), select your board + port, put your real WiFi password and MQTT broker in the file, then Upload.</li>
+        <li>Or with arduino-cli: <code>arduino-cli compile --fqbn &lt;board&gt; sketch.ino</code> then <code>arduino-cli upload -p &lt;port&gt; --fqbn &lt;board&gt; sketch.ino</code> (board examples: esp32:esp32:esp32, esp8266:esp8266:nodemcuv2, arduino:avr:uno, arduino:mbed_nano:nano33ble — install the matching core first).</li>
+        <li>For Pico W: save the .py as <code>main.py</code> on the Pico with Thonot, set WiFi credentials, and it runs on boot.</li>
+        <li>Calibrate before trusting numbers: MQ-4 gas and HX711 weight are uncalibrated in the generated code — calibrate against a known gas source / known weight and set the factor in the sketch.</li>
+        <li>Once the node reports, its telemetry should land at the backend URL in section 1 (adjust TELEMETRY_URL / MQTT topic in the sketch to your hub's actual ingestion endpoint).</li>
+      </ol>
+      <p class="muted small">Boards covered: ESP32, ESP8266, Arduino Uno, Nano 33 IoT, Raspberry Pi Pico W (MicroPython), STM32 (Arduino core). Sensors covered: HC-SR04 fill, DHT22, MQ-4 methane, HX711 weight, DS18B20, capacitive soil moisture, PIR, NEO-6M GPS, battery voltage. A sensor/board combination the generator cannot wire gets a clearly marked TODO in the code, not invented code.</p>
+    </div>
+  </div>
+</section>
 </main>
 
 <footer>
@@ -615,9 +693,10 @@ that renders correctly on the grid renders correctly in 3D.</pre></details>
 <script src="auth-config.js"></script>
 <script src="auth.js"></script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
-<script src="app.js?v=overhaul16"></script>
+<script src="app.js?v=overhaul17"></script>
 <script src="twin.js?v=twin3"></script>
 <script src="network.js?v=network3"></script>
+<script src="admin.js?v=admin1"></script>
 <script src="backend.js?v=backend3"></script>
 </body>
 </html>
