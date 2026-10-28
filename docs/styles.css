@@ -456,3 +456,20 @@ nav a.active,nav a:hover{background:#B7FF2E;color:#0b1220}
 .dash-donut-centre{font-size:clamp(.85rem,2.6vw,1rem);max-width:120px;overflow-wrap:anywhere}
 #dashLiveMap{height:clamp(320px,52vw,420px)}
 #dashLiveMap .leaflet-control-attribution a,#dashLiveMap .leaflet-popup-content a,#adMap .leaflet-control-attribution a,#adMap .leaflet-popup-content a{color:#45C8FF}
+
+/* ---------- Overhaul 31: mobile "In this ecosystem" dropdown ----------
+   Desktop keeps the chip row. At phone width (<=760px, the existing mobile
+   breakpoint) the chips hide and one HUD-styled dropdown button takes their
+   place, expanding to the same links as full-width 44px rows. */
+.eco-drop{display:none}
+.eco-links a:hover{background:#B7FF2E;color:#0b1220;border-color:#B7FF2E}
+@media(max-width:760px){
+  .eco-links{display:none}
+  .eco-drop{display:block;margin:.8rem 0 0;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.01)),#0c1411;border:1px solid rgba(183,255,46,.16);border-radius:12px;overflow:hidden}
+  .eco-drop summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.8rem 1rem;min-height:44px;font-weight:700;color:#fff}
+  .eco-drop summary::-webkit-details-marker{display:none}
+  .eco-drop-arrow{color:#B7FF2E;transition:transform .15s}
+  .eco-drop[open ] .eco-drop-arrow{transform:rotate(180deg)}
+  .eco-drop-list a{display:flex;justify-content:space-between;align-items:center;min-height:44px;padding:.6rem 1rem;color:#e2e8f0;text-decoration:none;border-top:1px solid #243044}
+  .eco-drop-list a:hover{background:#B7FF2E;color:#0b1220}
+}

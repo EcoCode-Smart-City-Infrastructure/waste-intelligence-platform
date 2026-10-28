@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul30 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul31 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -1036,6 +1036,14 @@ function wiInitEcoLinks(){
     nav.innerHTML = '<span>In this ecosystem</span>' + links.map(([h,t])=>`<a href="${h}">${t} →</a>`).join('');
     const anchor = sec.querySelector('.lede') || sec.querySelector('h1');
     if(anchor) anchor.insertAdjacentElement('afterend', nav); else sec.prepend(nav);
+    // Mobile dropdown twin of the same links: one compact button instead of
+    // six wrapping chips. CSS shows it only at phone width (<=760px) and
+    // hides the chip row there; desktop is unchanged. Native <details> so
+    // it needs no JS state and stays keyboard-accessible.
+    const drop = document.createElement('details'); drop.className = 'eco-drop';
+    drop.innerHTML = '<summary>In this ecosystem <span class="eco-drop-arrow">▾</span></summary><div class="eco-drop-list">' + links.map(([h,t])=>`<a href="${h}">${t} <span>→</span></a>`).join('') + '</div>';
+    drop.addEventListener('click', e=>{ if(e.target.closest('a')) drop.removeAttribute('open'); });
+    nav.insertAdjacentElement('afterend', drop);
   });
 }
 function wiInitCmdK(){
