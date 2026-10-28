@@ -30,8 +30,13 @@ function loadLeaflet(){
   if(loadLeaflet.p) return loadLeaflet.p;
   loadLeaflet.p = new Promise(res=>{
     const link = document.createElement('link'); link.rel='stylesheet'; link.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(link);
-    const sc = document.createElement('script'); sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    sc.onload=()=>res(!!window.L); sc.onerror=()=>res(false); document.body.appendChild(sc);
+    // Wait for the stylesheet (or a short timeout) before resolving:
+    // creating the map before its CSS applies leaves tile panes in
+    // normal flow, which is how tiles ended up displaced outside the box.
+    let done = false; const finish = ()=>{ if(!done){ done = true; res(!!window.L); } };
+    link.onload = ()=>{ const sc = document.createElement('script'); sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; sc.onload=finish; sc.onerror=finish; document.body.appendChild(sc); };
+    link.onerror = ()=>{ const sc = document.createElement('script'); sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; sc.onload=finish; sc.onerror=finish; document.body.appendChild(sc); };
+    setTimeout(()=>{ if(!window.L && !document.querySelector('script[src*="leaflet"]')){ const sc = document.createElement('script'); sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; sc.onload=finish; sc.onerror=finish; document.body.appendChild(sc); } }, 1500);
   });
   return loadLeaflet.p;
 }
@@ -161,10 +166,12 @@ async function init(){
     try{ map.invalidateSize(); }catch(e){}
     const bins = fleetNow();
     if(bins.length){ try{ map.fitBounds(window.L.latLngBounds(bins.map(b=>[b.lat,b.lon])), {padding:[24,24]}); }catch(e){} }
+    try{ layers.base && layers.base.redraw(); }catch(e){}
     render();
   });
   render();
   setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 150);
+  setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} try{ layers.base && layers.base.redraw(); }catch(e){} }, 600);
   inited = true;
 }
 let resizeTimer = null;

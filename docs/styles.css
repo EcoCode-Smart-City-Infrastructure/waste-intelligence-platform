@@ -291,3 +291,33 @@ nav a{white-space:nowrap}
   #cmdkBtn{margin-left:auto;min-height:44px}
   .dash-side{display:none}
 }
+
+/* ---- Overhaul26: inline Leaflet core positioning (scoped to our maps) ----
+   The dashboard tiles were loading (real OSM tiles were seen peeking
+   outside the box) but not filling it — the classic symptom of Leaflet's
+   external stylesheet not applying before/at map creation, leaving tile
+   panes in normal document flow instead of absolutely positioned inside
+   the map box. These rules duplicate only the positioning essentials
+   (Leaflet is BSD-licensed; the full unpkg stylesheet still loads and
+   wins on anything not set here), so the maps render correctly even if
+   the unpkg stylesheet is slow, blocked, or arrives after map creation. */
+#dashLiveMap .leaflet-pane,#adMap .leaflet-pane{position:absolute;left:0;top:0}
+#dashLiveMap .leaflet-tile-pane,#adMap .leaflet-tile-pane{opacity:1}
+#dashLiveMap .leaflet-map-pane,#adMap .leaflet-map-pane{transform:translate(0,0)}
+#dashLiveMap .leaflet-tile,#adMap .leaflet-tile{position:absolute;left:0;top:0;max-width:none!important;max-height:none!important}
+#dashLiveMap .leaflet-tile-container,#adMap .leaflet-tile-container{position:absolute;left:0;top:0;width:100%;height:100%}
+#dashLiveMap .leaflet-top,#adMap .leaflet-top,#dashLiveMap .leaflet-bottom,#adMap .leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}
+#dashLiveMap .leaflet-top,#adMap .leaflet-top{top:0}
+#dashLiveMap .leaflet-bottom,#adMap .leaflet-bottom{bottom:0}
+#dashLiveMap .leaflet-left,#adMap .leaflet-left{left:0}
+#dashLiveMap .leaflet-right,#adMap .leaflet-right{right:0}
+#dashLiveMap .leaflet-control,#adMap .leaflet-control{position:relative;z-index:800;pointer-events:auto;float:left;clear:both}
+#dashLiveMap .leaflet-right .leaflet-control,#adMap .leaflet-right .leaflet-control{float:right}
+#dashLiveMap .leaflet-marker-pane img,#adMap .leaflet-marker-pane img,#dashLiveMap .leaflet-pane img,#adMap .leaflet-pane img{max-width:none!important}
+#dashLiveMap .leaflet-pane>svg,#adMap .leaflet-pane>svg,#dashLiveMap .leaflet-pane>canvas,#adMap .leaflet-pane>canvas{position:absolute;left:0;top:0}
+#dashLiveMap .leaflet-zoom-box,#adMap .leaflet-zoom-box{position:absolute;left:0;top:0}
+/* Desktop nav scroll affordance: the row scrolls, but the hidden
+   scrollbar gave no hint — a right-edge fade shows there is more. */
+#nav{position:relative}
+#nav::after{content:"";position:sticky;right:0;top:0;bottom:0;width:28px;flex-shrink:0;background:linear-gradient(90deg,transparent,#0f172a);pointer-events:none}
+@media(max-width:760px){#nav::after{display:none}}

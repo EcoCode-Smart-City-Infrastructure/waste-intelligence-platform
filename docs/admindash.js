@@ -58,7 +58,10 @@ function loadLeafletA(){
   if(loadLeafletA.p) return loadLeafletA.p;
   loadLeafletA.p = new Promise(res=>{
     const link = document.createElement('link'); link.rel='stylesheet'; link.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(link);
-    const sc = document.createElement('script'); sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; sc.onload=()=>res(!!window.L); sc.onerror=()=>res(false); document.body.appendChild(sc);
+    let done = false; const finish = ()=>{ if(!done){ done = true; res(!!window.L); } };
+    const loadJs = ()=>{ const sc = document.createElement('script'); sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; sc.onload=finish; sc.onerror=finish; document.body.appendChild(sc); };
+    link.onload = loadJs; link.onerror = loadJs;
+    setTimeout(()=>{ if(!window.L && !document.querySelector('script[src*="leaflet"]')) loadJs(); }, 1500);
   });
   return loadLeafletA.p;
 }
