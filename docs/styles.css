@@ -233,6 +233,14 @@ canvas{background:#0f172a;border-color:#243044}
 .sap-bins-row span{font-size:.8rem;color:#94a3b8}
 .sap-tablewrap{overflow-x:auto}.sap-tablewrap table{font-size:.9rem}.sap-tablewrap td{white-space:normal}
 #adHourSvg{width:100%;height:auto;background:#0f172a;border:1px solid #243044;border-radius:12px}
+/* Top nav: a single scrollable row at EVERY width, never a tall wrap.
+   (Overhaul22 still wrapped on desktop because the scroll row only
+   applied below 760px.) */
+.top{flex-wrap:nowrap}
+.brand{flex-shrink:0}
+nav{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav a{white-space:nowrap}
 /* Mobile + desktop performance: one scrollable nav row, stacked grids,
    44px touch targets, smaller map on phones, no layout thrash from
    animations on small screens. Leaflet/Three still load lazily per view. */

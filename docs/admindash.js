@@ -15,7 +15,7 @@
 const $a = s => document.querySelector(s);
 const $$a = s => [...document.querySelectorAll(s)];
 const escA = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let map = null, markerLayer = null, tileSwitched = false;
+let map = null, markerLayer = null, tileSwitched = false, adFitted = false;
 function fleetA(){ return (typeof fleet !== 'undefined') ? fleet : (window.wipFleet ? window.wipFleet() : []); }
 function histFill(b, snap){
   if(snap>=47) return b.fill;
@@ -68,12 +68,16 @@ async function renderMap(bins){
   if(!ok || !window.L){ el.innerHTML = '<p class="muted small" style="padding:1rem">Map library failed to load — check connection and reopen this view. The KPIs, incidents and chart below still work.</p>'; return; }
   if(!map){
     map = window.L.map(el, {preferCanvas:true}).setView([40.7128,-74.006], 11);
-    const base = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap contributors &copy; CARTO', subdomains:'abcd'});
+    const base = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap contributors &copy; CARTO', subdomains:'abcd'});
     let errs = 0;
     base.on('tileerror', ()=>{ errs++; if(errs>=5 && !tileSwitched){ tileSwitched = true; map.removeLayer(base); window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap contributors'}).addTo(map); } });
     base.addTo(map);
     markerLayer = window.L.layerGroup().addTo(map);
     setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 150);
+  }
+  if(!adFitted && bins.length){
+    adFitted = true;
+    try{ map.fitBounds(window.L.latLngBounds(bins.map(b=>[b.lat,b.lon])), {padding:[24,24]}); }catch(e){}
   }
   markerLayer.clearLayers();
   bins.forEach(b=>{

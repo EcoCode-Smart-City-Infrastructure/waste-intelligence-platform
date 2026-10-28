@@ -18,7 +18,7 @@
 'use strict';
 const $d = s => document.querySelector(s);
 const escD = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let map = null, layers = null, pulseTimer = null, pulseIdx = 0, tileErrors = 0, tileOk = false, switched = false, inited = false;
+let map = null, layers = null, pulseTimer = null, pulseIdx = 0, tileErrors = 0, tileLoads = 0, tileOk = false, switched = false, inited = false, fitted = false;
 const BORO_C = {Manhattan:[40.7831,-73.9712],Brooklyn:[40.6782,-73.9442],Queens:[40.7282,-73.7949],Bronx:[40.8448,-73.8648],'Staten Island':[40.5795,-74.1502]};
 function colorOf(f){ return f>=80 ? '#f87171' : f>=60 ? '#f59e0b' : '#22c55e'; }
 function status(msg, bad){
@@ -38,19 +38,28 @@ function loadLeaflet(){
 function setTiles(kind){
   const L = window.L;
   const defs = {
-    carto: {url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO'},
-    osm: {url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; OpenStreetMap contributors'}
+    voyager: {url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO', name:'CARTO Voyager'},
+    carto: {url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO', name:'CARTO Dark'},
+    osm: {url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; OpenStreetMap contributors', name:'OpenStreetMap'}
   };
+  tileErrors = 0; tileLoads = 0; tileOk = false;
   if(layers.base) map.removeLayer(layers.base);
   layers.base = L.tileLayer(defs[kind].url, {maxZoom:19, attribution:defs[kind].attr, subdomains:'abcd'});
-  layers.base.on('tileload', ()=>{ if(!tileOk){ tileOk = true; status(kind==='carto' ? 'Map tiles: CARTO Dark live' : 'Map tiles: OpenStreetMap live'); } });
+  layers.base.on('tileload', ()=>{
+    tileLoads++;
+    // Do not claim "live" on a single tile: require several successful
+    // loads with no errors, so a lone cached/transparent tile cannot
+    // masquerade as a populated map (the overhaul22 defect).
+    if(!tileOk && tileLoads>=4 && tileErrors===0){ tileOk = true; status('Map tiles live: ' + defs[kind].name); }
+  });
   layers.base.on('tileerror', ()=>{
     tileErrors++;
-    if(kind==='carto' && tileErrors>=5 && !switched){ switched = true; status('CARTO tiles failing — switched to OpenStreetMap', true); setTiles('osm'); }
+    if(kind!=='osm' && tileErrors>=5 && !switched){ switched = true; status('Tiles failing — switched to OpenStreetMap', true); setTiles('osm'); }
     else if(kind==='osm' && tileErrors>=10){ status('Map tiles failing — check connection', true); }
   });
   layers.base.addTo(map);
-  setTimeout(()=>{ if(!tileOk && !switched) status('Map tiles loading… (slow connection?)'); }, 4000);
+  status('Map tiles loading… (' + defs[kind].name + ')');
+  setTimeout(()=>{ if(!tileOk && !switched) status('Map tiles loading… (slow connection?)'); }, 6000);
 }
 function fleetNow(){
   const fl = (typeof fleet !== 'undefined') ? fleet : (window.wipFleet ? window.wipFleet() : []);
@@ -91,8 +100,15 @@ function render(){
   layers.labels.clearLayers();
   if(showLabels){
     Object.entries(BORO_C).forEach(([name, ll])=>{
-      window.L.marker(ll, {icon: window.L.divIcon({className:'sap-map-label', html:escD(name), iconSize:null}), interactive:false}).addTo(layers.labels);
+      window.L.marker(ll, {icon: window.L.divIcon({className:'sap-map-label', html:escD(name), iconSize:[110,20], iconAnchor:[55,10]}), interactive:false}).addTo(layers.labels);
     });
+  }
+  // Frame the fleet on first render so markers are spread across the
+  // view instead of clustered — a fixed centre/zoom left them bunched
+  // when the container size differed from the assumed one.
+  if(!fitted && bins.length){
+    fitted = true;
+    try{ map.fitBounds(window.L.latLngBounds(bins.map(b=>[b.lat,b.lon])), {padding:[24,24]}); }catch(e){}
   }
   // Note text (kept from the old grid so replay behaviour is unchanged)
   const hour = (typeof dashReplayHour !== 'undefined') ? dashReplayHour : 47;
@@ -133,7 +149,10 @@ async function init(){
   }
   map = window.L.map(el, {preferCanvas:true, zoomControl:true}).setView([40.7128,-74.006], 11);
   layers = {markers: window.L.layerGroup().addTo(map), labels: window.L.layerGroup().addTo(map), base:null, route:null, pulse:null};
-  setTiles('carto');
+  // Light, high-contrast default: Voyager streets/water are unmistakable
+  // at a glance, unlike the dark tiles that looked blank in overhaul22.
+  setTiles($d('#dashTile')?.value || 'voyager');
+  $d('#dashTile')?.addEventListener('change', ()=>{ switched = false; setTiles($d('#dashTile').value); });
   render();
   setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 150);
   inited = true;
