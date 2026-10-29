@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul33b parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul34 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -1252,6 +1252,7 @@ window.WIPLayout={intents:LAYOUT_INTENTS, cards:LAYOUT_CARDS, generate:wiLayoutG
 /* ---------- boot ---------- */
 try{renderBins(); loadDashboard(); loadLive(); loadKG(); route(); wiInitRoles();}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · BOOT ERROR: '+e.message;}
 try{wiInitDashboard32(); wiInitNexus(); wiInitCmdK(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · CmdK ERROR: '+e.message;}
+try{wiInitInfo34(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Info bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Info ERROR: '+e.message;}
 try{wiInitAnno(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Anno bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Anno ERROR: '+e.message;}
 try{wiInitLayout(); const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Layout bound';}catch(e){const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · Layout ERROR: '+e.message;}
 
@@ -1625,3 +1626,52 @@ function wiInitNexus(){
   if(typeof route==='function') route();
 }
 
+
+/* ---------- Overhaul 34: info-icon streamlining (all views) ----------
+   Every bulky explanatory paragraph (>=140 chars of p.lede / p.muted text
+   that is not a live status/result line) moves into a hidden .info-panel
+   inside its own section, toggled by an info button at the section's
+   upper right — in the .dash-card-head row when the section has one,
+   absolute in the corner otherwise. Short operational text, controls,
+   dynamic outputs (status/result/note/log ids), text inside details,
+   forms, tables and the chat stay exactly where they were. Nothing is
+   deleted: one tap on the icon shows the full text in place. */
+function wiInitInfo34(){
+  if(document.body.dataset.info34) return; document.body.dataset.info34='1';
+  const SKIP_OWNER_IDS=['nxRailBin','nxRailInsight','nxRoutesCard','nxSustainCard','kgDetail','contamResult'];
+  const DYNAMIC_ID=/status|result|log|note|badge|sub|preview|spine|summary|out$/i;
+  const groups=new Map();
+  document.querySelectorAll('.view p.lede, .view p.muted').forEach(p=>{
+    if(p.classList.contains('hidden')) return;
+    if((p.textContent||'').trim().length<140) return;
+    if(p.id && DYNAMIC_ID.test(p.id)) return;
+    if(p.closest('.controls, form, details, pre, table, .chatbox, .info-panel, #cmdk')) return;
+    const owner=p.closest('section, .card, .kg-hero, .sap-panel');
+    if(!owner) return;
+    if(SKIP_OWNER_IDS.includes(owner.id)) return;
+    if(owner.closest('#nxBubblePanel, header, footer')) return;
+    if(!groups.has(owner)) groups.set(owner, []);
+    groups.get(owner).push(p);
+  });
+  groups.forEach((ps, owner)=>{
+    const panel=document.createElement('div');
+    panel.className='info-panel hidden';
+    ps.forEach(p=>panel.appendChild(p));
+    const btn=document.createElement('button');
+    btn.className='info-btn'; btn.type='button'; btn.textContent='ⓘ';
+    btn.title='About this section'; btn.setAttribute('aria-label','About this section'); btn.setAttribute('aria-expanded','false');
+    const head=[...owner.querySelectorAll('.dash-card-head')].find(h=>h.closest('section, .card, .kg-hero, .sap-panel')===owner);
+    const heading=owner.querySelector(':scope > h1, :scope > h2, :scope > h3');
+    if(head){
+      head.appendChild(btn);
+      head.insertAdjacentElement('afterend', panel);
+    }else{
+      owner.classList.add('has-info');
+      btn.classList.add('info-corner');
+      owner.insertBefore(btn, owner.firstChild);
+      if(heading) heading.insertAdjacentElement('afterend', panel);
+      else btn.insertAdjacentElement('afterend', panel);
+    }
+    wiInitInfoBtn(btn, panel);
+  });
+}

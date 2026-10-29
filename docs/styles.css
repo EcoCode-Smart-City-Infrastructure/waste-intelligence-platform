@@ -581,3 +581,58 @@ main{display:flex;align-items:flex-start}
   .top.nav-open + main #nxSide{transform:none}
 }
 @media(max-width:640px){#nxBottom{grid-template-columns:minmax(0,1fr)}#nxKpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ---------- Overhaul 34: full-scale audit — scaling/compatibility fixes ----------
+   Root causes found in the audit:
+   (1) #nxDash is a flex child of .dash-main with default order 0, while
+       .dash-top carries order 1 from the overhaul32 block — so the whole
+       Nexus grid rendered ABOVE the "Smart City Waste Intelligence"
+       header + bin search, pushing them to the foot of the dashboard.
+   (2) overflow-wrap:anywhere on card headings / KPI values shreds words
+       letter-by-letter whenever a column gets narrow ("For-eca-sti-ng").
+   (3) #nxBottom / #nxKpis used fixed repeat() counts with no minimum
+       card width, so at phone widths (or a desktop-site viewport, or a
+       cached older sheet) the bottom-row cards squished into slivers.
+   Fixes: explicit order for the header, break-word instead of anywhere,
+   and auto-fit grids whose columns can never be narrower than a readable
+   card — the grid itself, not a breakpoint guess, now guarantees it. */
+.dash-main>.dash-top{order:1}
+.dash-main>#nxDash{order:2}
+.dash-main>.ov{order:3}
+h1,h2,h3{overflow-wrap:break-word}
+.ov-chart h2,.dash-card h2,#view-dashboard .ov-chart h2,#view-dashboard .dash-card h2{overflow-wrap:break-word}
+.ov-kpi b,#nxKpis .ov-kpi,.dash-donut-centre{overflow-wrap:break-word}
+#nxDash{grid-template-columns:minmax(0,1fr) minmax(260px,340px)}
+#nxBottom{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+#nxBottom>*{min-width:0}
+#nxKpis{grid-template-columns:repeat(auto-fit,minmax(min(100%,168px),1fr))}
+.nx-metrics{grid-template-columns:repeat(auto-fit,minmax(min(100%,128px),1fr))}
+.kpis,#flowMetrics .kpis,#loopMetrics .kpis{grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))}
+.loop-gallery{grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr))}
+.sap-bins-row{grid-template-columns:repeat(auto-fit,minmax(min(100%,90px),1fr))}
+.ov-alert-list li{overflow-wrap:break-word}
+#nxRailBin,#nxRailInsight{min-width:0;overflow-wrap:break-word}
+@media(max-width:1100px){#nxDash{grid-template-columns:minmax(0,1fr)}#nxRail{position:static}}
+@media(max-width:760px){
+  #nxBottom{grid-template-columns:minmax(0,1fr)}
+  #nxKpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dash-top{flex-direction:column;align-items:stretch}
+  .dash-top-actions{width:100%}
+  .dash-search{flex:1}
+  .nx-side{width:min(232px,84vw)}
+}
+@media(max-width:400px){#nxKpis{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- Overhaul 34: info-icon streamlining ----------
+   Bulky explanatory text moves into a hidden .info-panel per section,
+   toggled by an ⓘ button at the section's upper right (in its header
+   row when it has one, absolute in the corner otherwise). Short,
+   operational text stays visible. Wired by wiInitInfo34() in app.js. */
+.has-info{position:relative}
+.info-corner{position:absolute;top:.7rem;right:.7rem;z-index:3;margin-left:0}
+.has-info>h1:first-of-type,.has-info>h2:first-of-type{padding-right:2.2rem}
+.dash-card-head .info-btn{margin-left:auto;flex-shrink:0}
+.info-panel{border:1px dashed #334155;border-radius:.6rem;padding:.7rem .9rem;margin:.6rem 0;background:rgba(69,200,255,.06)}
+.info-panel p{margin:.35rem 0}
+.info-panel p:first-child{margin-top:0}
+.info-panel p:last-child{margin-bottom:0}
