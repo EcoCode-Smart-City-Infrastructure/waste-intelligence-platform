@@ -1,190 +1,150 @@
 version: '3.8'
 
+# Waste Intelligence Network Operating System (WIN OS)
+# Production Docker Compose Configuration
+# 
+# Usage:
+#   Production: docker-compose -f docker-compose.yml up -d
+#   Development: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Services:
+#   - PostgreSQL with TimescaleDB and PostGIS
+#   - Redis Cache
+#   - MQTT Broker (Mosquitto)
+#   - WIN API (Flask/FastAPI)
+#   - AI Copilot Service (FastAPI)
+#   - Forecasting Service
+#   - Contamination Detection Service
+#   - NYC Open Data MCP Server
+#   - Prometheus Monitoring
+#   - Grafana Dashboards
+#   - MQTT to PostgreSQL Bridge
+
 services:
-  # NYC Open Data MCP Server
-  nyc-opendata-mcp:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: nyc-opendata-mcp
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    environment:
-      - NYC_OPENDATA_LOG_LEVEL=INFO
-      - MCP_ALLOWED_HOSTS=localhost:8000,127.0.0.1:8000,::1:8000
-      - SOCRATA_APP_TOKEN=${SOCRATA_APP_TOKEN:-}
-      - AIRNOW_API_KEY=${AIRNOW_API_KEY:-}
-      - MTA_API_KEY=${MTA_API_KEY:-}
-      - WASTE_INTEL_API_KEY=${WASTE_INTEL_API_KEY:-}
-    networks:
-      - waste-intel-network
-    depends_on:
-      - postgres
+  # ============================================================================
+  # CORE SERVICES
+  # ============================================================================
 
-  # Waste Intelligence API Server
-  waste-intel-api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    container_name: waste-intel-api
-    restart: unless-stopped
-    ports:
-      - "8001:8001"
-    environment:
-      - DB_URL=postgresql://timescale:${POSTGRES_PASSWORD:-password}@postgres:5432/wasteintel
-      - ML_URL=http://ml-service:8002
-      - CONTAMINATION_SERVICE_URL=http://contamination-service:8005
-      - KG_URL=http://kg-service:8003
-      - API_KEY=${WASTE_INTEL_API_KEY:-}
-      - REQUIRE_API_KEY=false
-      - DEBUG=false
-    networks:
-      - waste-intel-network
-    depends_on:
-      - postgres
-
-  # PostgreSQL/TimescaleDB Database
+  # PostgreSQL with TimescaleDB and PostGIS
   postgres:
-    image: timescale/timescaledb:latest-pg15
-    container_name: timescaledb
+    image: timescale/timescaledb:2.11.0-pg15
+    container_name: win-postgres
     restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_USER=timescale
+      - POSTGRES_USER=${POSTGRES_USER:-timescale}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
-      - POSTGRES_DB=wasteintel
+      - POSTGRES_DB=${POSTGRES_DB:-wasteintel}
+      - POSTGRES_HOST_AUTH_METHOD=md5
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./hub_layer/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./hub_layer/database/01_extensions_and_types.sql:/docker-entrypoint-initdb.d/01_extensions.sql:ro
+      - ./hub_layer/database/02_core_tables.sql:/docker-entrypoint-initdb.d/02_core.sql:ro
+      - ./hub_layer/database/03_operations_tables.sql:/docker-entrypoint-initdb.d/03_operations.sql:ro
+      - ./hub_layer/database/04_environmental_tables.sql:/docker-entrypoint-initdb.d/04_environmental.sql:ro
+      - ./hub_layer/database/05_intelligence_tables.sql:/docker-entrypoint-initdb.d/05_intelligence.sql:ro
     networks:
-      - waste-intel-network
+      - win-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U timescale -d wasteintel"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-timescale} -d ${POSTGRES_DB:-wasteintel}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
 
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: redis
+    container_name: win-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
     networks:
-      - waste-intel-network
+      - win-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
 
-  # Prometheus Monitoring
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    restart: unless-stopped
-    ports:
-      - "9090:9090"
-    volumes:
-      - prometheus_data:/prometheus
-    networks:
-      - waste-intel-network
+  # ============================================================================
+  # API SERVICES
+  # ============================================================================
 
-  # Grafana Dashboard
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana
-    networks:
-      - waste-intel-network
-    depends_on:
-      - prometheus
-
-  # MQTT Broker for IoT Sensors
-  mqtt:
-    image: eclipse-mosquitto:2
-    container_name: mqtt-broker
-    restart: unless-stopped
-    ports:
-      - "1883:1883"
-      - "9001:9001"
-    volumes:
-      - mqtt_data:/var/lib/mosquitto
-    networks:
-      - waste-intel-network
-
-  # MQTT Bridge: firmware telemetry -> Postgres
-  mqtt-bridge:
+  # WIN API (Main Application API)
+  waste-intel-api:
     build:
       context: .
-      dockerfile: devops/docker/mqtt-bridge.Dockerfile
-    container_name: mqtt-bridge
+      dockerfile: Dockerfile.api
+    container_name: win-api
     restart: unless-stopped
+    ports:
+      - "8001:8001"
     environment:
-      - MQTT_BROKER=mqtt
-      - MQTT_PORT=1883
-      - DATABASE_URL=postgresql://timescale:password@postgres:5432/wasteintel
+      - DB_URL=postgresql://${POSTGRES_USER:-timescale}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-wasteintel}
+      - REDIS_URL=redis://redis:6379/0
+      - ML_URL=http://ml-service:8002
+      - CONTAMINATION_SERVICE_URL=http://contamination-service:8005
+      - KG_URL=http://kg-service:8003
+      - API_KEY=${WASTE_INTEL_API_KEY:-}
+      - REQUIRE_API_KEY=${REQUIRE_API_KEY:-true}
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - JWT_ALGORITHM=HS256
+      - JWT_EXPIRE_MINUTES=15
+      - REFRESH_TOKEN_EXPIRE_DAYS=7
+      - LOG_LEVEL=${API_LOG_LEVEL:-INFO}
+      - DEBUG=${API_DEBUG:-false}
+      - SERVER_NAME=WIN API
+      - WORKERS=4
     networks:
-      - waste-intel-network
+      - win-network
     depends_on:
-      - mqtt
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
 
   # AI Copilot Service
-  # Contamination Inference Service (YOLOv11 litter-material model)
-  contamination-service:
-    build:
-      context: .
-      dockerfile: services/contamination/Dockerfile
-    container_name: contamination-service
-    restart: unless-stopped
-    ports:
-      - "8005:8005"
-    environment:
-      - MODEL_REPO=${CONTAMINATION_MODEL_REPO:-CatSat/yolov11-litter-materials}
-      - CONF_THRESHOLD=${CONTAMINATION_CONF_THRESHOLD:-0.25}
-    networks:
-      - waste-intel-network
-
-  # Forecasting Service (real statistical forecasting + anomaly detection)
-  ml-service:
-    build:
-      context: .
-      dockerfile: services/forecasting/Dockerfile
-    container_name: forecasting-service
-    restart: unless-stopped
-    ports:
-      - "8002:8002"
-    environment:
-      - DATABASE_URL=postgresql://timescale:${POSTGRES_PASSWORD:-password}@postgres:5432/wasteintel
-    networks:
-      - waste-intel-network
-    depends_on:
-      - postgres
-
   copilot-service:
     build:
       context: .
       dockerfile: copilot_service/Dockerfile
-    container_name: copilot-service
+    container_name: win-copilot
     restart: unless-stopped
     ports:
       - "8004:8004"
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      # Groq ("for now" provider): set GROQ_API in .env to the same value as
-      # the GROQ_API repo secret in Etienne0101-lab/OpenForge-Workbench-.
-      # When set, copilot_service uses Groq (llama-3.3-70b-versatile) and
-      # OpenRouter becomes the fallback. GROQ_API_KEY is accepted as an alias.
       - GROQ_API=${GROQ_API:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
@@ -197,28 +157,454 @@ services:
       - COPILOT_PORT=8004
       - COPILOT_HOST=0.0.0.0
       - COPILOT_API_KEY=${COPILOT_API_KEY:-}
-      - REQUIRE_API_KEY=false
-      - DEBUG=${DEBUG:-false}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - REQUIRE_API_KEY=${COPILOT_REQUIRE_API_KEY:-true}
+      - DEBUG=${COPILOT_DEBUG:-false}
+      - LOG_LEVEL=${COPILOT_LOG_LEVEL:-INFO}
+      - MAX_TOKENS=4096
+      - TEMPERATURE=0.7
     networks:
-      - waste-intel-network
+      - win-network
     depends_on:
-      - waste-intel-api
-      - nyc-opendata-mcp
+      waste-intel-api:
+        condition: service_healthy
+      nyc-opendata-mcp:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8004/health').raise_for_status()"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # ============================================================================
+  # INTELLIGENCE SERVICES
+  # ============================================================================
+
+  # Forecasting Service
+  ml-service:
+    build:
+      context: .
+      dockerfile: services/forecasting/Dockerfile
+    container_name: win-forecasting
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-timescale}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-wasteintel}
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=${ML_LOG_LEVEL:-INFO}
+      - DEBUG=${ML_DEBUG:-false}
+    networks:
+      - win-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # Contamination Detection Service (YOLOv11)
+  contamination-service:
+    build:
+      context: .
+      dockerfile: services/contamination/Dockerfile
+    container_name: win-contamination
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    environment:
+      - MODEL_REPO=${CONTAMINATION_MODEL_REPO:-CatSat/yolov11-litter-materials}
+      - CONF_THRESHOLD=${CONTAMINATION_CONF_THRESHOLD:-0.25}
+      - LOG_LEVEL=${CONTAMINATION_LOG_LEVEL:-INFO}
+      - DEBUG=${CONTAMINATION_DEBUG:-false}
+    networks:
+      - win-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # Knowledge Graph Service
+  kg-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.kg
+    container_name: win-kg
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-timescale}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-wasteintel}
+      - W2RKG_DATA=/app/cloud_platform/analytics/kg/data/w2rkg_nyc_sample.json
+      - LOG_LEVEL=${KG_LOG_LEVEL:-INFO}
+      - DEBUG=${KG_DEBUG:-false}
+    volumes:
+      - ./cloud_platform/analytics/kg/data:/app/cloud_platform/analytics/kg/data:ro
+    networks:
+      - win-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # ============================================================================
+  # DATA INGESTION
+  # ============================================================================
+
+  # MQTT Broker
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: win-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - mqtt_data:/var/lib/mosquitto
+      - ./devops/mqtt/config:/mosquitto/config:ro
+      - ./devops/mqtt/auth:/mosquitto/auth:ro
+    networks:
+      - win-network
+    healthcheck:
+      test: ["CMD", "mosquitto_ctrl", "dynsec", "get", "users"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # MQTT to PostgreSQL Bridge
+  mqtt-bridge:
+    build:
+      context: .
+      dockerfile: devops/docker/mqtt-bridge.Dockerfile
+    container_name: win-mqtt-bridge
+    restart: unless-stopped
+    environment:
+      - MQTT_BROKER=mqtt
+      - MQTT_PORT=1883
+      - MQTT_USERNAME=${MQTT_USERNAME:-}
+      - MQTT_PASSWORD=${MQTT_PASSWORD:-}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-timescale}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-wasteintel}
+      - LOG_LEVEL=${MQTT_BRIDGE_LOG_LEVEL:-INFO}
+      - BATCH_SIZE=100
+      - BATCH_TIMEOUT_SECONDS=30
+    networks:
+      - win-network
+    depends_on:
+      mqtt:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health').ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # ============================================================================
+  # EXTERNAL DATA
+  # ============================================================================
+
+  # NYC Open Data MCP Server
+  nyc-opendata-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: win-nyc-opendata
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - NYC_OPENDATA_LOG_LEVEL=${MCP_LOG_LEVEL:-INFO}
+      - MCP_ALLOWED_HOSTS=localhost:8000,127.0.0.1:8000,::1:8000
+      - SOCRATA_APP_TOKEN=${SOCRATA_APP_TOKEN:-}
+      - AIRNOW_API_KEY=${AIRNOW_API_KEY:-}
+      - MTA_API_KEY=${MTA_API_KEY:-}
+      - WASTE_INTEL_API_KEY=${WASTE_INTEL_API_KEY:-}
+    networks:
+      - win-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # ============================================================================
+  # MONITORING AND OBSERVABILITY
+  # ============================================================================
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: win-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./devops/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./devops/monitoring/alert.rules:/etc/prometheus/alert.rules:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.enable-lifecycle'
+    networks:
+      - win-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: win-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./devops/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./devops/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SECURITY_COOKIE_SECURE=true
+      - GF_SECURITY_COOKIE_SAMESITE=strict
+    networks:
+      - win-network
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # Node Exporter for host metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: win-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - win-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9100/metrics"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_PTRACE
+
+  # PostgreSQL Exporter
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: win-postgres-exporter
+    restart: unless-stopped
+    ports:
+      - "9187:9187"
+    environment:
+      - DATA_SOURCE_URI=postgresql://${POSTGRES_USER:-timescale}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-wasteintel}?sslmode=disable
+      - DATA_SOURCE_USER=${POSTGRES_USER:-timescale}
+      - DATA_SOURCE_PASSWORD=${POSTGRES_PASSWORD:-password}
+    networks:
+      - win-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9187/metrics"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # Redis Exporter
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: win-redis-exporter
+    restart: unless-stopped
+    ports:
+      - "9121:9121"
+    environment:
+      - REDIS_ADDR=redis:6379
+    networks:
+      - win-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9121/metrics"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # ============================================================================
+  # DASHBOARDS
+  # ============================================================================
+
+  # Streamlit Dashboard
+  streamlit-dashboard:
+    build:
+      context: .
+      dockerfile: cloud-platform/dashboards/streamlit/Dockerfile
+    container_name: win-streamlit
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-timescale}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-wasteintel}
+      - API_URL=http://waste-intel-api:8001
+      - SERVER_ADDRESS=0.0.0.0
+      - SERVER_PORT=8501
+    networks:
+      - win-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      waste-intel-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # ============================================================================
+  # BACKUP AND RECOVERY
+  # ============================================================================
+
+  # Database Backup Service
+  db-backup:
+    image: postgres:15-alpine
+    container_name: win-db-backup
+    restart: unless-stopped
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${POSTGRES_USER:-timescale}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-wasteintel}
+      - BACKUP_DIR=/backups
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 2 * * *}  # Daily at 2 AM
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
+    volumes:
+      - backup_data:/backups
+      - ./devops/backup/backup.sh:/backup.sh:ro
+    command: /backup.sh
+    networks:
+      - win-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+# ============================================================================
+# NETWORKS
+# ============================================================================
 
 networks:
-  waste-intel-network:
+  win-network:
     driver: bridge
+    attachable: true
+
+# ============================================================================
+# VOLUMES
+# ============================================================================
 
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
   prometheus_data:
+    driver: local
   grafana_data:
+    driver: local
   mqtt_data:
+    driver: local
+  backup_data:
+    driver: local

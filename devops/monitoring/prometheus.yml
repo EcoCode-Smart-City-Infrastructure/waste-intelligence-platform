@@ -1,15 +1,86 @@
+# Prometheus Configuration for WIN OS
+# Production-ready monitoring configuration
+
 global:
   scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    environment: ${PROMETHEUS_ENVIRONMENT:-production}
+    platform: win-os
+
+rule_files:
+  - '/etc/prometheus/alert.rules'
 
 scrape_configs:
-  - job_name: 'hub-api'
+  - job_name: 'prometheus'
     static_configs:
-      - targets: ['hub-api:5000']
+      - targets: ['localhost:9090']
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  - job_name: 'win-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['waste-intel-api:8001']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  - job_name: 'win-copilot'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['copilot-service:8004']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  - job_name: 'win-forecasting'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['ml-service:8002']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  - job_name: 'win-contamination'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['contamination-service:8005']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  - job_name: 'win-kg'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['kg-service:8003']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  - job_name: 'win-mcp'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['nyc-opendata-mcp:8000']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+    scrape_timeout: 10s
 
   - job_name: 'streamlit'
     static_configs:
-      - targets: ['streamlit:8501']
-
-  - job_name: 'mqtt'
-    static_configs:
-      - targets: ['mqtt:1883']
+      - targets: ['streamlit-dashboard:8501']
+    scrape_interval: 60s
+    scrape_timeout: 10s

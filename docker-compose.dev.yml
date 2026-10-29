@@ -1,0 +1,325 @@
+version: '3.8'
+
+# Development override for WIN OS
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+services:
+  # WIN API Service (Development)
+  waste-intel-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: waste-intel-api-dev
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - DB_URL=postgresql://timescale:${POSTGRES_PASSWORD:-password}@postgres:5432/wasteintel
+      - ML_URL=http://ml-service:8002
+      - CONTAMINATION_SERVICE_URL=http://contamination-service:8005
+      - KG_URL=http://kg-service:8003
+      - API_KEY=${WASTE_INTEL_API_KEY:-dev-api-key}
+      - REQUIRE_API_KEY=false
+      - DEBUG=true
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    volumes:
+      - ./hub_layer:/app/hub_layer:ro
+      - ./src:/app/src:ro
+      - ./scripts:/app/scripts:ro
+    networks:
+      - waste-intel-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # AI Copilot Service (Development)
+  copilot-service:
+    build:
+      context: .
+      dockerfile: copilot_service/Dockerfile
+    container_name: copilot-service-dev
+    restart: unless-stopped
+    ports:
+      - "8004:8004"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - GROQ_API=${GROQ_API:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openai/gpt-4o-mini}
+      - WASTE_INTEL_API_URL=http://waste-intel-api:8001
+      - MCP_SERVER_URL=http://nyc-opendata-mcp:8000
+      - KG_API_URL=http://kg-service:8003
+      - ML_API_URL=http://ml-service:8002
+      - COPILOT_PORT=8004
+      - COPILOT_HOST=0.0.0.0
+      - COPILOT_API_KEY=${COPILOT_API_KEY:-dev-copilot-key}
+      - REQUIRE_API_KEY=false
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./copilot_service:/app/copilot_service:ro
+      - ./src:/app/src:ro
+    networks:
+      - waste-intel-network
+    depends_on:
+      waste-intel-api:
+        condition: service_healthy
+      nyc-opendata-mcp:
+        condition: service_healthy
+
+  # Forecasting Service (Development)
+  ml-service:
+    build:
+      context: .
+      dockerfile: services/forecasting/Dockerfile
+    container_name: forecasting-service-dev
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=postgresql://timescale:${POSTGRES_PASSWORD:-password}@postgres:5432/wasteintel
+      - DEBUG=true
+    volumes:
+      - ./services/forecasting:/app/services/forecasting:ro
+      - ./cloud-platform/analytics:/app/cloud-platform/analytics:ro
+    networks:
+      - waste-intel-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Contamination Service (Development)
+  contamination-service:
+    build:
+      context: .
+      dockerfile: services/contamination/Dockerfile
+    container_name: contamination-service-dev
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    environment:
+      - MODEL_REPO=${CONTAMINATION_MODEL_REPO:-CatSat/yolov11-litter-materials}
+      - CONF_THRESHOLD=${CONTAMINATION_CONF_THRESHOLD:-0.25}
+      - DEBUG=true
+    volumes:
+      - ./services/contamination:/app/services/contamination:ro
+    networks:
+      - waste-intel-network
+
+  # PostgreSQL with enhanced development configuration
+  postgres:
+    image: timescale/timescaledb:2.11.0-pg15
+    container_name: timescaledb-dev
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=timescale
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=wasteintel
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./hub_layer/database/01_extensions_and_types.sql:/docker-entrypoint-initdb.d/01_extensions.sql:ro
+      - ./hub_layer/database/02_core_tables.sql:/docker-entrypoint-initdb.d/02_core.sql:ro
+      - ./hub_layer/database/03_operations_tables.sql:/docker-entrypoint-initdb.d/03_operations.sql:ro
+      - ./hub_layer/database/04_environmental_tables.sql:/docker-entrypoint-initdb.d/04_environmental.sql:ro
+      - ./hub_layer/database/05_intelligence_tables.sql:/docker-entrypoint-initdb.d/05_intelligence.sql:ro
+    networks:
+      - waste-intel-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U timescale -d wasteintel"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Redis with development persistence
+  redis:
+    image: redis:7-alpine
+    container_name: redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    command: redis-server --appendonly yes
+    networks:
+      - waste-intel-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # MQTT Broker for development
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: mqtt-broker-dev
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - mqtt_data_dev:/var/lib/mosquitto
+      - ./devops/mqtt/config:/mosquitto/config:ro
+      - ./devops/mqtt/auth:/mosquitto/auth:ro
+    networks:
+      - waste-intel-network
+    healthcheck:
+      test: ["CMD", "mosquitto_ctrl", "dynsec", "get", "users"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # MQTT Bridge with development logging
+  mqtt-bridge:
+    build:
+      context: .
+      dockerfile: devops/docker/mqtt-bridge.Dockerfile
+    container_name: mqtt-bridge-dev
+    restart: unless-stopped
+    environment:
+      - MQTT_BROKER=mqtt
+      - MQTT_PORT=1883
+      - DATABASE_URL=postgresql://timescale:password@postgres:5432/wasteintel
+      - LOG_LEVEL=DEBUG
+    networks:
+      - waste-intel-network
+    depends_on:
+      mqtt:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # Prometheus with development configuration
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-dev
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data_dev:/prometheus
+      - ./cloud-platform/dashboards/grafana/provisioning:/etc/prometheus:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - waste-intel-network
+
+  # Grafana with development dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data_dev:/var/lib/grafana
+      - ./cloud-platform/dashboards/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./cloud-platform/dashboards/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    networks:
+      - waste-intel-network
+    depends_on:
+      prometheus:
+        condition: service_healthy
+
+  # NYC Open Data MCP Server (Development)
+  nyc-opendata-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nyc-opendata-mcp-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - NYC_OPENDATA_LOG_LEVEL=DEBUG
+      - MCP_ALLOWED_HOSTS=localhost:8000,127.0.0.1:8000,::1:8000,0.0.0.0:8000
+      - SOCRATA_APP_TOKEN=${SOCRATA_APP_TOKEN:-}
+      - AIRNOW_API_KEY=${AIRNOW_API_KEY:-}
+      - MTA_API_KEY=${MTA_API_KEY:-}
+      - WASTE_INTEL_API_KEY=${WASTE_INTEL_API_KEY:-dev-api-key}
+    volumes:
+      - ./scripts:/app/scripts:ro
+    networks:
+      - waste-intel-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Streamlit Dashboard (Development)
+  streamlit-dashboard:
+    build:
+      context: .
+      dockerfile: cloud-platform/dashboards/streamlit/Dockerfile
+    container_name: streamlit-dashboard-dev
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - DATABASE_URL=postgresql://timescale:${POSTGRES_PASSWORD:-password}@postgres:5432/wasteintel
+      - API_URL=http://waste-intel-api:8001
+      - DEBUG=true
+    volumes:
+      - ./cloud-platform/dashboards/streamlit:/app:ro
+      - ./cloud-platform/analytics:/app/analytics:ro
+    networks:
+      - waste-intel-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      waste-intel-api:
+        condition: service_healthy
+
+  # pgAdmin for database management (Development only)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin-dev
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@win-os.local
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    volumes:
+      - pgadmin_data_dev:/var/lib/pgadmin
+    networks:
+      - waste-intel-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+networks:
+  waste-intel-network:
+    driver: bridge
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:
+  prometheus_data_dev:
+  grafana_data_dev:
+  mqtt_data_dev:
+  pgadmin_data_dev:

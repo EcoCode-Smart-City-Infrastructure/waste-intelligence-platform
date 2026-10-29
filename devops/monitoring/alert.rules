@@ -1,0 +1,391 @@
+# Prometheus Alert Rules for WIN OS
+# Production-ready alerting configuration
+
+groups:
+  - name: win-os-alerts
+    rules:
+
+    # ============================================================================
+    # SYSTEM ALERTS
+    # ============================================================================
+
+    # High CPU usage
+    - alert: HighCPUUsage
+      expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+      for: 5m
+      labels:
+        severity: critical
+        category: system
+      annotations:
+        summary: "High CPU usage on {{ $labels.instance }}"
+        description: "CPU usage is {{ $value }}% (above 90% threshold)"
+        impact: "System performance may be degraded"
+        action: "Investigate high CPU processes and consider scaling"
+
+    # High memory usage
+    - alert: HighMemoryUsage
+      expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
+      for: 5m
+      labels:
+        severity: warning
+        category: system
+      annotations:
+        summary: "High memory usage on {{ $labels.instance }}"
+        description: "Memory usage is {{ $value }}% (above 85% threshold)"
+        impact: "System may run out of memory"
+        action: "Check for memory leaks or increase available memory"
+
+    # Low disk space
+    - alert: LowDiskSpace
+      expr: node_filesystem_free_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} * 100 < 20
+      for: 5m
+      labels:
+        severity: critical
+        category: system
+      annotations:
+        summary: "Low disk space on {{ $labels.instance }}"
+        description: "Disk space is {{ $value }}% free (below 20% threshold)"
+        impact: "Applications may fail due to lack of disk space"
+        action: "Free up disk space or add more storage capacity"
+
+    # High disk I/O
+    - alert: HighDiskIO
+      expr: rate(node_disk_io_time_seconds_total[5m]) > 0.8
+      for: 5m
+      labels:
+        severity: warning
+        category: system
+      annotations:
+        summary: "High disk I/O on {{ $labels.instance }}"
+        description: "Disk I/O utilization is {{ $value }} (above 80% threshold)"
+        impact: "Disk operations may be slow"
+        action: "Investigate disk I/O patterns and optimize queries"
+
+    # ============================================================================
+    # DATABASE ALERTS
+    # ============================================================================
+
+    # PostgreSQL down
+    - alert: PostgreSQLDown
+      expr: up{job="postgres"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        category: database
+      annotations:
+        summary: "PostgreSQL database is down"
+        description: "PostgreSQL service on {{ $labels.instance }} is not responding"
+        impact: "All database-dependent services are affected"
+        action: "Restart PostgreSQL service and investigate root cause"
+
+    # PostgreSQL high connections
+    - alert: PostgreSQLHighConnections
+      expr: pg_stat_activity_count{datname="wasteintel"} > 100
+      for: 5m
+      labels:
+        severity: warning
+        category: database
+      annotations:
+        summary: "High PostgreSQL connection count"
+        description: "PostgreSQL has {{ $value }} active connections (above 100 threshold)"
+        impact: "Database performance may be degraded"
+        action: "Check for connection leaks or increase max_connections"
+
+    # PostgreSQL high query latency
+    - alert: PostgreSQLHighQueryLatency
+      expr: rate(pg_stat_activity_max_tx_duration_seconds[5m]) > 1
+      for: 5m
+      labels:
+        severity: warning
+        category: database
+      annotations:
+        summary: "High PostgreSQL query latency"
+        description: "Maximum query duration is {{ $value }} seconds (above 1s threshold)"
+        impact: "Database queries are slow"
+        action: "Investigate slow queries and optimize with indexes"
+
+    # PostgreSQL disk usage
+    - alert: PostgreSQLDiskUsage
+      expr: pg_database_size_bytes{datname="wasteintel"} / pg_settings_max_files_per_process * pg_settings_block_size > 10737418240  # 10GB
+      for: 5m
+      labels:
+        severity: warning
+        category: database
+      annotations:
+        summary: "PostgreSQL database size growing"
+        description: "Database size is {{ $value }} bytes (above 10GB)"
+        impact: "Database may run out of space"
+        action: "Consider database cleanup or archiving old data"
+
+    # Redis down
+    - alert: RedisDown
+      expr: up{job="redis"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        category: database
+      annotations:
+        summary: "Redis cache is down"
+        description: "Redis service on {{ $labels.instance }} is not responding"
+        impact: "Cache-dependent operations are affected"
+        action: "Restart Redis service and investigate root cause"
+
+    # Redis high memory usage
+    - alert: RedisHighMemoryUsage
+      expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 80
+      for: 5m
+      labels:
+        severity: warning
+        category: database
+      annotations:
+        summary: "High Redis memory usage"
+        description: "Redis memory usage is {{ $value }}% (above 80% threshold)"
+        impact: "Redis may start evicting keys"
+        action: "Increase Redis memory limit or optimize cache usage"
+
+    # ============================================================================
+    # API SERVICE ALERTS
+    # ============================================================================
+
+    # WIN API down
+    - alert: WINAPIDown
+      expr: up{job="win-api"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        category: service
+      annotations:
+        summary: "WIN API service is down"
+        description: "WIN API service on {{ $labels.instance }} is not responding"
+        impact: "API requests are failing"
+        action: "Restart WIN API service and investigate logs"
+
+    # WIN API high latency
+    - alert: WINAPIHighLatency
+      expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="win-api"}[5m])) by (le)) > 1
+      for: 5m
+      labels:
+        severity: warning
+        category: service
+      annotations:
+        summary: "High WIN API latency"
+        description: "95th percentile latency is {{ $value }} seconds (above 1s threshold)"
+        impact: "API responses are slow"
+        action: "Investigate slow endpoints and optimize performance"
+
+    # WIN API high error rate
+    - alert: WINAPIHighErrorRate
+      expr: rate(http_requests_total{job="win-api", status=~"5.."}[5m]) / rate(http_requests_total{job="win-api"}[5m]) > 0.1
+      for: 5m
+      labels:
+        severity: critical
+        category: service
+      annotations:
+        summary: "High WIN API error rate"
+        description: "Error rate is {{ $value }} (above 10% threshold)"
+        impact: "Many API requests are failing"
+        action: "Investigate API errors and check service health"
+
+    # AI Copilot down
+    - alert: CopilotDown
+      expr: up{job="win-copilot"} == 0
+      for: 1m
+      labels:
+        severity: warning
+        category: service
+      annotations:
+        summary: "AI Copilot service is down"
+        description: "AI Copilot service on {{ $labels.instance }} is not responding"
+        impact: "AI queries are not available"
+        action: "Restart Copilot service and check LLM provider connectivity"
+
+    # Forecasting service down
+    - alert: ForecastingDown
+      expr: up{job="win-forecasting"} == 0
+      for: 1m
+      labels:
+        severity: warning
+        category: service
+      annotations:
+        summary: "Forecasting service is down"
+        description: "Forecasting service on {{ $labels.instance }} is not responding"
+        impact: "Forecasting capabilities are not available"
+        action: "Restart Forecasting service and check dependencies"
+
+    # Contamination service down
+    - alert: ContaminationDown
+      expr: up{job="win-contamination"} == 0
+      for: 1m
+      labels:
+        severity: warning
+        category: service
+      annotations:
+        summary: "Contamination detection service is down"
+        description: "Contamination detection service on {{ $labels.instance }} is not responding"
+        impact: "Contamination detection is not available"
+        action: "Restart Contamination service and check GPU availability"
+
+    # ============================================================================
+    # MQTT ALERTS
+    # ============================================================================
+
+    # MQTT broker down
+    - alert: MQTTDown
+      expr: up{job="mqtt"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        category: messaging
+      annotations:
+        summary: "MQTT broker is down"
+        description: "MQTT broker on {{ $labels.instance }} is not responding"
+        impact: "Telemetry data ingestion is affected"
+        action: "Restart MQTT broker service"
+
+    # MQTT high message rate
+    - alert: MQTTHighMessageRate
+      expr: rate(mqtt_messages_received_total[5m]) > 1000
+      for: 5m
+      labels:
+        severity: info
+        category: messaging
+      annotations:
+        summary: "High MQTT message rate"
+        description: "MQTT message rate is {{ $value }} messages/second (above 1000 threshold)"
+        impact: "High telemetry volume"
+        action: "Monitor for sustained high volume"
+
+    # ============================================================================
+    # MONITORING ALERTS
+    # ============================================================================
+
+    # Prometheus down
+    - alert: PrometheusDown
+      expr: up{job="prometheus"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        category: monitoring
+      annotations:
+        summary: "Prometheus is down"
+        description: "Prometheus service on {{ $labels.instance }} is not responding"
+        impact: "Monitoring and alerting are not working"
+        action: "Restart Prometheus service immediately"
+
+    # Prometheus high scrape errors
+    - alert: PrometheusHighScrapeErrors
+      expr: rate(prometheus_target_scrape_errors_total[5m]) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+        category: monitoring
+      annotations:
+        summary: "High Prometheus scrape errors"
+        description: "Scrape error rate is {{ $value }} errors/second"
+        impact: "Some metrics may not be collected"
+        action: "Check scrape targets and network connectivity"
+
+    # Grafana down
+    - alert: GrafanaDown
+      expr: up{job="win-grafana"} == 0
+      for: 1m
+      labels:
+        severity: warning
+        category: monitoring
+      annotations:
+        summary: "Grafana is down"
+        description: "Grafana service on {{ $labels.instance }} is not responding"
+        impact: "Dashboards are not accessible"
+        action: "Restart Grafana service"
+
+    # ============================================================================
+    # BUSINESS ALERTS
+    # ============================================================================
+
+    # High data ingestion failure rate
+    - alert: HighIngestionFailureRate
+      expr: rate(ingestion_jobs_failed_total[5m]) / rate(ingestion_jobs_total[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+        category: business
+      annotations:
+        summary: "High data ingestion failure rate"
+        description: "Ingestion failure rate is {{ $value }} (above 5% threshold)"
+        impact: "Data may be missing from the system"
+        action: "Investigate ingestion failures and check data sources"
+
+    # Data freshness alert
+    - alert: DataFreshnessAlert
+      expr: (time() - max(telemetry_reported_at_timestamp)) > 3600  # 1 hour
+      for: 5m
+      labels:
+        severity: warning
+        category: business
+      annotations:
+        summary: "Telemetry data is stale"
+        description: "No telemetry data received for {{ $value }} seconds (above 1 hour threshold)"
+        impact: "Real-time data may be outdated"
+        action: "Check MQTT connectivity and sensor status"
+
+    # High contamination rate
+    - alert: HighContaminationRate
+      expr: rate(contamination_observations_total{severity="severe"}[5m]) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+        category: business
+      annotations:
+        summary: "High severe contamination rate"
+        description: "Severe contamination rate is {{ $value }} observations/minute"
+        impact: "Waste quality may be degraded"
+        action: "Investigate contamination sources and notify operations"
+
+    # Facility capacity warning
+    - alert: FacilityCapacityWarning
+      expr: facilities_current_load_kg / facilities_capacity_kg > 0.9
+      for: 5m
+      labels:
+        severity: warning
+        category: business
+      annotations:
+        summary: "Facility near capacity"
+        description: "Facility {{ $labels.facility_id }} is at {{ $value }}% capacity (above 90% threshold)"
+        impact: "Facility may not be able to accept more waste"
+        action: "Notify facility manager and plan for capacity expansion"
+
+    # Route completion delay
+    - alert: RouteCompletionDelay
+      expr: (routes_actual_end_timestamp - routes_scheduled_end_timestamp) > 3600  # 1 hour
+      for: 5m
+      labels:
+        severity: warning
+        category: business
+      annotations:
+        summary: "Route completion delayed"
+        description: "Route {{ $labels.route_id }} is delayed by {{ $value }} seconds (above 1 hour threshold)"
+        impact: "Collection schedule is behind"
+        action: "Investigate route delays and notify dispatch"
+
+  - name: win-os-recording-rules
+    rules:
+
+    # Record database connection count
+    - record: job:postgres_connections:max
+      expr: max(pg_stat_activity_count{datname="wasteintel"})
+
+    # Record API request rate
+    - record: job:win_api_request_rate:5m
+      expr: rate(http_requests_total{job="win-api"}[5m])
+
+    # Record API error rate
+    - record: job:win_api_error_rate:5m
+      expr: rate(http_requests_total{job="win-api", status=~"5.."}[5m])
+
+    # Record telemetry message rate
+    - record: job:telemetry_message_rate:5m
+      expr: rate(telemetry_count[5m])
+
+    # Record data ingestion rate
+    - record: job:ingestion_rate:5m
+      expr: rate(ingestion_jobs_total[5m])
