@@ -636,3 +636,89 @@ h1,h2,h3{overflow-wrap:break-word}
 .info-panel p{margin:.35rem 0}
 .info-panel p:first-child{margin-top:0}
 .info-panel p:last-child{margin-bottom:0}
+
+/* ---------- Overhaul 35: deep geometry audit — the real squish, found ----------
+   A real-browser (Chromium) geometry audit at 9 widths x 12 views found
+   what text-based checks missed:
+   (1) THE dashboard bug: the Waste Composition card moved into #nxBottom
+       kept its old .dash-span4 class. At <=900px another rule turns that
+       into grid-column:span 12, so the card created 11 implicit grid
+       tracks inside the bottom row and its siblings (Routes, Forecasting,
+       Sustainability, Alerts) were auto-placed into those tracks at
+       34-87px wide — at EVERY width, desktop included. Fixed in app.js
+       (span classes stripped from moved cards) and defended here.
+   (2) Min-content propagation: grids declared as plain 1fr/2fr size
+       their tracks by content min-width, so a nowrap table (Bins fleet,
+       607px) or a long unbreakable row forced whole views wider than
+       the phone. Every grid template below uses minmax(0,...) and
+       children get min-width:0, so wide content scrolls inside its own
+       wrapper instead of stretching the page.
+   (3) The phone top bar totalled 537px of non-shrinking children on a
+       390px screen: Sign in was half cut and Sign out fully off-screen,
+       and the document scrolled sideways. The bar now wraps at <=640px.
+   (4) Assorted fixed sizes that defeated the phone rules: inline
+       min-widths on two inputs, the KG ring segments spilling past the
+       screen edge, inline heights on the network map / twin wrap, and
+       fixed 96px/110px columns inside bar rows. */
+#nxBottom>*,#nxRail>*,#nxTools>*,#nxCenter>*{min-width:0}
+#nxBottom>*{grid-column:auto!important}
+#nxCenter,#nxTools,#nxRail{grid-template-columns:minmax(0,1fr)}
+#nxDash{min-width:0}
+.grid2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.grid2>*{min-width:0}
+.sap-ad-grid{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.sap-ad-grid>*{min-width:0}
+.kg-flow-wrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.kg-flow-wrap>*{min-width:0}
+.dash-shell{grid-template-columns:minmax(0,190px) minmax(0,1fr)}
+.kpis>div{min-width:0}
+.card{min-width:0}
+.tablewrap,.sap-tablewrap{max-width:100%;min-width:0}
+.ov-bar-row{grid-template-columns:minmax(0,88px) minmax(0,1fr) minmax(0,60px)}
+.dash-row{grid-template-columns:minmax(0,100px) minmax(0,1fr) minmax(0,52px)}
+.ov-bar-row .bar,.dash-row .bar{min-width:0}
+.ov-bar-row>span,.dash-row>span{min-width:0;overflow-wrap:break-word}
+.controls label,.form label{min-width:0;max-width:100%}
+.controls input,.controls select,.form input,.form select,.sap-ad-filters select{max-width:100%}
+input[type="file"]{max-width:100%}
+#askInput,#twinFeedUrl{min-width:0!important;max-width:100%}
+.info-btn{width:34px;height:34px;min-width:34px}
+@media(max-width:900px){
+  .grid2,.sap-ad-grid,.kg-flow-wrap{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:640px){
+  .top{flex-wrap:wrap;row-gap:.4rem}
+  #cmdkBtn{margin-left:auto}
+  .kg-ring{width:min(280px,74vw);height:min(280px,74vw)}
+  .kg-ring-hub{width:104px;height:104px}
+  #netMap{height:340px!important}
+  #twinCanvasWrap{min-height:300px!important}
+}
+
+/* ---------- Overhaul 35b: deterministic dashboard grids via container queries ----------
+   The auto-fit/min() grids from overhaul34 resolve inconsistently across
+   widths (measured 213px columns at 1280px, mixed spans at 390px) because
+   the percentage inside minmax() does not resolve against the actual
+   centre column. The centre column is now a query container, so the KPI
+   row and bottom row respond to the space they ACTUALLY have:
+   centre <=600px: bottom cards stack, KPIs 2-up (1-up under 420px);
+   601-940px: bottom 2-up, KPIs 3-up; >=941px: bottom 3-up, KPIs 5-up.
+   Every track is minmax(0,1fr), so no card can be squeezed below its
+   share or stretch the page. The auto-fit rules remain as the fallback
+   for browsers without container queries. */
+#nxCenter{container-type:inline-size}
+@container (max-width:600px){
+  #nxBottom{grid-template-columns:minmax(0,1fr)}
+  #nxKpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@container (max-width:360px){
+  #nxKpis{grid-template-columns:minmax(0,1fr)}
+}
+@container (min-width:601px) and (max-width:940px){
+  #nxBottom{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #nxKpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@container (min-width:941px){
+  #nxBottom{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #nxKpis{grid-template-columns:repeat(5,minmax(0,1fr))}
+}

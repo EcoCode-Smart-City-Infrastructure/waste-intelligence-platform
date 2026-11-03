@@ -1,5 +1,5 @@
 
-(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul34 parsed';
+(function(){const jb=document.getElementById('jsBuild'); if(jb) jb.textContent='HTML + app.js overhaul35 parsed';
 window.addEventListener('error',e=>{const j=document.getElementById('jsBuild'); if(j) j.textContent+=' · ERROR: '+(e.message||'script error');});})();
 /* Waste Intelligence web app — zero-build, no keys, runs on GitHub Pages.
    Sources are labelled in every view. Demo fleet/history are generated in
@@ -1542,7 +1542,7 @@ function wiInitNexus(){
   routesCard.innerHTML='<div class="dash-card-head"><h2>Collection Routes</h2></div><div id="nxRoutesList"></div><div id="nxRouteFormWrap"></div><p><a class="btn" href="#network">View all routes →</a></p>';
   bottom.appendChild(routesCard);
   const donutCard=$('#dashDonutSvg')?.closest('section');
-  if(donutCard){ const h=donutCard.querySelector('h2'); if(h) h.textContent='Waste Composition'; bottom.appendChild(donutCard); }
+  if(donutCard){ donutCard.classList.remove('dash-span4','dash-span6'); const h=donutCard.querySelector('h2'); if(h) h.textContent='Waste Composition'; bottom.appendChild(donutCard); }
   const trendSec=$('#ovTrendSvg')?.closest('section');
   if(trendSec){ const h=trendSec.querySelector('h2'); if(h) h.textContent='Forecasting'; bottom.appendChild(trendSec); }
   const sustainCard=document.createElement('section'); sustainCard.className='dash-card'; sustainCard.id='nxSustainCard';
@@ -1584,6 +1584,7 @@ function wiInitNexus(){
     const binsH1=binsSec.querySelector('h1');
     const fleetCard=$('#dashBoroughBars')?.closest('section');
     const urgentCard=$('#urgentList')?.closest('section');
+    [fleetCard,urgentCard].forEach(c=>{ if(c) c.classList.remove('dash-span4','dash-span6'); });
     if(binsH1 && fleetCard){ binsH1.insertAdjacentElement('afterend', fleetCard); if(urgentCard) fleetCard.insertAdjacentElement('afterend', urgentCard); }
   }
   const fcSec=document.getElementById('view-forecast');
