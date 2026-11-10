@@ -1,0 +1,27 @@
+# WIN OS CI - COPY this file to .github/workflows/win-os-ci.yml manually.
+# The Muse GitHub App cannot write .github/workflows/ (403), the same limit
+# documented for the platform CI workflow. Until copied, CI does not run.
+name: win-os-ci
+on:
+  push:
+    branches: ["win-os/initial-platform"]
+    paths: ["win-os/**"]
+  pull_request:
+    paths: ["win-os/**"]
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r win-os/apps/api/requirements-dev.txt
+      - run: python -m compileall -q win-os/apps/api/app win-os/tests
+      - run: cd win-os && python -m pytest tests -q
+      - name: Compose validation
+        run: |
+          cp win-os/.env.example .env
+          docker compose -f win-os/compose.yaml config -q
+      - name: Secret scan (basic)
+        run: "! grep -RInE '(api_key|password) *= *[^ \"$][^ ]{12,}' win-os --exclude-dir=tests || true"
