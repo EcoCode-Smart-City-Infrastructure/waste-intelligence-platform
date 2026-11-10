@@ -18,7 +18,8 @@ logging.basicConfig(level=logging.INFO,
                     format='{"level":"%(levelname)s","logger":"%(name)s","msg":"%(message)s"}')
 log = logging.getLogger("win-os-api")
 
-def create_app(database_url: str | None = None) -> FastAPI:
+def create_app(database_url: str | None = None,
+               rate_limit_per_min: int | None = None) -> FastAPI:
     settings = get_settings()
     validate_production(settings, auth_configured())
     db_mod.init_db(database_url or settings.database_url)
@@ -32,6 +33,31 @@ def create_app(database_url: str | None = None) -> FastAPI:
                        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
                        allow_headers=["Content-Type", "X-API-Key", "Idempotency-Key",
                                       "X-Correlation-ID"])
+
+    import os as _os, time as _time
+    _rate_limit = rate_limit_per_min if rate_limit_per_min is not None else int(
+        _os.environ.get("WIN_RATE_LIMIT_PER_MIN", "600"))
+    _hits: dict = {}
+
+    @app.middleware("http")
+    async def security_and_rate_limit(request: Request, call_next):
+        if request.url.path.startswith("/api/v1") and _rate_limit > 0:
+            key = request.headers.get("X-API-Key", request.client.host if request.client else "anon")
+            window = int(_time.time() // 60)
+            bucket = (key, window)
+            _hits[bucket] = _hits.get(bucket, 0) + 1
+            if _hits[bucket] > _rate_limit:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=429, content={"detail": {
+                    "error": "rate_limited",
+                    "message": f"More than {_rate_limit} requests per minute for this key."}})
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        if request.url.path.startswith("/api"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.middleware("http")
     async def correlation(request: Request, call_next):

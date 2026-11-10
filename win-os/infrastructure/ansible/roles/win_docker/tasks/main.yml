@@ -6,13 +6,16 @@
     state: present
     update_cache: true
     cache_valid_time: 3600
+- name: Check for the Docker GPG key
+  ansible.builtin.stat:
+    path: /etc/apt/keyrings/docker.asc
+  register: win_docker_key
 - name: Add Docker GPG key
   ansible.builtin.get_url:
     url: https://download.docker.com/linux/ubuntu/gpg
     dest: /etc/apt/keyrings/docker.asc
     mode: "0644"
-  args:
-    creates: /etc/apt/keyrings/docker.asc
+  when: not win_docker_key.stat.exists
 - name: Add Docker apt repository
   ansible.builtin.apt_repository:
     repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
@@ -22,11 +25,17 @@
     name: [docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin]
     state: present
     update_cache: true
+- name: Detect a live systemd runtime
+  ansible.builtin.stat:
+    path: /run/systemd/system
+  register: win_systemd_live
+
 - name: Enable Docker
   ansible.builtin.systemd:
     name: docker
     enabled: true
     state: started
+  when: win_systemd_live.stat.exists
 - name: Configure Docker log rotation
   ansible.builtin.copy:
     dest: /etc/docker/daemon.json

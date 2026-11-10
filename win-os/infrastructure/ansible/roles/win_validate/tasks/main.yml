@@ -10,17 +10,29 @@
     that:
       - win_target_confirm == inventory_hostname
     fail_msg: "Refusing to provision an unidentified host. Set win_target_confirm to this inventory hostname."
+- name: Install base packages
+  ansible.builtin.apt:
+    name: [ca-certificates, curl, git, jq, unattended-upgrades, systemd-timesyncd]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+- name: Detect a live systemd runtime
+  ansible.builtin.stat:
+    path: /run/systemd/system
+  register: win_systemd_live
 - name: Ensure time synchronisation is active
   ansible.builtin.systemd:
     name: systemd-timesyncd
     enabled: true
     state: started
-- name: Install base packages
-  ansible.builtin.apt:
-    name: [ca-certificates, curl, git, jq, unattended-upgrades]
-    state: present
-    update_cache: true
-    cache_valid_time: 3600
+  when: win_systemd_live.stat.exists
+  # systemd-timesyncd is installed by the base-packages task above, so the
+  # unit exists on real runs. In --check mode on a minimal host the unit may
+  # not exist yet; don't fail the dry run for that alone.
+  ignore_errors: "{{ ansible_check_mode }}"
+  # Guarded on a LIVE systemd (/run/systemd/system), not the configured
+  # service manager: sandboxes/containers can report systemd while units
+  # cannot actually be managed there. On real Ubuntu Server this runs fully.
 - name: Enable unattended security upgrades
   ansible.builtin.copy:
     dest: /etc/apt/apt.conf.d/20auto-upgrades

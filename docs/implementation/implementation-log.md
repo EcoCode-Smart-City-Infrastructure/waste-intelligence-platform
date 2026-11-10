@@ -34,3 +34,39 @@
   Compose startup, Alembic against live PostGIS, Ansible against a real
   host, restore test. Each is scripted and listed as the next verification
   step - none is claimed done.
+
+## 2026-11-10 - v0.2: all remaining phases built out (win-os/initial-platform)
+
+- Phase 6 (operations): vehicles/fleets, waste streams, recovery pathways
+  (references validated; unknown diversion stays unavailable), environmental
+  accounting (WIN-ENV-ACCT-1.0, formula stored per record, totals separated
+  by data_status), data-quality summary endpoint.
+- Phase 9 (edge/simulation): device registry, telemetry batch ingestion with
+  store-and-forward idempotency, MQTT bridge with SQLite offline buffer,
+  diversion scenarios labelled simulated and excluded from env totals.
+- Phase 4/8: win-api-client.js for the existing web app (honest unavailable
+  states, no silent demo fallback), Control Center /system/jobs, seed tool
+  (refuses production), verify-deployment.sh.
+- Phase 10 (hardening): security headers, per-key rate limiting (429),
+  systemd unit, nginx TLS proxy template, WIN backup script
+  (pg_dump + sha256 + retention guard).
+- Migrations: 0002 (operations/edge tables), 0003 (PostGIS geom sync
+  trigger - added after field verification showed geom stayed NULL).
+
+### Verification actually executed on an Ubuntu 24.04 host (this environment)
+- pytest: 30/30 passing (SQLite-backed suites v0.1 + v0.2 + edge buffer).
+- PostgreSQL 16.15 + PostGIS 3.4 (apt-installed): Alembic upgrade head
+  applied 0001-0003; 17 application tables; GiST geom indexes present;
+  geom trigger verified (insert with lat/lon produced POINT geometry);
+  PostGIS proximity query returned correct distance.
+- WIN API run against that Postgres: verify-deployment.sh 6/6 PASS.
+- Backup/restore: backup-win-os.sh produced a checksummed dump; pg_restore
+  into a second database restored all rows (one cosmetic pg_restore comment
+  warning about extension ownership). Restore test: PASSED.
+- Compose: `docker compose config` validated for all four profiles. Docker
+  daemon was started in the sandbox, but image pulls from Docker Hub timed
+  out (sandbox network), so a full `compose up` remains unverified here.
+- Ansible: syntax check passed; check-mode run against localhost (real
+  Ubuntu 24.04) passed validation assertions and found two real role bugs,
+  both fixed (invalid get_url 'creates' parameter; systemd-timesyncd now
+  installed by the role before the service task, with a live-systemd guard).

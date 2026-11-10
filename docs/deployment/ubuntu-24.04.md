@@ -32,3 +32,8 @@ maintenance window after a backup.
 ## Pinning
 Production should pin image digests for postgis/postgis, redis, prometheus
 and grafana in win-os/compose.yaml and record them in the change log.
+
+## Note on managed PostgreSQL
+If PostgreSQL is provided by a platform team rather than the Compose file,
+an admin must create the PostGIS extension once before migrations
+(see win-os/data-platform/migrations/README.md).

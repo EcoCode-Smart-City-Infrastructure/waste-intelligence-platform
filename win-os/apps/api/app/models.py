@@ -136,3 +136,95 @@ class AuditEvent(Base):
     entity: Mapped[str] = mapped_column(String(80), nullable=False)
     entity_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Vehicle(Base, ProvenanceMixin):
+    __tablename__ = "vehicles"
+    __table_args__ = (UniqueConstraint("org_id", "source_record_id",
+                                       name="uq_vehicle_org_source"),)
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    org_id: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    vehicle_type: Mapped[str] = mapped_column(String(60), default="collection_truck")
+    # available | in_route | in_maintenance | out_of_service | offline | retired
+    status: Mapped[str] = mapped_column(String(40), default="available")
+    capacity_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fuel_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    fleet_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+class WasteStream(Base, ProvenanceMixin):
+    __tablename__ = "waste_streams"
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    org_id: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    category: Mapped[str] = mapped_column(String(60), default="mixed")
+    material: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+class RecoveryPathway(Base, ProvenanceMixin):
+    __tablename__ = "recovery_pathways"
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    org_id: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    waste_stream_id: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    facility_id: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    # reuse | recycling | composting | anaerobic_digestion | energy_recovery | landfill
+    pathway_type: Mapped[str] = mapped_column(String(60), default="recycling")
+    # NULL = actual recovery performance is unknown; never displayed as a rate.
+    diversion_rate_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+class EnvironmentalRecord(Base):
+    """A calculated estimate, always stored with its formula and method.
+    data_status is 'derived' for calculations and 'simulated' for scenarios;
+    measured inputs stay on their source records."""
+    __tablename__ = "environmental_records"
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    org_id: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    material: Mapped[str] = mapped_column(String(80), nullable=False)
+    pathway_type: Mapped[str] = mapped_column(String(60), nullable=False)
+    quantity_kg: Mapped[float] = mapped_column(Float, nullable=False)
+    co2e_kg: Mapped[float] = mapped_column(Float, nullable=False)
+    formula: Mapped[str] = mapped_column(Text, nullable=False)
+    methodology_version: Mapped[str] = mapped_column(String(40), default="WIN-ENV-ACCT-1.0")
+    assumptions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    data_status: Mapped[DataStatus] = mapped_column(Enum(DataStatus), default=DataStatus.derived)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+class Device(Base):
+    __tablename__ = "devices"
+    __table_args__ = (UniqueConstraint("org_id", "device_id", name="uq_device_org"),)
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    org_id: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    device_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    asset_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    firmware_version: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+class TelemetryEvent(Base):
+    """Edge telemetry. client_event_id makes offline store-and-forward
+    replays idempotent. A device that has never reported has no events and
+    its readings are 'unavailable' - never zero."""
+    __tablename__ = "telemetry_events"
+    __table_args__ = (UniqueConstraint("org_id", "device_id", "client_event_id",
+                                       name="uq_telemetry_idem"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    device_id: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    client_event_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    buffered_offline: Mapped[bool] = mapped_column(default=False)
+    fill_level_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
+    weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    data_status: Mapped[DataStatus] = mapped_column(Enum(DataStatus), default=DataStatus.observed)
+
+class Scenario(Base):
+    """Digital-twin / simulation run. Outputs are data_status=simulated and
+    are never merged into observed or derived totals."""
+    __tablename__ = "scenarios"
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    org_id: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    params_json: Mapped[str] = mapped_column(Text, default="{}")
+    results_json: Mapped[str] = mapped_column(Text, default="{}")
+    data_status: Mapped[DataStatus] = mapped_column(Enum(DataStatus), default=DataStatus.simulated)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

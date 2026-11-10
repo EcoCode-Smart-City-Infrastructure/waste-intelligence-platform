@@ -7,7 +7,7 @@ from dataclasses import dataclass
 class Settings:
     environment: str = os.environ.get("WIN_ENVIRONMENT", "development")
     profile: str = os.environ.get("WIN_PROFILE", "core")
-    version: str = "0.1.0"
+    version: str = "0.2.0"
     database_url: str = os.environ.get(
         "WIN_DATABASE_URL", "sqlite:///./win-os.db")
     cors_origins: tuple = tuple(

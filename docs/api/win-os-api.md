@@ -23,3 +23,20 @@ permission-checked and organization-scoped on the server.
 
 Errors are consistent JSON: {"detail": {"error": ..., "message": ...}}.
 Lists support limit/offset pagination. Responses carry X-Correlation-ID.
+
+## v0.2 additions
+
+| Route | Permission | Notes |
+| --- | --- | --- |
+| POST/GET /api/v1/vehicles | write / read | fleet filter via ?fleet= |
+| POST/GET /api/v1/waste-streams | write / read | |
+| POST/GET /api/v1/recovery-pathways | write / read | stream + facility must exist in your org; unknown diversion = unavailable |
+| POST /api/v1/environmental/records, GET /environmental/summary | write / read | WIN-ENV-ACCT-1.0 factors; formula stored; totals split by data_status |
+| GET /api/v1/data-quality/summary | read | records by data_status + per-source ingestion freshness/quarantine |
+| POST/GET /api/v1/devices | write / read | never-reported device = telemetry unavailable |
+| POST/GET /api/v1/telemetry/events | ingest / read | batch, store-and-forward idempotent; unregistered devices quarantined |
+| POST/GET /api/v1/simulations | analyse / read | diversion scenarios; results are data_status=simulated |
+| GET /api/v1/system/jobs | admin | ingestion + forecast jobs, telemetry count, device reporting state |
+
+All /api responses carry security headers; /api/v1 is rate-limited per API
+key (default 600/min, WIN_RATE_LIMIT_PER_MIN) with 429 on excess.

@@ -8,14 +8,18 @@ import json, uuid
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session
+from . import accounting
 from . import copilot as copilot_mod
 from . import intelligence
 from .db import get_db
 from .ingestion import ingest_assets
-from .models import (Asset, AuditEvent, CollectionEvent, Facility, ForecastRun,
-                     IngestionJob, RoutePlan)
-from .schemas import (AnomalyIn, AssetIn, CollectionIn, CsvIngestIn, FacilityIn,
-                      ForecastIn, RoutePlanIn)
+from .models import (Asset, AuditEvent, CollectionEvent, Device, EnvironmentalRecord,
+                     Facility, ForecastRun, IngestionJob, RecoveryPathway, RoutePlan,
+                     Scenario, TelemetryEvent, Vehicle, WasteStream)
+from .schemas import (AnomalyIn, AssetIn, CollectionIn, CsvIngestIn, DeviceIn,
+                      EnvironmentalIn, FacilityIn, ForecastIn, RecoveryPathwayIn,
+                      RoutePlanIn, ScenarioIn, TelemetryBatchIn, VehicleIn,
+                      WasteStreamIn)
 from .security import Principal, authenticate, require
 
 router = APIRouter(prefix="/api/v1")
@@ -218,10 +222,275 @@ def system_status(db: Session = Depends(get_db),
         db_ok = False
     last_job = (db.query(IngestionJob).filter_by(org_id=p.org_id)
                 .order_by(IngestionJob.created_at.desc()).first())
-    return {"service": "win-os-api", "version": "0.1.0",
+    return {"service": "win-os-api", "version": "0.2.0",
             "database": "ok" if db_ok else "unavailable",
             "auth_configured": True,
             "copilot": copilot_mod.copilot_status(),
             "last_ingestion": ({"source": last_job.source, "status": last_job.status,
                                 "created_at": last_job.created_at} if last_job else None),
             "health": "healthy" if db_ok else "degraded"}
+
+
+# --- Vehicles and fleets (Phase 6) -----------------------------------------
+@router.post("/vehicles", status_code=201)
+def create_vehicle(body: VehicleIn, db: Session = Depends(get_db),
+                   p: Principal = Depends(authenticate)):
+    require(p, "write")
+    v = Vehicle(id=f"veh-{uuid.uuid4().hex[:12]}", org_id=p.org_id, **body.model_dump())
+    db.add(v); audit(db, p, "create", "vehicle", v.id); db.commit()
+    return {"id": v.id, "org_id": v.org_id, "name": v.name,
+            "vehicle_type": v.vehicle_type, "status": v.status,
+            "capacity_kg": v.capacity_kg, "fuel_type": v.fuel_type,
+            "fleet_name": v.fleet_name, "data_status": v.data_status.value}
+
+@router.get("/vehicles")
+def list_vehicles(db: Session = Depends(get_db), p: Principal = Depends(authenticate),
+                  fleet: str | None = None, limit: int = Query(50, ge=1, le=500),
+                  offset: int = Query(0, ge=0)):
+    require(p, "read")
+    q = db.query(Vehicle).filter_by(org_id=p.org_id)
+    if fleet:
+        q = q.filter_by(fleet_name=fleet)
+    rows = q.order_by(Vehicle.id).offset(offset).limit(limit).all()
+    return {"items": [{"id": v.id, "name": v.name, "vehicle_type": v.vehicle_type,
+                       "status": v.status, "capacity_kg": v.capacity_kg,
+                       "fleet_name": v.fleet_name} for v in rows],
+            "total": q.count()}
+
+# --- Waste streams and recovery pathways (Phase 6) ---------------------------
+@router.post("/waste-streams", status_code=201)
+def create_stream(body: WasteStreamIn, db: Session = Depends(get_db),
+                  p: Principal = Depends(authenticate)):
+    require(p, "write")
+    s = WasteStream(id=f"str-{uuid.uuid4().hex[:12]}", org_id=p.org_id, **body.model_dump())
+    db.add(s); audit(db, p, "create", "waste_stream", s.id); db.commit()
+    return {"id": s.id, "org_id": s.org_id, "name": s.name, "category": s.category,
+            "material": s.material, "data_status": s.data_status.value}
+
+@router.get("/waste-streams")
+def list_streams(db: Session = Depends(get_db), p: Principal = Depends(authenticate)):
+    require(p, "read")
+    rows = db.query(WasteStream).filter_by(org_id=p.org_id).order_by(WasteStream.id).all()
+    return {"items": [{"id": s.id, "name": s.name, "category": s.category,
+                       "material": s.material} for s in rows], "total": len(rows)}
+
+@router.post("/recovery-pathways", status_code=201)
+def create_pathway(body: RecoveryPathwayIn, db: Session = Depends(get_db),
+                   p: Principal = Depends(authenticate)):
+    require(p, "write")
+    if not db.query(WasteStream).filter_by(org_id=p.org_id, id=body.waste_stream_id).first():
+        raise HTTPException(422, {"error": "invalid_reference",
+                                  "message": "waste_stream_id does not exist in your organization."})
+    if not db.query(Facility).filter_by(org_id=p.org_id, id=body.facility_id).first():
+        raise HTTPException(422, {"error": "invalid_reference",
+                                  "message": "facility_id does not exist in your organization."})
+    rp = RecoveryPathway(id=f"pat-{uuid.uuid4().hex[:12]}", org_id=p.org_id,
+                         **body.model_dump())
+    db.add(rp); audit(db, p, "create", "recovery_pathway", rp.id); db.commit()
+    return {"id": rp.id, "waste_stream_id": rp.waste_stream_id,
+            "facility_id": rp.facility_id, "pathway_type": rp.pathway_type,
+            "diversion_rate_pct": rp.diversion_rate_pct,
+            "diversion_status": "reported" if rp.diversion_rate_pct is not None else "unavailable"}
+
+@router.get("/recovery-pathways")
+def list_pathways(db: Session = Depends(get_db), p: Principal = Depends(authenticate)):
+    require(p, "read")
+    rows = db.query(RecoveryPathway).filter_by(org_id=p.org_id).all()
+    return {"items": [{"id": r.id, "waste_stream_id": r.waste_stream_id,
+                       "facility_id": r.facility_id, "pathway_type": r.pathway_type,
+                       "diversion_rate_pct": r.diversion_rate_pct} for r in rows],
+            "total": len(rows)}
+
+# --- Environmental accounting (Phase 6) --------------------------------------
+@router.post("/environmental/records", status_code=201)
+def create_env_record(body: EnvironmentalIn, db: Session = Depends(get_db),
+                      p: Principal = Depends(authenticate)):
+    require(p, "write")
+    try:
+        calc = accounting.compute_co2e(body.material, body.pathway_type, body.quantity_kg)
+    except ValueError as exc:
+        raise HTTPException(422, {"error": "no_factor", "message": str(exc)})
+    rec = EnvironmentalRecord(
+        id=f"env-{uuid.uuid4().hex[:12]}", org_id=p.org_id,
+        material=calc["material"], pathway_type=calc["pathway_type"],
+        quantity_kg=calc["quantity_kg"], co2e_kg=calc["co2e_kg"],
+        formula=calc["formula"], methodology_version=calc["methodology_version"],
+        assumptions=calc["assumptions"])
+    db.add(rec); audit(db, p, "create", "environmental_record", rec.id); db.commit()
+    return {"id": rec.id, **calc}
+
+@router.get("/environmental/summary")
+def env_summary(db: Session = Depends(get_db), p: Principal = Depends(authenticate)):
+    """Totals stay separated by data_status: derived estimates are never
+    merged with simulated scenario numbers."""
+    require(p, "read")
+    out = {}
+    for status in ("derived", "simulated", "observed", "reported"):
+        rows = (db.query(EnvironmentalRecord)
+                .filter_by(org_id=p.org_id, data_status=status).all())
+        if rows:
+            out[status] = {"records": len(rows),
+                           "quantity_kg": round(sum(r.quantity_kg for r in rows), 3),
+                           "co2e_kg": round(sum(r.co2e_kg for r in rows), 3)}
+    return {"org_id": p.org_id, "by_data_status": out,
+            "methodology_version": accounting.METHODOLOGY_VERSION,
+            "note": "Derived planning estimates (WIN-ENV-ACCT), not verified emissions outcomes."}
+
+# --- Data quality (Phase 6/8) --------------------------------------------------
+@router.get("/data-quality/summary")
+def data_quality(db: Session = Depends(get_db), p: Principal = Depends(authenticate)):
+    require(p, "read")
+    from datetime import datetime, timezone
+    def status_counts(model):
+        out = {}
+        for row in db.query(model).filter_by(org_id=p.org_id).all():
+            key = row.data_status.value
+            out[key] = out.get(key, 0) + 1
+        return out
+    jobs = (db.query(IngestionJob).filter_by(org_id=p.org_id)
+            .order_by(IngestionJob.created_at.desc()).all())
+    sources = {}
+    for j in jobs:
+        if j.source not in sources:
+            sources[j.source] = {"last_success_at": j.created_at,
+                                 "records_ok": j.records_ok,
+                                 "records_quarantined": j.records_quarantined}
+    return {"org_id": p.org_id,
+            "assets_by_status": status_counts(Asset),
+            "facilities_by_status": status_counts(Facility),
+            "collections_by_status": status_counts(CollectionEvent),
+            "ingestion": {
+                "jobs": len(jobs),
+                "records_quarantined_total": sum(j.records_quarantined for j in jobs),
+                "sources": sources},
+            "checked_at": datetime.now(timezone.utc)}
+
+# --- Devices and telemetry (Phase 9, WIN Edge) ---------------------------------
+@router.post("/devices", status_code=201)
+def register_device(body: DeviceIn, db: Session = Depends(get_db),
+                    p: Principal = Depends(authenticate)):
+    require(p, "write")
+    prior = db.query(Device).filter_by(org_id=p.org_id, device_id=body.device_id).first()
+    if prior:
+        return {"id": prior.id, "device_id": prior.device_id, "already_registered": True}
+    d = Device(id=f"dev-{uuid.uuid4().hex[:12]}", org_id=p.org_id, **body.model_dump())
+    db.add(d); audit(db, p, "register", "device", d.id); db.commit()
+    return {"id": d.id, "device_id": d.device_id, "already_registered": False,
+            "telemetry_status": "unavailable"}
+
+@router.get("/devices")
+def list_devices(db: Session = Depends(get_db), p: Principal = Depends(authenticate)):
+    require(p, "read")
+    rows = db.query(Device).filter_by(org_id=p.org_id).order_by(Device.device_id).all()
+    return {"items": [{"device_id": d.device_id, "asset_id": d.asset_id,
+                       "firmware_version": d.firmware_version,
+                       "last_seen_at": d.last_seen_at,
+                       "telemetry_status": "reported" if d.last_seen_at else "unavailable"}
+                      for d in rows], "total": len(rows)}
+
+@router.post("/telemetry/events", status_code=201)
+def ingest_telemetry(body: TelemetryBatchIn, db: Session = Depends(get_db),
+                     p: Principal = Depends(authenticate)):
+    """Store-and-forward friendly: batch ingest, idempotent per
+    (org, device, client_event_id). Unregistered devices are quarantined,
+    never silently accepted."""
+    require(p, "ingest")
+    accepted, replays, quarantined = 0, 0, 0
+    for ev in body.events:
+        device = db.query(Device).filter_by(org_id=p.org_id, device_id=ev.device_id).first()
+        if not device:
+            quarantined += 1
+            continue
+        prior = db.query(TelemetryEvent).filter_by(
+            org_id=p.org_id, device_id=ev.device_id,
+            client_event_id=ev.client_event_id).first()
+        if prior:
+            replays += 1
+            continue
+        db.add(TelemetryEvent(org_id=p.org_id, **ev.model_dump()))
+        if device.last_seen_at is None:
+            device.last_seen_at = ev.observed_at
+        else:
+            from datetime import timezone as _tz
+            def _ts(dt):
+                return dt.timestamp() if dt.tzinfo else dt.replace(tzinfo=_tz.utc).timestamp()
+            if _ts(ev.observed_at) >= _ts(device.last_seen_at):
+                device.last_seen_at = ev.observed_at
+        db.flush()
+        accepted += 1
+    db.commit()
+    return {"accepted": accepted, "idempotent_replays": replays,
+            "quarantined_unregistered_device": quarantined}
+
+@router.get("/telemetry/events")
+def list_telemetry(db: Session = Depends(get_db), p: Principal = Depends(authenticate),
+                   device_id: str | None = None,
+                   limit: int = Query(50, ge=1, le=500)):
+    require(p, "read")
+    q = db.query(TelemetryEvent).filter_by(org_id=p.org_id)
+    if device_id:
+        q = q.filter_by(device_id=device_id)
+    rows = q.order_by(TelemetryEvent.observed_at.desc()).limit(limit).all()
+    return {"items": [{"device_id": e.device_id, "client_event_id": e.client_event_id,
+                       "observed_at": e.observed_at, "received_at": e.received_at,
+                       "buffered_offline": e.buffered_offline,
+                       "fill_level_percent": e.fill_level_percent,
+                       "weight_kg": e.weight_kg,
+                       "data_status": e.data_status.value} for e in rows],
+            "total": len(rows)}
+
+# --- Simulation / digital twin scenarios (Phase 9) -------------------------------
+@router.post("/simulations", status_code=201)
+def run_scenario(body: ScenarioIn, db: Session = Depends(get_db),
+                 p: Principal = Depends(authenticate)):
+    require(p, "analyse")
+    try:
+        calc = accounting.compute_co2e(body.material, body.pathway_type, body.total_kg)
+    except ValueError as exc:
+        raise HTTPException(422, {"error": "no_factor", "message": str(exc)})
+    factor = calc["factor_kg_co2e_per_kg"]
+    current_kg = body.total_kg * body.current_diversion_pct / 100.0
+    target_kg = body.total_kg * body.target_diversion_pct / 100.0
+    results = {
+        "current_diverted_kg": round(current_kg, 3),
+        "target_diverted_kg": round(target_kg, 3),
+        "additional_diverted_kg": round(target_kg - current_kg, 3),
+        "current_co2e_avoided_kg": round(current_kg * factor, 3),
+        "target_co2e_avoided_kg": round(target_kg * factor, 3),
+        "data_status": "simulated",
+        "note": "Scenario projection only. Not an observed or verified outcome."}
+    sc = Scenario(id=f"scn-{uuid.uuid4().hex[:12]}", org_id=p.org_id, name=body.name,
+                  params_json=json.dumps(body.model_dump()),
+                  results_json=json.dumps(results))
+    db.add(sc); audit(db, p, "simulate", "scenario", sc.id); db.commit()
+    return {"id": sc.id, "name": sc.name, "results": results,
+            "factor": calc}
+
+@router.get("/simulations")
+def list_scenarios(db: Session = Depends(get_db), p: Principal = Depends(authenticate)):
+    require(p, "read")
+    rows = db.query(Scenario).filter_by(org_id=p.org_id).order_by(Scenario.created_at.desc()).all()
+    return {"items": [{"id": s.id, "name": s.name, "data_status": s.data_status.value,
+                       "results": json.loads(s.results_json)} for s in rows],
+            "total": len(rows)}
+
+# --- Control Center expansion (Phase 8) ------------------------------------------
+@router.get("/system/jobs")
+def system_jobs(db: Session = Depends(get_db), p: Principal = Depends(authenticate)):
+    require(p, "admin")
+    ing = (db.query(IngestionJob).filter_by(org_id=p.org_id)
+           .order_by(IngestionJob.created_at.desc()).limit(20).all())
+    fc = (db.query(ForecastRun).filter_by(org_id=p.org_id)
+          .order_by(ForecastRun.created_at.desc()).limit(20).all())
+    tel = db.query(TelemetryEvent).filter_by(org_id=p.org_id).count()
+    devices = db.query(Device).filter_by(org_id=p.org_id).all()
+    return {"ingestion_jobs": [{"id": j.id, "source": j.source, "status": j.status,
+                                "records_ok": j.records_ok,
+                                "records_quarantined": j.records_quarantined,
+                                "created_at": j.created_at} for j in ing],
+            "forecast_runs": [{"id": f.id, "target": f.target, "model_id": f.model_id,
+                               "model_version": f.model_version,
+                               "created_at": f.created_at} for f in fc],
+            "telemetry_events": tel,
+            "devices": {"registered": len(devices),
+                        "never_reported": sum(1 for d in devices if not d.last_seen_at)}}

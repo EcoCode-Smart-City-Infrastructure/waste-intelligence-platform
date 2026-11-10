@@ -77,3 +77,79 @@ class RoutePlanIn(BaseModel):
 class CsvIngestIn(BaseModel):
     source: str = "csv-upload"
     records: list[dict]
+
+
+class VehicleIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    vehicle_type: str = "collection_truck"
+    status: str = "available"
+    capacity_kg: float | None = Field(default=None, ge=0)
+    fuel_type: str | None = None
+    fleet_name: str | None = None
+    data_status: DataStatus = DataStatus.reported
+    source_system: str = "win-os-api"
+    source_record_id: str | None = None
+
+    @field_validator("status")
+    @classmethod
+    def check_status(cls, v):
+        allowed = {"available", "in_route", "in_maintenance", "out_of_service", "offline", "retired"}
+        if v not in allowed:
+            raise ValueError(f"status must be one of {sorted(allowed)}")
+        return v
+
+class WasteStreamIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    category: str = "mixed"
+    material: str | None = None
+    data_status: DataStatus = DataStatus.reported
+    source_system: str = "win-os-api"
+    source_record_id: str | None = None
+
+class RecoveryPathwayIn(BaseModel):
+    waste_stream_id: str
+    facility_id: str
+    pathway_type: str = "recycling"
+    diversion_rate_pct: float | None = Field(default=None, ge=0, le=100)
+    data_status: DataStatus = DataStatus.reported
+    source_system: str = "win-os-api"
+    source_record_id: str | None = None
+
+    @field_validator("pathway_type")
+    @classmethod
+    def check_pathway(cls, v):
+        allowed = {"reuse", "recycling", "composting", "anaerobic_digestion",
+                   "energy_recovery", "landfill"}
+        if v not in allowed:
+            raise ValueError(f"pathway_type must be one of {sorted(allowed)}")
+        return v
+
+class EnvironmentalIn(BaseModel):
+    material: str
+    pathway_type: str
+    quantity_kg: float = Field(gt=0)
+
+class DeviceIn(BaseModel):
+    device_id: str = Field(min_length=1, max_length=120)
+    asset_id: str | None = None
+    firmware_version: str | None = None
+
+class TelemetryIn(BaseModel):
+    device_id: str
+    client_event_id: str
+    observed_at: datetime
+    fill_level_percent: float | None = Field(default=None, ge=0, le=100)
+    weight_kg: float | None = Field(default=None, ge=0)
+    buffered_offline: bool = False
+    data_status: DataStatus = DataStatus.observed
+
+class TelemetryBatchIn(BaseModel):
+    events: list[TelemetryIn] = Field(min_length=1, max_length=500)
+
+class ScenarioIn(BaseModel):
+    name: str = "Diversion scenario"
+    total_kg: float = Field(gt=0)
+    current_diversion_pct: float = Field(ge=0, le=100)
+    target_diversion_pct: float = Field(ge=0, le=100)
+    material: str = "mixed_recyclables"
+    pathway_type: str = "recycling"

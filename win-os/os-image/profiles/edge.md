@@ -1,5 +1,12 @@
 # WIN Edge profile
 
-Status: Interfaces defined, broker profile included
+Status: Partially implemented (v0.2)
 
-MQTT (Mosquitto) via the edge Compose profile, telemetry event contract v1, device identity and store-and-forward are specified in the contracts; no physical device is required or claimed. Simulated telemetry must be labelled simulated.
+Implemented: device registration, telemetry batch ingestion with
+store-and-forward idempotency ((org, device, client_event_id)), the edge
+MQTT bridge (win-os/apps/edge/mqtt_bridge.py) with a local SQLite buffer that
+flushes in order when the API returns, and the Mosquitto broker via the edge
+Compose profile. A device that has never reported reads as telemetry
+'unavailable' - never zero. Not yet done: MQTT broker authentication rollout
+(password file/TLS), OTA update channel, on-device buffering firmware.
+Simulated telemetry must always be labelled simulated.

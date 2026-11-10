@@ -1,0 +1,17 @@
+[Unit]
+Description=WIN OS Core (Docker Compose)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/win-os
+ExecStartPre=/usr/bin/bash win-os/infrastructure/deployment/preflight.sh
+ExecStart=/usr/bin/docker compose -f win-os/compose.yaml -f win-os/compose.prod.yaml --profile core up -d
+ExecStop=/usr/bin/docker compose -f win-os/compose.yaml -f win-os/compose.prod.yaml --profile core down
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

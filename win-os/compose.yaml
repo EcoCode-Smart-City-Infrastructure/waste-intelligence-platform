@@ -112,6 +112,23 @@ services:
     networks: [win-internal]
     security_opt: ["no-new-privileges:true"]
 
+  edge-bridge:
+    profiles: ["edge"]
+    build:
+      context: ./apps/edge
+    restart: unless-stopped
+    environment:
+      WIN_API_URL: http://api:8080
+      WIN_API_KEY: ${WIN_EDGE_API_KEY:?set WIN_EDGE_API_KEY (integration-role key) in .env}
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+      WIN_EDGE_BUFFER: /data/edge-buffer.db
+    volumes:
+      - winos_edge_buffer:/data
+    depends_on: [api, mosquitto]
+    networks: [win-internal]
+    security_opt: ["no-new-privileges:true"]
+
   prometheus:
     profiles: ["monitoring"]
     image: prom/prometheus:v2.54.1
@@ -148,3 +165,4 @@ volumes:
   winos_mqtt:
   winos_prometheus:
   winos_grafana:
+  winos_edge_buffer:

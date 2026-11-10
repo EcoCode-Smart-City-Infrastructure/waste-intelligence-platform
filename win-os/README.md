@@ -11,18 +11,17 @@ Branch: `win-os/initial-platform` (based on the Phase 1/2 foundation in
 `init/repository-scaffold` @ 0b2dc67 and `vibe/win-os-master-engineering-69eeb0`
 @ e74b33a - that work is preserved and built on, not replaced).
 
-## Status (honest, 2026-11-09)
+## Status (honest, v0.2 - 2026-11-10)
 
 | Area | State |
 | --- | --- |
-| Phase 0/1 architecture docs + full PostGIS DDL | Implemented (pre-existing foundation, verified in repo) |
-| WIN API (`win-os/apps/api`) - assets, facilities, collections, route planning, ingestion, forecast/anomaly baselines, Copilot status/tools, Control Center status | Implemented and tested (18 automated tests, SQLite-backed) |
-| PostgreSQL/PostGIS schema for WIN OS | Implemented as Alembic migration 0001 (not yet executed against a live Postgres in this environment - no Docker/Postgres available here) |
-| Compose profiles core / intelligence / edge / monitoring | Implemented (base + production overlay); not yet run in this environment (no Docker here) - validated by config review, must be smoke-tested on an Ubuntu host |
-| Ansible provisioning + cloud-init + preflight | Implemented, syntax-reviewed; not yet executed against a real host |
-| Existing web app integration | Documented mapping + backend contract; app unchanged on `web-app` branch |
-| Edge devices, simulation, cluster | Interfaces/contracts defined; not implemented (see profiles) |
-| CI workflow | Provided at `win-os/ci/win-os-ci.yml`; must be copied to `.github/workflows/` manually (GitHub App cannot write workflows) |
+| WIN API v0.2 (`win-os/apps/api`) - assets, facilities, collections, vehicles/fleets, waste streams, recovery pathways, environmental accounting, data quality, devices + telemetry, simulations, route planning, ingestion, forecast/anomaly baselines, Copilot status/tools, Control Center | Implemented and tested (30 automated tests) |
+| PostgreSQL/PostGIS | **Verified on a real Ubuntu 24.04 host**: PostgreSQL 16.15 + PostGIS 3.4, Alembic 0001-0003 applied, GiST indexes + geom-sync trigger working, API run against it (verify-deployment 6/6), backup produced and **restored into a second database successfully** |
+| Compose profiles core / intelligence / edge / monitoring | Config validated for all profiles (`docker compose config`). Full `compose up` NOT yet verified: Docker Hub pulls timed out in the sandbox used for development |
+| Ansible provisioning + cloud-init + preflight | Syntax-checked and check-mode run on Ubuntu 24.04; two real role bugs found and fixed. Full non-check run against a fresh server is still the last unverified step |
+| Existing web app integration | API client shipped (`apps/web/win-api-client.js`); wiring it into the web-app branch is a separate change on that branch |
+| Edge | Bridge + store-and-forward implemented and unit-tested; no physical device tested |
+| CI workflow | `win-os/ci/win-os-ci.yml`; must be copied to `.github/workflows/` manually (GitHub App cannot write workflows) |
 
 ## Quick start (development, no Docker)
 
