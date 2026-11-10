@@ -10,6 +10,14 @@
 # edge MQTT round-trip, backup + restore - the checks that could not run in
 # the development sandbox (Docker Hub was unreachable there). Public-repo
 # Actions minutes are free. Nothing here deploys anywhere persistent.
+# Fix v3 (2026-11-10): run #1 FAILED at Alembic - host-side alembic got
+# "connection refused" on localhost:5433 even though Postgres was healthy
+# and the API was ready; the published host port never became reachable on
+# the runner (docker compose ps showed no published port for postgres).
+# DB work (Alembic, backup) therefore runs INSIDE the Compose network
+# (service name postgres:5432) via one-off `docker compose run` containers
+# and never through a host-published port. The API port (8080) worked fine
+# from the host, so API checks still use it.
 name: win-os-deploy-verify
 on:
   workflow_dispatch:
@@ -31,7 +39,9 @@ jobs:
           sed -i "s/^WIN_OS_KEYS=.*/WIN_OS_KEYS=ci-admin:platform_admin:org-ci,ci-op:operator:org-ci,ci-view:viewer:org-ci,ci-svc:integration:org-ci/" .env
           sed -i "s/^WIN_GRAFANA_PASSWORD=.*/WIN_GRAFANA_PASSWORD=ci-throwaway/" .env
           echo "WIN_EDGE_API_KEY=ci-svc" >> .env
-          echo "WIN_DATABASE_URL=postgresql://winos:ci-throwaway-pw@localhost:5433/winos" >> "$GITHUB_ENV"
+          # NOTE: no WIN_DATABASE_URL is exported here any more - DB steps run
+          # inside the Compose network (see Alembic step) and never use the
+          # host-published Postgres port.
 
       - name: Build and start WIN Core
         run: |
@@ -46,12 +56,25 @@ jobs:
           done
           echo "API never became ready"; docker compose --env-file .env -f win-os/compose.yaml logs api | tail -100; exit 1
 
+      # Run #1 failed here: host-side Alembic could not reach localhost:5433
+      # (connection refused) even though Postgres was healthy and the API
+      # was ready, because the published host port never became reachable
+      # on the runner. Run Alembic INSIDE the Compose network instead: a
+      # one-off container from the already-built API image (which ships
+      # alembic) with the migrations directory mounted, talking to
+      # postgres:5432 over win-internal. No host port involved.
       - name: Run Alembic migrations against the Compose Postgres
         run: |
-          pip install "alembic>=1.13" "psycopg[binary]>=3.2" -q
-          cd win-os/data-platform/migrations
-          WIN_DATABASE_URL="postgresql+psycopg://winos:ci-throwaway-pw@localhost:5433/winos" alembic upgrade head
-          WIN_DATABASE_URL="postgresql+psycopg://winos:ci-throwaway-pw@localhost:5433/winos" alembic current
+          docker compose --env-file .env -f win-os/compose.yaml --profile core run --rm --no-deps \
+            -v "$PWD/win-os/data-platform/migrations:/migrations:ro" \
+            -w /migrations \
+            -e WIN_DATABASE_URL=postgresql+psycopg://winos:ci-throwaway-pw@postgres:5432/winos \
+            api alembic upgrade head
+          docker compose --env-file .env -f win-os/compose.yaml --profile core run --rm --no-deps \
+            -v "$PWD/win-os/data-platform/migrations:/migrations:ro" \
+            -w /migrations \
+            -e WIN_DATABASE_URL=postgresql+psycopg://winos:ci-throwaway-pw@postgres:5432/winos \
+            api alembic current
 
       - name: Verify deployment (shipped script)
         env:
@@ -67,11 +90,22 @@ jobs:
           curl -fsS -H "X-API-Key: ci-admin" http://127.0.0.1:8080/api/v1/system/status
           curl -fsS -H "X-API-Key: ci-view" http://127.0.0.1:8080/api/v1/data-quality/summary
 
+      # pg_dump is not installed on the GitHub runner, and the host-published
+      # Postgres port is not relied on (see Alembic step). The shipped backup
+      # script therefore runs inside the Compose network in a one-off
+      # container from the Postgres image (which ships pg_dump), with the
+      # script and the host ./backups directory mounted; it writes the dump
+      # there, and restore-check.sh then runs on the host as before.
       - name: Backup and restore check
         run: |
-          export WIN_DATABASE_URL="postgresql://winos:ci-throwaway-pw@localhost:5433/winos" WIN_BACKUP_DIR=$PWD/backups
-          bash win-os/infrastructure/backup-restore/backup-win-os.sh
-          bash win-os/infrastructure/backup-restore/restore-check.sh
+          mkdir -p backups
+          docker compose --env-file .env -f win-os/compose.yaml --profile core run --rm --no-deps \
+            -v "$PWD/win-os/infrastructure/backup-restore:/scripts:ro" \
+            -v "$PWD/backups:/backups" \
+            -e WIN_DATABASE_URL=postgresql://winos:ci-throwaway-pw@postgres:5432/winos \
+            -e WIN_BACKUP_DIR=/backups \
+            postgres bash /scripts/backup-win-os.sh
+          WIN_BACKUP_DIR=$PWD/backups bash win-os/infrastructure/backup-restore/restore-check.sh
 
       - name: Start intelligence + monitoring + edge profiles
         run: |

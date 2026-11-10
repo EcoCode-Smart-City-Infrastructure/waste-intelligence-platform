@@ -36,8 +36,12 @@ services:
       - "127.0.0.1:${WIN_POSTGRES_PORT:-5433}:5432"
     volumes:
       - winos_postgres:/var/lib/postgresql/data
+    # TCP check (-h 127.0.0.1): the first-run initdb temp server listens on
+    # the Unix socket only, so a socket-only pg_isready can report healthy
+    # before TCP 5432 is up. api depends_on service_healthy, so this gates
+    # the API on real TCP readiness.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${WIN_POSTGRES_USER:-winos} -d ${WIN_POSTGRES_DB:-winos}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${WIN_POSTGRES_USER:-winos} -d ${WIN_POSTGRES_DB:-winos}"]
       interval: 10s
       timeout: 5s
       retries: 5
