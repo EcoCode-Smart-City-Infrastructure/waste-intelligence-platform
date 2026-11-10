@@ -1,0 +1,75 @@
+# WIN OS deploy verification - COPY to .github/workflows/win-os-deploy-verify.yml
+# Manually triggered (Actions tab > win-os-deploy-verify > Run workflow).
+# Runs the FULL WIN OS stack on a real GitHub-hosted Ubuntu 24.04 runner:
+# compose build + up (core profile), PostGIS migrations, API verification,
+# edge MQTT round-trip, backup + restore - the checks that could not run in
+# the development sandbox (Docker Hub was unreachable there). Public-repo
+# Actions minutes are free. Nothing here deploys anywhere persistent.
+name: win-os-deploy-verify
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare environment (throwaway CI secrets, never real ones)
+        run: |
+          cp win-os/.env.example .env
+          sed -i "s/^WIN_POSTGRES_PASSWORD=.*/WIN_POSTGRES_PASSWORD=ci-throwaway-pw/" .env
+          sed -i "s/^WIN_OS_KEYS=.*/WIN_OS_KEYS=ci-admin:platform_admin:org-ci,ci-op:operator:org-ci,ci-view:viewer:org-ci,ci-svc:integration:org-ci/" .env
+          sed -i "s/^WIN_GRAFANA_PASSWORD=.*/WIN_GRAFANA_PASSWORD=ci-throwaway/" .env
+          echo "WIN_EDGE_API_KEY=ci-svc" >> .env
+          echo "WIN_DATABASE_URL=postgresql://winos:ci-throwaway-pw@localhost:5433/winos" >> "$GITHUB_ENV"
+
+      - name: Build and start WIN Core
+        run: |
+          docker compose --env-file .env -f win-os/compose.yaml --profile core up -d --build
+          docker compose --env-file .env -f win-os/compose.yaml --profile core ps
+
+      - name: Wait for API readiness
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/health/ready; then echo; echo "API ready"; exit 0; fi
+            sleep 5
+          done
+          echo "API never became ready"; docker compose --env-file .env -f win-os/compose.yaml logs api | tail -100; exit 1
+
+      - name: Run Alembic migrations against the Compose Postgres
+        run: |
+          pip install "alembic>=1.13" "psycopg[binary]>=3.2" -q
+          cd win-os/data-platform/migrations
+          WIN_DATABASE_URL="postgresql+psycopg://winos:ci-throwaway-pw@localhost:5433/winos" alembic upgrade head
+          WIN_DATABASE_URL="postgresql+psycopg://winos:ci-throwaway-pw@localhost:5433/winos" alembic current
+
+      - name: Verify deployment (shipped script)
+        env:
+          WIN_API_URL: http://127.0.0.1:8080
+          WIN_API_KEY_OPERATOR: ci-op
+          WIN_API_KEY_VIEWER: ci-view
+        run: bash win-os/infrastructure/deployment/verify-deployment.sh
+
+      - name: Seed + smoke the v0.2 surface
+        run: |
+          export WIN_API_URL=http://127.0.0.1:8080 WIN_API_KEY=ci-op
+          python win-os/tools/seed_win_os.py
+          curl -fsS -H "X-API-Key: ci-admin" http://127.0.0.1:8080/api/v1/system/status
+          curl -fsS -H "X-API-Key: ci-view" http://127.0.0.1:8080/api/v1/data-quality/summary
+
+      - name: Backup and restore check
+        run: |
+          export WIN_DATABASE_URL="postgresql://winos:ci-throwaway-pw@localhost:5433/winos" WIN_BACKUP_DIR=$PWD/backups
+          bash win-os/infrastructure/backup-restore/backup-win-os.sh
+          bash win-os/infrastructure/backup-restore/restore-check.sh
+
+      - name: Start intelligence + monitoring + edge profiles
+        run: |
+          docker compose --env-file .env -f win-os/compose.yaml --profile intelligence --profile monitoring --profile edge up -d --build
+          docker compose --env-file .env -f win-os/compose.yaml --profile core --profile intelligence --profile monitoring --profile edge ps
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose --env-file .env -f win-os/compose.yaml --profile core --profile intelligence --profile monitoring --profile edge logs | tail -300
