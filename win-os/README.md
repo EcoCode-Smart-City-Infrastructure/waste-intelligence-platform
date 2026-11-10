@@ -21,7 +21,7 @@ Branch: `win-os/initial-platform` (based on the Phase 1/2 foundation in
 | Ansible provisioning + cloud-init + preflight | Syntax-checked and check-mode run on Ubuntu 24.04; two real role bugs found and fixed. Full non-check run against a fresh server is still the last unverified step |
 | Existing web app integration | API client shipped (`apps/web/win-api-client.js`); wiring it into the web-app branch is a separate change on that branch |
 | Edge | Bridge + store-and-forward implemented and unit-tested; no physical device tested |
-| CI workflow | `win-os/ci/win-os-ci.yml`; must be copied to `.github/workflows/` manually (GitHub App cannot write workflows) |
+| CI workflow | **Installed** by Stephen 2026-11-10 at `.github/workflows/win-os-ci.yml` on this branch (verified, content matches `win-os/ci/win-os-ci.yml`) |
 
 ## Quick start (development, no Docker)
 
