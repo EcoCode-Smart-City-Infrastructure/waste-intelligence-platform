@@ -1,0 +1,11 @@
+# WIN OS production overlay: publish nothing except the API behind a TLS
+# reverse proxy on the host. Use with:
+#   docker compose -f win-os/compose.yaml -f win-os/compose.prod.yaml --profile core up -d
+services:
+  postgres:
+    ports: []
+  api:
+    ports:
+      - "127.0.0.1:${WIN_API_PORT:-8080}:8080"
+    environment:
+      WIN_ENVIRONMENT: production

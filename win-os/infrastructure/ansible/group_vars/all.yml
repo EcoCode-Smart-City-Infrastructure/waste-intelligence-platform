@@ -1,0 +1,8 @@
+---
+# Non-secret WIN OS defaults. Secrets belong in Ansible Vault or the host .env.
+win_os_dir: /opt/win-os
+win_profile: core
+win_manage_firewall: false   # opt-in: only true with a reviewed rule set
+win_manage_ssh: false        # opt-in: never changes SSH access by default
+win_unattended_upgrades: true
+win_timezone: UTC

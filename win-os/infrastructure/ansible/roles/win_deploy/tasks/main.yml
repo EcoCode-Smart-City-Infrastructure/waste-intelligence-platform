@@ -1,0 +1,17 @@
+---
+- name: Create WIN OS directory
+  ansible.builtin.file:
+    path: "{{ win_os_dir }}"
+    state: directory
+    mode: "0750"
+- name: Note about source delivery
+  ansible.builtin.debug:
+    msg: >-
+      Clone the repository branch win-os/initial-platform into {{ win_os_dir }}
+      over SSH, copy win-os/.env.example to .env with vault-managed secrets,
+      then run the preflight and Compose deploy from win-os/Makefile.
+      This role deliberately does not embed credentials or clone with tokens.
+- name: Optionally apply the baseline firewall (opt-in only)
+  ansible.builtin.debug:
+    msg: "win_manage_firewall is {{ win_manage_firewall }}; no firewall rules were changed."
+  when: not win_manage_firewall

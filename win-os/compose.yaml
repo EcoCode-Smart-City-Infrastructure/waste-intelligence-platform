@@ -1,0 +1,150 @@
+# WIN OS - Waste Intelligence Network Operating System
+# Canonical Compose file for the WIN OS profiles (directive sections 4.2, 6.2).
+# The repo-root docker-compose.yml remains the legacy platform stack; this file
+# is the WIN OS deployment and does not replace it.
+#
+# Profiles:
+#   core          PostgreSQL/PostGIS + WIN API + Redis            (default services)
+#   intelligence  + existing forecasting service + copilot service
+#   edge          + Mosquitto MQTT broker
+#   monitoring    + Prometheus + Grafana (never expose publicly without auth)
+#
+# Usage:
+#   cp win-os/.env.example .env   # fill in real secrets locally, never commit .env
+#   docker compose -f win-os/compose.yaml --profile core up -d
+#   docker compose -f win-os/compose.yaml --profile core --profile intelligence up -d
+#
+# Security defaults: the database and broker are NOT published to the host in
+# the production overlay (compose.prod.yaml); in this base file Postgres is
+# bound to 127.0.0.1 only. Images are pinned to major versions; pin digests in
+# production per docs/deployment/ubuntu-24.04.md.
+name: win-os
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${WIN_POSTGRES_USER:-winos}
+      POSTGRES_PASSWORD: ${WIN_POSTGRES_PASSWORD:?set WIN_POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${WIN_POSTGRES_DB:-winos}
+    ports:
+      - "127.0.0.1:${WIN_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - winos_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${WIN_POSTGRES_USER:-winos} -d ${WIN_POSTGRES_DB:-winos}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [win-internal]
+    security_opt: ["no-new-privileges:true"]
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    environment:
+      WIN_ENVIRONMENT: ${WIN_ENVIRONMENT:-development}
+      WIN_PROFILE: core
+      WIN_DATABASE_URL: postgresql+psycopg://${WIN_POSTGRES_USER:-winos}:${WIN_POSTGRES_PASSWORD}@postgres:5432/${WIN_POSTGRES_DB:-winos}
+      WIN_OS_KEYS: ${WIN_OS_KEYS:?set WIN_OS_KEYS in .env (key:role:org_id,...)}
+      WIN_CORS_ORIGINS: ${WIN_CORS_ORIGINS:-https://ecocode-smart-city-infrastructure.github.io}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    ports:
+      - "${WIN_API_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [win-internal, win-public]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp"]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - winos_redis:/data
+    networks: [win-internal]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt: ["no-new-privileges:true"]
+
+  forecasting:
+    profiles: ["intelligence"]
+    build:
+      context: ../services/forecasting
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${WIN_POSTGRES_USER:-winos}:${WIN_POSTGRES_PASSWORD}@postgres:5432/${WIN_POSTGRES_DB:-winos}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [win-internal]
+    security_opt: ["no-new-privileges:true"]
+
+  copilot:
+    profiles: ["intelligence"]
+    build:
+      context: ../copilot_service
+    restart: unless-stopped
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    networks: [win-internal]
+    security_opt: ["no-new-privileges:true"]
+
+  mosquitto:
+    profiles: ["edge"]
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ./infrastructure/mqtt:/mosquitto/config:ro
+      - winos_mqtt:/mosquitto/data
+    networks: [win-internal]
+    security_opt: ["no-new-privileges:true"]
+
+  prometheus:
+    profiles: ["monitoring"]
+    image: prom/prometheus:v2.54.1
+    restart: unless-stopped
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - winos_prometheus:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks: [win-internal]
+
+  grafana:
+    profiles: ["monitoring"]
+    image: grafana/grafana:11.2.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${WIN_GRAFANA_PASSWORD:?set WIN_GRAFANA_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - winos_grafana:/var/lib/grafana
+    depends_on: [prometheus]
+    networks: [win-internal]
+
+networks:
+  win-internal:
+    internal: true
+  win-public:
+
+volumes:
+  winos_postgres:
+  winos_redis:
+  winos_mqtt:
+  winos_prometheus:
+  winos_grafana:

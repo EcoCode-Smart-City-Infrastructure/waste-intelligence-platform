@@ -1,0 +1,29 @@
+# WIN OS source registry. Claims are limited to what each source publishes.
+sources:
+  - id: nyc-dsny-tonnage
+    name: DSNY Monthly Tonnage (NYC Open Data / Socrata)
+    dataset_id: ebb7-mvp5
+    kind: municipal-open-data
+    provides: [monthly tonnage by borough and waste stream]
+    does_not_provide: [live GPS, live sensor readings, current facility capacity]
+    data_status_default: reported
+  - id: nyc-litter-baskets
+    name: NYC Litter Basket Inventory (Socrata)
+    dataset_id: 6r9j-qrwz
+    kind: municipal-open-data
+    provides: [basket locations]
+    does_not_provide: [fill levels, collection execution]
+    data_status_default: reported
+  - id: manual-csv
+    name: Manual CSV upload
+    kind: manual-upload
+    provides: [operator-supplied asset and event records]
+    does_not_provide: [verification of the supplied values]
+    data_status_default: reported
+  - id: win-edge-telemetry
+    name: WIN Edge telemetry (MQTT, planned)
+    kind: device-telemetry
+    provides: [device fill/weight observations when devices are deployed]
+    does_not_provide: [anything until real devices are registered]
+    data_status_default: observed
+    status: planned

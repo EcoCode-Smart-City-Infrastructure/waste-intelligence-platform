@@ -1,0 +1,25 @@
+#cloud-config
+# WIN Core first-boot profile for an Ubuntu 24.04 LTS server.
+# It installs Docker and clones the WIN OS branch; it does NOT set secrets -
+# provision .env from your secrets manager after first boot, then deploy.
+package_update: true
+packages: [ca-certificates, curl, git, jq]
+users:
+  - name: winos
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys: []  # add the operator key before using this image
+runcmd:
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" > /etc/apt/sources.list.d/docker.list
+  - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  - systemctl enable --now docker
+  - timedatectl set-ntp true
+write_files:
+  - path: /etc/motd.d/90-win-os
+    permissions: "0755"
+    content: |
+      #!/bin/sh
+      echo "WIN OS Core host. Deploy: cd /opt/win-os && make -f win-os/Makefile deploy"

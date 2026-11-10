@@ -1,0 +1,13 @@
+---
+# WIN OS host provisioning. Safe defaults: validation and Docker roles are
+# idempotent and check-mode friendly. The deploy role is explicit - it never
+# runs against an unidentified host: win_target_confirm must equal the
+# inventory hostname, and firewall/SSH changes are opt-in variables (off by
+# default) per the directive's safe-execution rule.
+- name: WIN OS Core host
+  hosts: win_hosts
+  become: true
+  roles:
+    - win_validate
+    - win_docker
+    - win_deploy

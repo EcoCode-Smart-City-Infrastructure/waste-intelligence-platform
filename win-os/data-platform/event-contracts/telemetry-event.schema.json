@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "win-os/telemetry-event/v1",
+  "title": "WIN Telemetry Event v1",
+  "type": "object",
+  "required": ["device_id", "org_id", "observed_at", "data_status"],
+  "properties": {
+    "device_id": {"type": "string"},
+    "org_id": {"type": "string"},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "ingested_at": {"type": "string", "format": "date-time"},
+    "fill_level_percent": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+    "weight_kg": {"type": ["number", "null"], "minimum": 0},
+    "latitude": {"type": ["number", "null"], "minimum": -90, "maximum": 90},
+    "longitude": {"type": ["number", "null"], "minimum": -180, "maximum": 180},
+    "data_status": {"enum": ["observed", "reported", "derived", "forecast", "simulated", "unavailable"]},
+    "source_record_id": {"type": ["string", "null"]}
+  },
+  "additionalProperties": true
+}

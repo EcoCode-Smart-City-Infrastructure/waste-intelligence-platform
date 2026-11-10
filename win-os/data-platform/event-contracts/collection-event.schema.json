@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "win-os/collection-event/v1",
+  "title": "WIN Collection Event v1",
+  "type": "object",
+  "required": ["asset_id", "org_id", "status", "data_status"],
+  "properties": {
+    "asset_id": {"type": "string"},
+    "org_id": {"type": "string"},
+    "status": {"enum": ["scheduled", "dispatched", "reported", "completed", "missed", "verified"]},
+    "planned_at": {"type": ["string", "null"], "format": "date-time"},
+    "occurred_at": {"type": ["string", "null"], "format": "date-time"},
+    "quantity_kg": {"type": ["number", "null"], "minimum": 0},
+    "data_status": {"enum": ["observed", "reported", "derived", "forecast", "simulated", "unavailable"]},
+    "idempotency_key": {"type": ["string", "null"]}
+  }
+}

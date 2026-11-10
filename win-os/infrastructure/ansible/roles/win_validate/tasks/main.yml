@@ -1,0 +1,31 @@
+---
+- name: Require Ubuntu Server LTS
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "Ubuntu"
+      - ansible_distribution_version in ["24.04", "22.04"]
+    fail_msg: "WIN OS supports Ubuntu 24.04 LTS (primary) or 22.04 LTS; found {{ ansible_distribution }} {{ ansible_distribution_version }}."
+- name: Require the confirmed target host
+  ansible.builtin.assert:
+    that:
+      - win_target_confirm == inventory_hostname
+    fail_msg: "Refusing to provision an unidentified host. Set win_target_confirm to this inventory hostname."
+- name: Ensure time synchronisation is active
+  ansible.builtin.systemd:
+    name: systemd-timesyncd
+    enabled: true
+    state: started
+- name: Install base packages
+  ansible.builtin.apt:
+    name: [ca-certificates, curl, git, jq, unattended-upgrades]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+- name: Enable unattended security upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    mode: "0644"
+  when: win_unattended_upgrades
