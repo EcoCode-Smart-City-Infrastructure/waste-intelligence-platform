@@ -1,0 +1,12 @@
+# WIN OS line-ending discipline (2026-11-10): a Windows checkout with
+# core.autocrlf=true must never rewrite these to CRLF - CRLF breaks bash
+# scripts inside Linux containers and can corrupt YAML/shebangs.
+* text=auto
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ps1 text eol=crlf
+Dockerfile text eol=lf
+*.md text eol=lf
+*.json text eol=lf
