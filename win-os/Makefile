@@ -1,6 +1,6 @@
 # WIN OS task interface (supplements the repo-root Makefile).
 # Run from the repository root:  make -f win-os/Makefile <target>
-COMPOSE ?= docker compose -f win-os/compose.yaml
+COMPOSE ?= docker compose --env-file .env -f win-os/compose.yaml
 PY ?= python3
 
 .PHONY: help setup dev build test lint health backup restore-check deploy down

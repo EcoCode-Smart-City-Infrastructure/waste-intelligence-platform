@@ -70,3 +70,21 @@
   Ubuntu 24.04) passed validation assertions and found two real role bugs,
   both fixed (invalid get_url 'creates' parameter; systemd-timesyncd now
   installed by the role before the service task, with a live-systemd guard).
+
+## 2026-11-10 - CI run #1 failure diagnosed and fixed
+
+- Stephen installed .github/workflows/win-os-ci.yml (verified on branch,
+  content exact). His commits did not trigger a run (path filter win-os/**
+  does not match .github/**); a README commit under win-os/ triggered run #1.
+- Run #1 FAILED at the Compose validation step. Reproduced locally two ways:
+  (1) v0.2's edge-bridge added a required variable WIN_EDGE_API_KEY that
+  .env.example did not provide; (2) deeper: with `-f win-os/compose.yaml`,
+  Compose resolves the project .env as win-os/.env, so the root .env the CI
+  step creates was never read - every required variable failed.
+- Fixes (no workflow change required): edge-bridge key relaxed to a default
+  (the bridge itself exits clearly without a key); postgres/API-keys/Grafana
+  required interpolations replaced with documented dev defaults, moving the
+  fail-fast guarantee to the layers that actually run on deploy paths -
+  preflight.sh (rejects placeholder secrets) and the API's production
+  validation (refuses empty keys / SQLite). Copy-ready workflow updated to
+  v2 (--env-file) for correctness; Makefile now passes --env-file too.

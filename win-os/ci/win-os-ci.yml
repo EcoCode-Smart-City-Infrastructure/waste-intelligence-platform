@@ -1,4 +1,7 @@
 # WIN OS CI - COPY this file to .github/workflows/win-os-ci.yml manually.
+# v2 (2026-11-10): compose step passes --env-file explicitly; the installed
+# v1 also passes now that compose carries dev defaults, so re-pasting is
+# optional but recommended.
 # The Muse GitHub App cannot write .github/workflows/ (403), the same limit
 # documented for the platform CI workflow. Until copied, CI does not run.
 name: win-os-ci
@@ -22,6 +25,6 @@ jobs:
       - name: Compose validation
         run: |
           cp win-os/.env.example .env
-          docker compose -f win-os/compose.yaml config -q
+          docker compose --env-file .env -f win-os/compose.yaml config -q
       - name: Secret scan (basic)
         run: "! grep -RInE '(api_key|password) *= *[^ \"$][^ ]{12,}' win-os --exclude-dir=tests || true"
