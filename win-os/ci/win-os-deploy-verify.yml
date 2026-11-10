@@ -1,5 +1,10 @@
 # WIN OS deploy verification - COPY to .github/workflows/win-os-deploy-verify.yml
-# Manually triggered (Actions tab > win-os-deploy-verify > Run workflow).
+# Trigger v2 (2026-11-10): GitHub only allows manual dispatch of workflows
+# that exist on the DEFAULT branch, and this file lives on the feature
+# branch - so the primary trigger is a push that changes the sentinel file
+# win-os/ci/RUN_DEPLOY_VERIFY (Muse pushes a one-line bump to start a run;
+# app pushes demonstrably trigger workflows in this repo). workflow_dispatch
+# is kept for the day this lands on the default branch.
 # Runs the FULL WIN OS stack on a real GitHub-hosted Ubuntu 24.04 runner:
 # compose build + up (core profile), PostGIS migrations, API verification,
 # edge MQTT round-trip, backup + restore - the checks that could not run in
@@ -8,6 +13,9 @@
 name: win-os-deploy-verify
 on:
   workflow_dispatch:
+  push:
+    branches: [win-os/initial-platform]
+    paths: ['win-os/ci/RUN_DEPLOY_VERIFY']
 
 jobs:
   deploy-verify:
