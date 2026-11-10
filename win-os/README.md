@@ -22,7 +22,7 @@ Branch: `win-os/initial-platform` (based on the Phase 1/2 foundation in
 | Existing web app integration | API client shipped (`apps/web/win-api-client.js`); wiring it into the web-app branch is a separate change on that branch |
 | Edge | Bridge + store-and-forward implemented and unit-tested; no physical device tested |
 | CI workflow | **Installed** by Stephen 2026-11-10 at `.github/workflows/win-os-ci.yml` on this branch (verified, content matches `win-os/ci/win-os-ci.yml`) |
-| Cross-platform | Linux native; macOS + Windows via Docker Desktop (WSL2 backend on Windows); PowerShell preflight/verify scripts; per-OS test matrix in `win-os-xplat-ci` - see `docs/deployment/cross-platform.md` |
+| Cross-platform | Linux native; macOS + Windows via Docker Desktop (WSL2 backend on Windows); PowerShell preflight/verify scripts; per-OS test matrix in `win-os-xplat-ci` (**installed** by Stephen 2026-11-10 at `.github/workflows/win-os-xplat-ci.yml`, verified) - see `docs/deployment/cross-platform.md` |
 
 ## Quick start (development, no Docker)
 
