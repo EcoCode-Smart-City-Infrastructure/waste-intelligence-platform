@@ -1,1 +1,1 @@
-run 2 - triggered by Muse 2026-11-20 at Stephen's go-ahead (fixed in-compose workflow)
+run 3 - triggered by Muse 2026-11-20 (db.py: no create_all on Postgres; Alembic owns schema)

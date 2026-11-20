@@ -88,3 +88,18 @@
   preflight.sh (rejects placeholder secrets) and the API's production
   validation (refuses empty keys / SQLite). Copy-ready workflow updated to
   v2 (--env-file) for correctness; Makefile now passes --env-file too.
+
+## 2026-11-20 - deploy-verify run #2 failure diagnosed and fixed
+
+- Run #2 (44833355383, 49s) failed at the Alembic step, 1s in:
+  sqlalchemy DuplicateTable: relation "organizations" already exists.
+  Build (36s) and API readiness (5s) passed, so the v3 in-compose
+  connection fix worked; the failure was a schema-ownership conflict:
+  create_app() called create_tables() on every boot, so the API created
+  the tables first and Alembic (no version row recorded) re-ran 0001.
+- Fix: db.create_tables() now runs only for SQLite or when
+  WIN_DB_AUTO_CREATE=1; against Postgres it skips and Alembic owns the
+  schema, as the docstring always claimed. Verified: 30/30 pytest, and a
+  direct check that a Postgres URL skips DDL while SQLite still creates.
+- No workflow re-paste needed for run #3 (the fix is app code, not the
+  workflow file); sentinel bumped to run 3.
