@@ -1,1 +1,1 @@
-run 3 - triggered by Muse 2026-11-20 (db.py: no create_all on Postgres; Alembic owns schema)
+run 4 - triggered by Muse 2026-11-20 (seed_win_os.py: stdlib urllib instead of httpx - run #3 failed ModuleNotFoundError: No module named 'httpx' on the runner host)
