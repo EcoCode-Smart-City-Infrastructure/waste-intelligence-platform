@@ -103,3 +103,30 @@
   direct check that a Postgres URL skips DDL while SQLite still creates.
 - No workflow re-paste needed for run #3 (the fix is app code, not the
   workflow file); sentinel bumped to run 3.
+- Run #3 (1m 9s) failed at 'Seed + smoke the v0.2 surface', 0s in:
+  ModuleNotFoundError: No module named 'httpx'. The seed script runs on
+  the bare runner host, which has no third-party packages. This validated
+  the run #2 fix: build+up, API readiness, migrations and verify-
+  deployment all passed. Fix: seed_win_os.py rewritten to stdlib urllib
+  only (commit 6d52da6); the file forbids reintroducing a third-party
+  HTTP dependency there.
+- Run #4 (44839151565, 1m 1s) failed at 'Start intelligence + monitoring
+  + edge profiles': Docker builds for forecasting and copilot failed with
+  "/services/forecasting/requirements.txt": not found and
+  "/copilot_service": not found / "/.env.example": not found. Everything
+  before it passed: core build, readiness, Alembic, verify-deployment,
+  seed + smoke, backup/restore. Root cause: both Dockerfiles assume a
+  repo-root build context (the legacy root docker-compose.yml builds them
+  with context: .), while win-os/compose.yaml used the service directories
+  as contexts. A repo-root context is wrong for copilot: its builder
+  would install the repo-root requirements.txt (the MCP server's, with
+  flask/mcp) instead of copilot_service/requirements.txt, leaving
+  pydantic-settings and python-dateutil missing at runtime.
+- Fix: WIN OS variants of both Dockerfiles, originals untouched -
+  services/forecasting/Dockerfile.win-os and
+  copilot_service/Dockerfile.win-os (context-relative COPYs; copilot
+  copies the package from the context root and drops the .env.example
+  copy, since config comes from the Compose environment). Compose now
+  pins dockerfile: Dockerfile.win-os for both services. No workflow
+  re-paste needed for run #5 (the fix is app code + compose, not the
+  workflow file); sentinel bumped to run 5.

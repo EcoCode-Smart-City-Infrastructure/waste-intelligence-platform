@@ -88,6 +88,9 @@ services:
     profiles: ["intelligence"]
     build:
       context: ../services/forecasting
+      # The original Dockerfile assumes a repo-root build context; this
+      # WIN OS variant uses context-relative COPYs (original untouched).
+      dockerfile: Dockerfile.win-os
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${WIN_POSTGRES_USER:-winos}:${WIN_POSTGRES_PASSWORD}@postgres:5432/${WIN_POSTGRES_DB:-winos}
@@ -101,6 +104,11 @@ services:
     profiles: ["intelligence"]
     build:
       context: ../copilot_service
+      # The original Dockerfile assumes a repo-root build context (and would
+      # install the repo-root requirements.txt, the MCP server's, not this
+      # service's); this WIN OS variant builds from the service directory
+      # with its own requirements.txt (original untouched).
+      dockerfile: Dockerfile.win-os
     restart: unless-stopped
     environment:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
